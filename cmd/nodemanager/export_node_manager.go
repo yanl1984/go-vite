@@ -1,9 +1,7 @@
 package nodemanager
 
 import (
-	"encoding/hex"
 	"fmt"
-	"github.com/gin-gonic/gin/json"
 	"github.com/pkg/errors"
 	"github.com/vitelabs/go-vite/cmd/utils"
 	"github.com/vitelabs/go-vite/common/types"
@@ -262,7 +260,7 @@ func (nodeManager *ExportNodeManager) Start() error {
 	fmt.Printf("Complete calculating the balance that is onroad.There are %d accounts, %d accounts is general account, %d accounts is contract account\n",
 		len(allAddress), len(generalAddressMap), len(contractAddressMap))
 
-	fmt.Println("======inAccount balance map======")
+	/*fmt.Println("======inAccount balance map======")
 	nodeManager.printBalanceMap(inAccountBalanceMap, "vite")
 	fmt.Println("======inAccount balance map======")
 
@@ -284,32 +282,38 @@ func (nodeManager *ExportNodeManager) Start() error {
 
 	fmt.Println("======onroad vcp balance map======")
 	nodeManager.printBalanceMap(onroadVCPBalanceMap, "vcp")
-	fmt.Println("======onroad vcp balance map======")
+	fmt.Println("======onroad vcp balance map======")*/
 
+	filterGenesis(genesis, contractRevertBalanceMap)
 	sumBalanceMap := nodeManager.calculateSumBalanceMap(inAccountBalanceMap, contractRevertBalanceMap, onroadBalanceMap)
 	sumVCPBalanceMap := nodeManager.calculateSumBalanceMap(inAccountVCPBalanceMap, onroadVCPBalanceMap)
-	fmt.Println("======sum balance map======")
+
+	/*fmt.Println("======sum balance map======")
 	nodeManager.printBalanceMap(sumBalanceMap, "vite")
 	fmt.Println("======sum balance map======")
 
 	fmt.Println("======sum vcp balance map======")
 	nodeManager.printBalanceMap(sumVCPBalanceMap, "vcp")
-	fmt.Println("======sum vcp balance map======")
+	fmt.Println("======sum vcp balance map======")*/
 
 	fmt.Println("======genesis======")
 	genesis.GenesisAccountAddress = &ledger.GenesisAccountAddress
 	genesis.AccountBalanceMap = make(map[string]map[string]*big.Int)
-	genesis.AccountBalanceMap[ledger.ViteTokenId.String()] = convertBalanceMap(sumBalanceMap)
-	genesis.AccountBalanceMap[vcpTokenId.String()] = convertBalanceMap(sumVCPBalanceMap)
-	nodeManager.printGenesis(genesis)
-	fmt.Println("======contract storage map======")
+	genesis.AccountBalanceMap = convertBalanceMap(genesis.AccountBalanceMap, ledger.ViteTokenId.String(), sumBalanceMap)
+	genesis.AccountBalanceMap = convertBalanceMap(genesis.AccountBalanceMap, vcpTokenId.String(), sumVCPBalanceMap)
+	printGenesis(genesis)
+	printGenesisSummary(genesis)
+	fmt.Println("======genesis======")
+
 	return nil
 }
 
-func convertBalanceMap(source map[types.Address]*big.Int) map[string]*big.Int {
-	target := make(map[string]*big.Int, len(source))
+func convertBalanceMap(target map[string]map[string]*big.Int, tokenId string, source map[types.Address]*big.Int) map[string]map[string]*big.Int {
 	for addr, amount := range source {
-		target[addr.String()] = amount
+		if _, ok := target[addr.String()]; !ok {
+			target[addr.String()] = make(map[string]*big.Int)
+		}
+		target[addr.String()][tokenId] = amount
 	}
 	return target
 }
@@ -364,27 +368,6 @@ func (nodeManager *ExportNodeManager) printBalanceMap(balanceMap map[types.Addre
 
 	fmt.Printf("total: %s %s\n", totalBalance, unit)
 
-}
-
-func (nodeManager *ExportNodeManager) printGenesis(g *Genesis) {
-	v, _ := json.MarshalIndent(g, "", "\t")
-	fmt.Println(string(v))
-}
-
-func (nodeManager *ExportNodeManager) printLogMap(logMap map[types.Address]ledger.VmLogList) {
-	fmt.Printf("\"ContractLogsMap\": {\n")
-	for addr, list := range logMap {
-		fmt.Printf("\"%v\": [\n", addr.String())
-		for _, log := range list {
-			fmt.Printf("{\n\t\"Data\":\"%v\",\n\t\"Topics\":[", hex.EncodeToString(log.Data))
-			for _, topic := range log.Topics {
-				fmt.Printf("\n\t\t\"%v\",", topic.String())
-			}
-			fmt.Printf("\n\t]\n},\n")
-		}
-		fmt.Printf("],\n")
-	}
-	fmt.Printf("},\n")
 }
 
 func (nodeManager *ExportNodeManager) Stop() error {

@@ -39,7 +39,7 @@ type MintageContractInfo struct {
 }
 
 type PledgeContractInfo struct {
-	PledgeInfoMap       map[string]PledgeInfo
+	PledgeInfoMap       map[string][]PledgeInfo
 	PledgeBeneficialMap map[string]*big.Int
 }
 

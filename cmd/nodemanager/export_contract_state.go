@@ -3,6 +3,8 @@ package nodemanager
 import (
 	"bytes"
 	"encoding/hex"
+	"encoding/json"
+	"fmt"
 	"github.com/vitelabs/go-vite/chain"
 	"github.com/vitelabs/go-vite/common/helper"
 	"github.com/vitelabs/go-vite/common/types"
@@ -12,12 +14,14 @@ import (
 	cabi "github.com/vitelabs/go-vite/vm/contracts/abi"
 	"github.com/vitelabs/go-vite/vm/util"
 	"math/big"
+	"strconv"
 	"strings"
 )
 
 var (
 	STORAGE_KEY_BALANCE = []byte("$balance")
 	STORAGE_KEY_CODE    = []byte("$code")
+	emptyBalance        = big.NewInt(0)
 )
 
 func isBalanceOrCode(key []byte) bool {
@@ -58,10 +62,11 @@ func exportContractBalanceAndStorage(m map[types.Address]*big.Int, g *Genesis, a
 }
 
 var (
-	newPledgeAmount    = new(big.Int).Mul(big.NewInt(100000), big.NewInt(1e18))
-	refundPledgeAmount = new(big.Int).Mul(big.NewInt(400000), big.NewInt(1e18))
-	newWithdrawHeight  = uint64(7776000)
-	rewardTime         = int64(1)
+	registerPledgeAmount       = new(big.Int).Mul(big.NewInt(100000), big.NewInt(1e18))
+	registerRefundPledgeAmount = new(big.Int).Mul(big.NewInt(400000), big.NewInt(1e18))
+	registerWithdrawHeight     = uint64(1)
+	registerRewardTime         = int64(1)
+	registerCancelTime         = int64(0)
 )
 
 func exportRegisterBalanceAndStorage(m map[types.Address]*big.Int, g *Genesis, trie *trie.Trie) (map[types.Address]*big.Int, *Genesis) {
@@ -92,25 +97,23 @@ func exportRegisterBalanceAndStorage(m map[types.Address]*big.Int, g *Genesis, t
 				g.ConsensusGroupInfo.RegistrationInfoMap[gidStr] = make(map[string]RegistrationInfo)
 			}
 			g.ConsensusGroupInfo.RegistrationInfoMap[gidStr][old.Name] = RegistrationInfo{
-				old.NodeAddr, old.PledgeAddr, newPledgeAmount, newWithdrawHeight, rewardTime, int64(0), []types.Address{old.NodeAddr},
+				old.NodeAddr, old.PledgeAddr, registerPledgeAmount, registerWithdrawHeight, registerRewardTime, registerCancelTime, []types.Address{old.NodeAddr},
 			}
 			if _, ok := g.ConsensusGroupInfo.HisNameMap[gidStr]; !ok {
 				g.ConsensusGroupInfo.HisNameMap[gidStr] = make(map[string]string)
 			}
 			g.ConsensusGroupInfo.HisNameMap[gidStr][old.NodeAddr.String()] = old.Name
-			if old.Amount.Sign() > 0 {
-				m = updateBalance(m, old.PledgeAddr, refundPledgeAmount)
-			}
+			m = updateBalance(m, old.PledgeAddr, registerRefundPledgeAmount)
 		}
 	}
 	return m, g
 }
 
+var pledgeWithdrawHeight = uint64(1)
+
 func exportPledgeBalanceAndStorage(m map[types.Address]*big.Int, g *Genesis, trie *trie.Trie) (map[types.Address]*big.Int, *Genesis) {
-	if g.PledgeInfo == nil {
-		g.PledgeInfo = &PledgeContractInfo{}
-	}
-	g.PledgeInfo.PledgeInfoMap = make(map[string]PledgeInfo)
+	g.PledgeInfo = &PledgeContractInfo{}
+	g.PledgeInfo.PledgeInfoMap = make(map[string][]PledgeInfo)
 	g.PledgeInfo.PledgeBeneficialMap = make(map[string]*big.Int)
 	iter := trie.NewIterator(nil)
 	for {
@@ -124,12 +127,19 @@ func exportPledgeBalanceAndStorage(m map[types.Address]*big.Int, g *Genesis, tri
 		if cabi.IsPledgeKey(key) {
 			old := new(cabi.PledgeInfo)
 			if err := cabi.ABIPledge.UnpackVariable(old, cabi.VariableNamePledgeInfo, value); err == nil {
-				g.PledgeInfo.PledgeInfoMap[cabi.GetPledgeAddrFromPledgeKey(key).String()] = PledgeInfo{old.Amount, 1, cabi.GetBeneficialFromPledgeKey(key)}
+				pledgeAddr := cabi.GetPledgeAddrFromPledgeKey(key)
+				pledgeAddrStr := pledgeAddr.String()
+				if _, ok := g.PledgeInfo.PledgeInfoMap[pledgeAddrStr]; !ok {
+					g.PledgeInfo.PledgeInfoMap[pledgeAddrStr] = make([]PledgeInfo, 0)
+				}
+				g.PledgeInfo.PledgeInfoMap[pledgeAddrStr] = append(g.PledgeInfo.PledgeInfoMap[pledgeAddrStr],
+					PledgeInfo{old.Amount, pledgeWithdrawHeight, cabi.GetBeneficialFromPledgeKey(key)})
+				m = updateBalance(m, pledgeAddr, emptyBalance)
 			}
 		} else {
-			amount := new(big.Int)
-			if err := cabi.ABIPledge.UnpackVariable(amount, cabi.VariableNamePledgeBeneficial, value); err == nil {
-				g.PledgeInfo.PledgeBeneficialMap[cabi.GetBeneficialFromPledgeBeneficialKey(key).String()] = amount
+			amount := new(cabi.VariablePledgeBeneficial)
+			if err := cabi.ABIPledge.UnpackVariable(amount, cabi.VariableNamePledgeBeneficial, value); err == nil && amount.Amount != nil && amount.Amount.Sign() > 0 {
+				g.PledgeInfo.PledgeBeneficialMap[cabi.GetBeneficialFromPledgeBeneficialKey(key).String()] = amount.Amount
 			}
 
 		}
@@ -137,10 +147,10 @@ func exportPledgeBalanceAndStorage(m map[types.Address]*big.Int, g *Genesis, tri
 	return m, g
 }
 
+var mintageWithdrawHeight = uint64(1)
+
 func exportMintageBalanceAndStorage(m map[types.Address]*big.Int, g *Genesis, trie *trie.Trie) (map[types.Address]*big.Int, *Genesis) {
-	if g.MintageInfo == nil {
-		g.MintageInfo = &MintageContractInfo{}
-	}
+	g.MintageInfo = &MintageContractInfo{}
 	g.MintageInfo.TokenInfoMap = make(map[string]TokenInfo)
 	g.MintageInfo.LogList = make([]GenesisVmLog, 0)
 	iter := trie.NewIterator(nil)
@@ -156,17 +166,21 @@ func exportMintageBalanceAndStorage(m map[types.Address]*big.Int, g *Genesis, tr
 			continue
 		}
 		tokenId := cabi.GetTokenIdFromMintageKey(key)
-		old, _ := cabi.ParseTokenInfo(value)
+		old, err := cabi.ParseTokenInfo(value)
+		if err != nil {
+			continue
+		}
 		if tokenId == ledger.ViteTokenId {
-			g.MintageInfo.TokenInfoMap[tokenId.String()] = TokenInfo{old.TokenName, old.TokenSymbol, old.TotalSupply, old.Decimals, types.AddressConsensusGroup, old.PledgeAmount, old.PledgeAddr, old.WithdrawHeight, helper.Tt256m1, false, true}
+			g.MintageInfo.TokenInfoMap[tokenId.String()] = TokenInfo{old.TokenName, old.TokenSymbol, old.TotalSupply, old.Decimals, types.AddressConsensusGroup, old.PledgeAmount, old.PledgeAddr, mintageWithdrawHeight, helper.Tt256m1, false, true}
 		} else {
 			if old.MaxSupply == nil {
 				old.MaxSupply = big.NewInt(0)
 			}
-			g.MintageInfo.TokenInfoMap[tokenId.String()] = TokenInfo{old.TokenName, old.TokenSymbol, old.TotalSupply, old.Decimals, old.Owner, old.PledgeAmount, old.PledgeAddr, old.WithdrawHeight, old.MaxSupply, old.OwnerBurnOnly, old.IsReIssuable}
+			g.MintageInfo.TokenInfoMap[tokenId.String()] = TokenInfo{old.TokenName, old.TokenSymbol, old.TotalSupply, old.Decimals, old.Owner, old.PledgeAmount, old.PledgeAddr, mintageWithdrawHeight, old.MaxSupply, old.OwnerBurnOnly, old.IsReIssuable}
 		}
 		log := util.NewLog(ABIMintageNew, "mint", tokenId)
 		g.MintageInfo.LogList = append(g.MintageInfo.LogList, GenesisVmLog{hex.EncodeToString(log.Data), log.Topics})
+		m = updateBalance(m, old.PledgeAddr, emptyBalance)
 	}
 	return m, g
 }
@@ -176,7 +190,8 @@ func exportVoteBalanceAndStorage(m map[types.Address]*big.Int, g *Genesis, trie 
 		g.ConsensusGroupInfo = &ConsensusGroupContractInfo{}
 	}
 	g.ConsensusGroupInfo.VoteStatusMap = make(map[string]map[string]string)
-	g.ConsensusGroupInfo.VoteStatusMap[types.SNAPSHOT_GID.String()] = make(map[string]string)
+	gidStr := types.SNAPSHOT_GID.String()
+	g.ConsensusGroupInfo.VoteStatusMap[gidStr] = make(map[string]string)
 	iterator := trie.NewIterator(nil)
 	for {
 		key, value, ok := iterator.Next()
@@ -189,7 +204,7 @@ func exportVoteBalanceAndStorage(m map[types.Address]*big.Int, g *Genesis, trie 
 		voterAddr := cabi.GetAddrFromVoteKey(key)
 		nodeName := new(string)
 		if err := cabi.ABIVote.UnpackVariable(nodeName, cabi.VariableNameVoteStatus, value); err == nil {
-			g.ConsensusGroupInfo.VoteStatusMap[types.SNAPSHOT_GID.String()][voterAddr.String()] = *nodeName
+			g.ConsensusGroupInfo.VoteStatusMap[gidStr][voterAddr.String()] = *nodeName
 		}
 	}
 	return m, g
@@ -210,9 +225,10 @@ func exportConsensusGroupBalanceAndStorage(m map[types.Address]*big.Int, g *Gene
 			continue
 		}
 		old := new(types.ConsensusGroupInfo)
+		cabi.ABIConsensusGroup.UnpackVariable(old, cabi.VariableNameConsensusGroupInfo, value)
 		oldParam := new(cabi.VariableConditionRegisterOfPledge)
 		cabi.ABIConsensusGroup.UnpackVariable(oldParam, cabi.VariableNameConditionRegisterOfPledge, old.RegisterConditionParam)
-		cabi.ABIConsensusGroup.UnpackVariable(old, cabi.VariableNameConsensusGroupInfo, value)
+		m = updateBalance(m, old.Owner, emptyBalance)
 		if gid := cabi.GetGidFromConsensusGroupKey(key); gid == types.SNAPSHOT_GID {
 			g.ConsensusGroupInfo.ConsensusGroupInfoMap[gid.String()] = ConsensusGroupInfo{
 				old.NodeCount,
@@ -224,7 +240,7 @@ func exportConsensusGroupBalanceAndStorage(m map[types.Address]*big.Int, g *Gene
 				uint8(0),
 				old.CountingTokenId,
 				old.RegisterConditionId,
-				RegisterConditionParam{newPledgeAmount, oldParam.PledgeToken, oldParam.PledgeHeight},
+				RegisterConditionParam{registerPledgeAmount, oldParam.PledgeToken, oldParam.PledgeHeight},
 				old.VoteConditionId,
 				VoteConditionParam{},
 				old.Owner,
@@ -241,7 +257,7 @@ func exportConsensusGroupBalanceAndStorage(m map[types.Address]*big.Int, g *Gene
 				uint8(1),
 				old.CountingTokenId,
 				old.RegisterConditionId,
-				RegisterConditionParam{newPledgeAmount, oldParam.PledgeToken, oldParam.PledgeHeight},
+				RegisterConditionParam{registerPledgeAmount, oldParam.PledgeToken, oldParam.PledgeHeight},
 				old.VoteConditionId,
 				VoteConditionParam{},
 				old.Owner,
@@ -257,7 +273,7 @@ func updateBalance(m map[types.Address]*big.Int, addr types.Address, balance *bi
 		v = v.Add(v, balance)
 		m[addr] = v
 	} else {
-		m[addr] = balance
+		m[addr] = new(big.Int).Set(balance)
 	}
 	return m
 }
@@ -312,3 +328,139 @@ var (
 	ABIPledgeNew, _         = abi.JSONToABIContract(strings.NewReader(jsonPledge))
 	ABIConsensusGroupNew, _ = abi.JSONToABIContract(strings.NewReader(jsonConsensusGroup))
 )
+
+func filterGenesis(g *Genesis, m map[types.Address]*big.Int) (*Genesis, map[types.Address]*big.Int) {
+	gidStr := types.SNAPSHOT_GID.String()
+	if g.ConsensusGroupInfo != nil && len(g.ConsensusGroupInfo.VoteStatusMap) > 0 && len(g.ConsensusGroupInfo.VoteStatusMap[types.SNAPSHOT_GID.String()]) > 0 {
+		for voteAddr, nodeName := range g.ConsensusGroupInfo.VoteStatusMap[gidStr] {
+			if _, ok := registerNameMap[nodeName]; !ok {
+				delete(g.ConsensusGroupInfo.VoteStatusMap[gidStr], voteAddr)
+			} else {
+				addr, _ := types.HexToAddress(voteAddr)
+				m = updateBalance(m, addr, emptyBalance)
+			}
+		}
+	}
+	return g, m
+}
+
+func printGenesis(g *Genesis) {
+	v, _ := json.MarshalIndent(g, "", "\t")
+	fmt.Println(string(v))
+}
+
+func printGenesisSummary(g *Genesis) {
+	if g == nil {
+		return
+	}
+	fmt.Println("genesis summary: ")
+	consensusGroupCount := 0
+	voteCount := 0
+	sbpCount := 0
+	sbpHisNameCount := 0
+	pledgeCount := 0
+	pledgeBeneficialCount := 0
+	if g.ConsensusGroupInfo != nil {
+		consensusGroupCount = len(g.ConsensusGroupInfo.ConsensusGroupInfoMap)
+		voteCount = len(g.ConsensusGroupInfo.VoteStatusMap[types.SNAPSHOT_GID.String()])
+		sbpCount = len(g.ConsensusGroupInfo.RegistrationInfoMap[types.SNAPSHOT_GID.String()])
+		sbpHisNameCount = len(g.ConsensusGroupInfo.HisNameMap[types.SNAPSHOT_GID.String()])
+		if sbpCount != sbpHisNameCount {
+			fmt.Println("【data error】registration his name count error, expected " + strconv.Itoa(sbpCount) + ", got " + strconv.Itoa(sbpHisNameCount))
+		}
+		for _, info := range g.ConsensusGroupInfo.ConsensusGroupInfoMap {
+			if _, ok := g.AccountBalanceMap[info.Owner.String()]; !ok {
+				fmt.Println("【data error】consensus group owner account balance map nil, address " + info.Owner.String())
+			}
+		}
+		for _, info := range g.ConsensusGroupInfo.RegistrationInfoMap[types.SNAPSHOT_GID.String()] {
+			if _, ok := g.AccountBalanceMap[info.PledgeAddr.String()]; !ok {
+				fmt.Println("【data error】registration owner account balance map nil, address " + info.PledgeAddr.String())
+			}
+		}
+		for addr, _ := range g.ConsensusGroupInfo.VoteStatusMap[types.SNAPSHOT_GID.String()] {
+			if _, ok := g.AccountBalanceMap[addr]; !ok {
+				fmt.Println("【data error】vote account balance map nil, address " + addr)
+			}
+		}
+	}
+	fmt.Println("consensus group count: " + strconv.Itoa(consensusGroupCount))
+	fmt.Println("vote count: " + strconv.Itoa(voteCount))
+	fmt.Println("sbp count: " + strconv.Itoa(sbpCount))
+	fmt.Println("sbp his name count: " + strconv.Itoa(sbpHisNameCount))
+	pledgeAmountTotal := big.NewInt(0)
+	pledgeAmountBeneficialTotal := big.NewInt(0)
+	beneficialMap := make(map[string]interface{}, pledgeBeneficialCount)
+	if g.PledgeInfo != nil {
+		pledgeCount = len(g.PledgeInfo.PledgeInfoMap)
+		pledgeBeneficialCount = len(g.PledgeInfo.PledgeBeneficialMap)
+		for pledgeAddr, list := range g.PledgeInfo.PledgeInfoMap {
+			for _, info := range list {
+				beneficialMap[info.BeneficialAddr.String()] = struct{}{}
+				pledgeAmountTotal.Add(pledgeAmountTotal, info.Amount)
+			}
+			if _, ok := g.AccountBalanceMap[pledgeAddr]; !ok {
+				fmt.Println("【data error】pledge account balance map nil, address " + pledgeAddr)
+			}
+		}
+		for _, amount := range g.PledgeInfo.PledgeBeneficialMap {
+			pledgeAmountBeneficialTotal.Add(pledgeAmountBeneficialTotal, amount)
+		}
+	}
+	fmt.Println("pledge addr count: " + strconv.Itoa(pledgeCount))
+	fmt.Println("pledge beneficial count: " + strconv.Itoa(pledgeBeneficialCount))
+	if expected := len(beneficialMap); expected != pledgeBeneficialCount {
+		fmt.Println("【data error】pledge beneficial count not match, expected " + strconv.Itoa(expected) + ", got " + strconv.Itoa(pledgeBeneficialCount))
+	}
+	if pledgeAmountTotal.Cmp(pledgeAmountBeneficialTotal) != 0 {
+		fmt.Println("【data error】pledge amount total not match, pledge amount total " + pledgeAmountTotal.String() + ", pledge amount beneficial total " + pledgeAmountBeneficialTotal.String())
+	}
+	tokenCount := 0
+	logCount := 0
+	if g.MintageInfo != nil {
+		tokenCount = len(g.MintageInfo.TokenInfoMap)
+		logCount = len(g.MintageInfo.LogList)
+		if tokenCount != logCount {
+			fmt.Println("【data error】mintage log count not match, expected " + strconv.Itoa(tokenCount) + ", got " + strconv.Itoa(logCount))
+		}
+		for _, info := range g.MintageInfo.TokenInfoMap {
+			if _, ok := g.AccountBalanceMap[info.PledgeAddr.String()]; !ok {
+				fmt.Println("【data error】mintage pledge account balance map nil, address " + info.PledgeAddr.String())
+			}
+		}
+	}
+	fmt.Println("token count: " + strconv.Itoa(tokenCount))
+	fmt.Println("token log count: " + strconv.Itoa(logCount))
+
+	balanceTotalMap := make(map[string]*big.Int)
+	if g.AccountBalanceMap != nil {
+		for _, m := range g.AccountBalanceMap {
+			for tokenId, amount := range m {
+				if origin, ok := balanceTotalMap[tokenId]; !ok {
+					balanceTotalMap[tokenId] = amount
+				} else {
+					balanceTotalMap[tokenId] = origin.Add(origin, amount)
+				}
+			}
+		}
+	}
+	for tokenId, amount := range balanceTotalMap {
+		fmt.Println("balance total of " + tokenId + " : " + amount.String())
+	}
+	fmt.Println("balance total of pledge : " + pledgeAmountTotal.String())
+
+	totalViteAmount := big.NewInt(0)
+	totalViteAmount.Add(totalViteAmount, balanceTotalMap[ledger.ViteTokenId.String()])
+	totalViteAmount.Add(totalViteAmount, pledgeAmountTotal)
+	totalViteAmount.Add(totalViteAmount, new(big.Int).Mul(new(big.Int).Mul(big.NewInt(1e3), big.NewInt(1e18)), big.NewInt(int64(tokenCount-1))))
+	totalViteAmount.Add(totalViteAmount, new(big.Int).Mul(new(big.Int).Mul(big.NewInt(1e5), big.NewInt(1e18)), big.NewInt(int64(sbpCount))))
+	totalSupply := new(big.Int).Mul(big.NewInt(1e9), big.NewInt(1e18))
+	if totalViteAmount.Cmp(totalSupply) != 0 {
+		fmt.Println("【data error】vite token total amount not match, expected " + totalSupply.String() + ", got " + totalViteAmount.String())
+	}
+
+	vcpTotalSupply := big.NewInt(1e10)
+	if balanceTotalMap["tti_251a3e67a41b5ea2373936c8"].Cmp(vcpTotalSupply) != 0 {
+		fmt.Println("【data error】vcp token total amount not match, expected " + vcpTotalSupply.String() + ", got " + balanceTotalMap["tti_251a3e67a41b5ea2373936c8"].String())
+	}
+}
