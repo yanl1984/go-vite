@@ -112,3 +112,16 @@ func (c *ContractApi) CallOffChainMethod(param CallOffChainMethodParam) ([]byte,
 	}
 	return vm.NewVM().OffChainReader(db, param.OffChainCode, param.Data)
 }
+
+func (c *ContractApi) GetContractStorage(addr types.Address, snapshotHash *types.Hash, prevHash *types.Hash) (map[string]string, error) {
+	db, err := vm_context.NewVmContext(c.chain, snapshotHash, prevHash, &addr)
+	if err != nil {
+		return nil, err
+	}
+	storage := db.DebugGetStorage()
+	target := make(map[string]string, len(storage))
+	for key, value := range storage {
+		target[hex.EncodeToString([]byte(key))] = hex.EncodeToString(value)
+	}
+	return target, nil
+}
