@@ -53,6 +53,8 @@ func (nodeManager *ExportNodeManager) getSbHeight() uint64 {
 	return sbHeight
 }
 
+var details = newAccountDetails()
+
 func (nodeManager *ExportNodeManager) Start() error {
 
 	allAddress := make(map[types.Address]struct{})
@@ -146,11 +148,13 @@ func (nodeManager *ExportNodeManager) Start() error {
 			generalAddressMap[addr] = struct{}{}
 
 			inAccountBalanceMap[addr] = balance
+			details.setViteAccountBalance(addr, balance)
 
 			if vcpBalanceBytes := accountStateTrie.GetValue(vcpBalanceKey); len(vcpBalanceBytes) > 0 {
 				vcpBalance := big.NewInt(0)
 				vcpBalance.SetBytes(vcpBalanceBytes)
 				inAccountVCPBalanceMap[addr] = vcpBalance
+				details.setVcpAccountBalance(addr, vcpBalance)
 			}
 
 		case 3:
@@ -223,11 +227,13 @@ func (nodeManager *ExportNodeManager) Start() error {
 					}
 
 					onroadBalanceMap[toAddress].Add(onroadBalanceMap[toAddress], onroadBlock.Amount)
+					details.addViteOnroadBalance(toAddress, onroadBlock.Amount, onroadBlock.Hash)
 				} else {
 					if _, ok := onroadVCPBalanceMap[toAddress]; !ok {
 						onroadVCPBalanceMap[toAddress] = big.NewInt(0)
 					}
 					onroadVCPBalanceMap[toAddress].Add(onroadVCPBalanceMap[toAddress], onroadBlock.Amount)
+					details.addVcpOnroadBalance(toAddress, onroadBlock.Amount, onroadBlock.Hash)
 				}
 
 				if _, ok := allAddress[toAddress]; !ok {
@@ -246,6 +252,7 @@ func (nodeManager *ExportNodeManager) Start() error {
 				}
 
 				onroadBalanceMap[fromAddress].Add(onroadBalanceMap[fromAddress], onroadBlock.Amount)
+				details.addViteToContractOnroadBalance(fromAddress, onroadBlock.Amount, onroadBlock.Hash)
 			default:
 				return errors.New(fmt.Sprintf("ToAddress is not existed, toAddress is %s, addr is %s, onroadBlock height is %d, onroadBlock hash is %s",
 					toAddress, addr, onroadBlock.Height, onroadBlock.Hash))
@@ -296,14 +303,16 @@ func (nodeManager *ExportNodeManager) Start() error {
 	nodeManager.printBalanceMap(sumVCPBalanceMap, "vcp")
 	fmt.Println("======sum vcp balance map======")*/
 
+	fmt.Println("======detail======")
+	details.print()
+
 	fmt.Println("======genesis======")
 	genesis.GenesisAccountAddress = &ledger.GenesisAccountAddress
 	genesis.AccountBalanceMap = make(map[string]map[string]*big.Int)
 	genesis.AccountBalanceMap = convertBalanceMap(genesis.AccountBalanceMap, ledger.ViteTokenId.String(), sumBalanceMap)
 	genesis.AccountBalanceMap = convertBalanceMap(genesis.AccountBalanceMap, vcpTokenId.String(), sumVCPBalanceMap)
 	printGenesis(genesis)
-	printGenesisSummary(genesis)
-	fmt.Println("======genesis======")
+	printGenesisSummary(genesis, details)
 
 	return nil
 }
