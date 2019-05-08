@@ -21,7 +21,7 @@ import (
 
 // the minimal height difference between snapshot chain of ours and bestPeer,
 // if the difference is little than this value, then we deem no need sync.
-const minHeightDifference = 60
+const minHeightDifference = 100
 const waitEnoughPeers = 5 * time.Second
 const enoughPeers = 3
 const chainGrowInterval = time.Second
