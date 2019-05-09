@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/vitelabs/go-vite/common"
+
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/consensus"
 	"github.com/vitelabs/go-vite/crypto/ed25519"
@@ -205,6 +207,12 @@ func NewTxApi(vite *vite.Vite) *Tx {
 	num := atomic.NewUint32(0)
 	simpleAddr := types.HexToAddressPanic("vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a")
 
+	type tmpTask struct {
+		addr   types.Address
+		key    string
+		toAddr types.Address
+	}
+
 	vite.Consensus().Subscribe(types.SNAPSHOT_GID, "api-auto-send", nil, func(e consensus.Event) {
 
 		if num.Load() > 0 {
@@ -250,21 +258,32 @@ func NewTxApi(vite *vite.Vite) *Tx {
 			}
 
 		}
-		wg := sync.WaitGroup{}
+		bucketCh := make(chan tmpTask, 100)
+
+		var wg sync.WaitGroup
+		N := 10
+		wg.Add(N)
+		for i := 0; i < N; i++ {
+			common.Go(func() {
+				defer wg.Done()
+				for b := range bucketCh {
+					tx.send(b.addr, b.key, b.toAddr, tx.M)
+				}
+			})
+		}
 		for k, v := range fromAddrs {
 			addr := v
 			key := fromHexPrivKeys[k]
-			wg.Add(1)
-			go tx.send(addr, key, simpleAddr, tx.M, &wg)
+			bucketCh <- tmpTask{addr: addr, key: key, toAddr: simpleAddr}
 		}
+		close(bucketCh)
 		wg.Wait()
 	})
 
 	return tx
 }
 
-func (t *Tx) send(addr types.Address, key string, toAddr types.Address, n int, wg *sync.WaitGroup) {
-	defer wg.Done()
+func (t *Tx) send(addr types.Address, key string, toAddr types.Address, n int) {
 	for i := 0; i < n; i++ {
 		amount := string("0")
 		//mToAddr := types.HexToAddressPanic(InitContractAddr[rand.Intn(len(InitContractAddr))])
