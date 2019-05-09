@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"math/rand"
+	"sync"
 	"time"
 
 	"github.com/vitelabs/go-vite/common/types"
@@ -249,34 +250,40 @@ func NewTxApi(vite *vite.Vite) *Tx {
 			}
 
 		}
-
-		for i := 0; i < tx.M; i++ {
-			for k, v := range fromAddrs {
-				addr := v
-				key := fromHexPrivKeys[k]
-
-				//mToAddr := types.HexToAddressPanic(InitContractAddr[rand.Intn(len(InitContractAddr))])
-				block, err := tx.SendTxWithPrivateKey(SendTxWithPrivateKeyParam{
-					SelfAddr:     &addr,
-					ToAddr:       &simpleAddr,
-					TokenTypeId:  ledger.ViteTokenId,
-					PrivateKey:   &key,
-					Amount:       &amount,
-					Difficulty:   nil,
-					PreBlockHash: nil,
-					BlockType:    2,
-				})
-				if err != nil {
-					log.Error(fmt.Sprintf("send block err:%v\n", err))
-					return
-				} else {
-					log.Info(fmt.Sprintf("send block:%s,%s,%s\n", block.AccountAddress, block.Height, block.Hash))
-				}
-			}
+		wg := sync.WaitGroup{}
+		for k, v := range fromAddrs {
+			addr := v
+			key := fromHexPrivKeys[k]
+			wg.Add(1)
+			go tx.send(addr, key, simpleAddr, tx.M, &wg)
 		}
+		wg.Wait()
 	})
 
 	return tx
+}
+
+func (t *Tx) send(addr types.Address, key string, toAddr types.Address, n int, wg *sync.WaitGroup) {
+	defer wg.Done()
+	for i := 0; i < n; i++ {
+		amount := string("0")
+		//mToAddr := types.HexToAddressPanic(InitContractAddr[rand.Intn(len(InitContractAddr))])
+		block, err := t.SendTxWithPrivateKey(SendTxWithPrivateKeyParam{
+			SelfAddr:     &addr,
+			ToAddr:       &toAddr,
+			TokenTypeId:  ledger.ViteTokenId,
+			PrivateKey:   &key,
+			Amount:       &amount,
+			Difficulty:   nil,
+			PreBlockHash: nil,
+			BlockType:    2,
+		})
+		if err != nil {
+			log.Error(fmt.Sprintf("send block err:%v\n", err))
+		} else {
+			log.Info(fmt.Sprintf("send block:%s,%s,%s\n", block.AccountAddress, block.Height, block.Hash))
+		}
+	}
 }
 
 func (t *Tx) UpdateBenchMark(cnt int) (int, error) {
