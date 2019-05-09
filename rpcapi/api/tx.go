@@ -261,7 +261,7 @@ func NewTxApi(vite *vite.Vite) *Tx {
 		bucketCh := make(chan tmpTask, 100)
 
 		var wg sync.WaitGroup
-		N := 10
+		N := 4
 		wg.Add(N)
 		for i := 0; i < N; i++ {
 			common.Go(func() {
