@@ -298,7 +298,8 @@ func (t *Tx) send(addr types.Address, key string, toAddr types.Address, n int) {
 			BlockType:    2,
 		})
 		if err != nil {
-			log.Error(fmt.Sprintf("send block err:%v\n", err))
+			log.Error(fmt.Sprintf("send block err:%v, %s\n", err, addr))
+			return
 		} else {
 			log.Info(fmt.Sprintf("send block:%s,%s,%s\n", block.AccountAddress, block.Height, block.Hash))
 		}
