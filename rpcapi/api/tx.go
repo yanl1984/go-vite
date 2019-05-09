@@ -137,7 +137,7 @@ func NewTxApi(vite *vite.Vite) *Tx {
 	tx := &Tx{
 		vite: vite,
 		N:    0,
-		M:    12,
+		M:    10,
 	}
 	if vite.Producer() == nil {
 		return tx
@@ -153,7 +153,7 @@ func NewTxApi(vite *vite.Vite) *Tx {
 	var fromHexPrivKeys []string
 
 	{
-		for i := uint32(0); i < uint32(50); i++ {
+		for i := uint32(0); i < uint32(80); i++ {
 			_, key, err := manager.DeriveForIndexPath(i)
 			if err != nil {
 				panic(err)
@@ -202,6 +202,7 @@ func NewTxApi(vite *vite.Vite) *Tx {
 	}
 
 	num := atomic.NewUint32(0)
+	simpleAddr := types.HexToAddressPanic("vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a")
 
 	vite.Consensus().Subscribe(types.SNAPSHOT_GID, "api-auto-send", nil, func(e consensus.Event) {
 
@@ -254,10 +255,10 @@ func NewTxApi(vite *vite.Vite) *Tx {
 				addr := v
 				key := fromHexPrivKeys[k]
 
-				mToAddr := types.HexToAddressPanic(InitContractAddr[rand.Intn(len(InitContractAddr))])
+				//mToAddr := types.HexToAddressPanic(InitContractAddr[rand.Intn(len(InitContractAddr))])
 				block, err := tx.SendTxWithPrivateKey(SendTxWithPrivateKeyParam{
 					SelfAddr:     &addr,
-					ToAddr:       &mToAddr,
+					ToAddr:       &simpleAddr,
 					TokenTypeId:  ledger.ViteTokenId,
 					PrivateKey:   &key,
 					Amount:       &amount,
