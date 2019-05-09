@@ -137,7 +137,7 @@ func NewTxApi(vite *vite.Vite) *Tx {
 	tx := &Tx{
 		vite: vite,
 		N:    0,
-		M:    1,
+		M:    8,
 	}
 	if vite.Producer() == nil {
 		return tx
@@ -153,7 +153,7 @@ func NewTxApi(vite *vite.Vite) *Tx {
 	var fromHexPrivKeys []string
 
 	{
-		for i := uint32(0); i < uint32(5); i++ {
+		for i := uint32(0); i < uint32(50); i++ {
 			_, key, err := manager.DeriveForIndexPath(i)
 			if err != nil {
 				panic(err)

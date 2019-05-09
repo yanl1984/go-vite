@@ -23,7 +23,7 @@ type batchExecutor struct {
 func newBatchExecutor(p Batch, snapshotFn BucketExecutorFn, accountFn BucketExecutorFn) *batchExecutor {
 	executor := &batchExecutor{p: p, snapshotFn: snapshotFn, accountFn: accountFn}
 	executor.log = log15.New("module", "pool/batch", "batchId", p.Id())
-	executor.maxParallel = 5
+	executor.maxParallel = 40
 	return executor
 }
 

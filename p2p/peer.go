@@ -107,8 +107,8 @@ type PeerInfo struct {
 	WriteQueue int              `json:"writeQueue"`
 }
 
-const peerReadMsgBufferSize = 10
-const peerWriteMsgBufferSize = 100
+const peerReadMsgBufferSize = 100
+const peerWriteMsgBufferSize = 1000
 
 type levelManager interface {
 	changeLevel(p PeerMux, old Level) error
