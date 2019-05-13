@@ -66,7 +66,7 @@ func exportContractBalanceAndStorage(m map[types.Address]*big.Int, g *Genesis, a
 var (
 	registerPledgeAmount       = new(big.Int).Mul(big.NewInt(100000), big.NewInt(1e18))
 	registerRefundPledgeAmount = new(big.Int).Mul(big.NewInt(400000), big.NewInt(1e18))
-	registerWithdrawHeight     = uint64(1)
+	registerWithdrawHeight     = uint64(7776000)
 	registerRewardTime         = int64(1)
 	registerCancelTime         = int64(0)
 )
@@ -186,20 +186,24 @@ func exportMintageBalanceAndStorage(m map[types.Address]*big.Int, g *Genesis, tr
 		}
 		if tokenId == ledger.ViteTokenId {
 			g.MintageInfo.TokenInfoMap[tokenId.String()] = TokenInfo{old.TokenName, old.TokenSymbol, old.TotalSupply, old.Decimals, types.AddressConsensusGroup, old.PledgeAmount, old.PledgeAddr, mintageWithdrawHeight, helper.Tt256m1, false, true}
-		} else {
+			log := util.NewLog(ABIMintageNew, "mint", tokenId)
+			g.MintageInfo.LogList = append(g.MintageInfo.LogList, GenesisVmLog{hex.EncodeToString(log.Data), log.Topics})
+			m = updateBalance(m, old.PledgeAddr, emptyBalance)
+			details.addToken(old.Owner, tokenId)
+		} else if tokenId == vcptokenId {
 			if old.MaxSupply == nil {
 				old.MaxSupply = big.NewInt(0)
 			}
 			g.MintageInfo.TokenInfoMap[tokenId.String()] = TokenInfo{old.TokenName, old.TokenSymbol, old.TotalSupply, old.Decimals, old.Owner, old.PledgeAmount, old.PledgeAddr, mintageWithdrawHeight, old.MaxSupply, old.OwnerBurnOnly, old.IsReIssuable}
-			if tokenId != vcptokenId {
-				details.addTokenRefund(old.PledgeAddr, tokenId)
-				m = updateBalance(m, old.PledgeAddr, mintageFee)
-			}
+			log := util.NewLog(ABIMintageNew, "mint", tokenId)
+			g.MintageInfo.LogList = append(g.MintageInfo.LogList, GenesisVmLog{hex.EncodeToString(log.Data), log.Topics})
+			m = updateBalance(m, old.PledgeAddr, emptyBalance)
+			details.addToken(old.Owner, tokenId)
+		} else {
+			details.addTokenRefund(old.PledgeAddr, tokenId)
+			m = updateBalance(m, old.PledgeAddr, mintageFee)
 		}
-		log := util.NewLog(ABIMintageNew, "mint", tokenId)
-		g.MintageInfo.LogList = append(g.MintageInfo.LogList, GenesisVmLog{hex.EncodeToString(log.Data), log.Topics})
-		m = updateBalance(m, old.PledgeAddr, emptyBalance)
-		details.addToken(old.Owner, tokenId)
+
 	}
 	return m, g
 }
