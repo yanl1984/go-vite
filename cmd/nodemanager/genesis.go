@@ -77,17 +77,14 @@ type RegistrationInfo struct {
 	HisAddrList    []types.Address
 }
 type TokenInfo struct {
-	TokenName      string
-	TokenSymbol    string
-	TotalSupply    *big.Int
-	Decimals       uint8
-	Owner          types.Address
-	PledgeAmount   *big.Int
-	PledgeAddr     types.Address
-	WithdrawHeight uint64
-	MaxSupply      *big.Int
-	OwnerBurnOnly  bool
-	IsReIssuable   bool
+	TokenName     string
+	TokenSymbol   string
+	TotalSupply   *big.Int
+	Decimals      uint8
+	Owner         types.Address
+	MaxSupply     *big.Int
+	OwnerBurnOnly bool
+	IsReIssuable  bool
 }
 type PledgeInfo struct {
 	Amount         *big.Int

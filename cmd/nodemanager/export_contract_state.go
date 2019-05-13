@@ -162,6 +162,7 @@ func exportPledgeBalanceAndStorage(m map[types.Address]*big.Int, g *Genesis, tri
 var mintageWithdrawHeight = uint64(1)
 var mintageFee = new(big.Int).Mul(big.NewInt(1e3), big.NewInt(1e18))
 var vcptokenId, _ = types.HexToTokenTypeId("tti_251a3e67a41b5ea2373936c8")
+var vtttokenId, _ = types.HexToTokenTypeId("tti_c55ec37a916b7f447575ae59")
 
 func exportMintageBalanceAndStorage(m map[types.Address]*big.Int, g *Genesis, trie *trie.Trie) (map[types.Address]*big.Int, *Genesis) {
 	g.MintageInfo = &MintageContractInfo{}
@@ -185,23 +186,28 @@ func exportMintageBalanceAndStorage(m map[types.Address]*big.Int, g *Genesis, tr
 			continue
 		}
 		if tokenId == ledger.ViteTokenId {
-			g.MintageInfo.TokenInfoMap[tokenId.String()] = TokenInfo{old.TokenName, old.TokenSymbol, old.TotalSupply, old.Decimals, types.AddressConsensusGroup, old.PledgeAmount, old.PledgeAddr, mintageWithdrawHeight, helper.Tt256m1, false, true}
+			g.MintageInfo.TokenInfoMap[tokenId.String()] = TokenInfo{old.TokenName, old.TokenSymbol, old.TotalSupply, old.Decimals, types.AddressConsensusGroup, helper.Tt256m1, false, true}
 			log := util.NewLog(ABIMintageNew, "mint", tokenId)
 			g.MintageInfo.LogList = append(g.MintageInfo.LogList, GenesisVmLog{hex.EncodeToString(log.Data), log.Topics})
 			m = updateBalance(m, old.PledgeAddr, emptyBalance)
 			details.addToken(old.Owner, tokenId)
-		} else if tokenId == vcptokenId {
+		} else if tokenId == vtttokenId {
+			details.addTokenRefund(old.PledgeAddr, tokenId)
+			m = updateBalance(m, old.PledgeAddr, mintageFee)
+		} else {
 			if old.MaxSupply == nil {
 				old.MaxSupply = big.NewInt(0)
 			}
-			g.MintageInfo.TokenInfoMap[tokenId.String()] = TokenInfo{old.TokenName, old.TokenSymbol, old.TotalSupply, old.Decimals, old.Owner, old.PledgeAmount, old.PledgeAddr, mintageWithdrawHeight, old.MaxSupply, old.OwnerBurnOnly, old.IsReIssuable}
+			g.MintageInfo.TokenInfoMap[tokenId.String()] = TokenInfo{old.TokenName, old.TokenSymbol, old.TotalSupply, old.Decimals, old.Owner, old.MaxSupply, old.OwnerBurnOnly, old.IsReIssuable}
 			log := util.NewLog(ABIMintageNew, "mint", tokenId)
 			g.MintageInfo.LogList = append(g.MintageInfo.LogList, GenesisVmLog{hex.EncodeToString(log.Data), log.Topics})
-			m = updateBalance(m, old.PledgeAddr, emptyBalance)
 			details.addToken(old.Owner, tokenId)
-		} else {
-			details.addTokenRefund(old.PledgeAddr, tokenId)
-			m = updateBalance(m, old.PledgeAddr, mintageFee)
+			if tokenId == vcptokenId {
+				details.addTokenRefund(old.PledgeAddr, tokenId)
+				m = updateBalance(m, old.PledgeAddr, mintageFee)
+			} else {
+				m = updateBalance(m, old.PledgeAddr, emptyBalance)
+			}
 		}
 
 	}
@@ -450,8 +456,8 @@ func printGenesisSummary(g *Genesis, details map[types.Address]*accountDetail) {
 			fmt.Println("【data error】mintage log count not match, expected " + strconv.Itoa(tokenCount) + ", got " + strconv.Itoa(logCount))
 		}
 		for _, info := range g.MintageInfo.TokenInfoMap {
-			if _, ok := g.AccountBalanceMap[info.PledgeAddr.String()]; !ok {
-				fmt.Println("【data error】mintage pledge account balance map nil, address " + info.PledgeAddr.String())
+			if _, ok := g.AccountBalanceMap[info.Owner.String()]; !ok {
+				fmt.Println("【data error】mintage owner account balance map nil, address " + info.Owner.String())
 			}
 		}
 	}
@@ -484,11 +490,11 @@ func printGenesisSummary(g *Genesis, details map[types.Address]*accountDetail) {
 				}
 			}
 			if ok {
-				detailViteBalanceTotal.Add(detailViteBalanceTotal, d.viteFinalBalance)
+				detailVcpBalanceTotal.Add(detailVcpBalanceTotal, d.vcpFinalBalance)
 				if calc := d.calcVcpFinalBalance(); calc.Cmp(d.vcpFinalBalance) != 0 {
 					fmt.Println("【data error】account vcp balance not match, addr" + addr.String() + ", final " + d.vcpFinalBalance.String() + ", calc " + calc.String())
 				}
-				detailVcpBalanceTotal.Add(detailVcpBalanceTotal, d.vcpFinalBalance)
+				detailViteBalanceTotal.Add(detailViteBalanceTotal, d.viteFinalBalance)
 				if calc := d.calcViteFinalBalance(); calc.Cmp(d.viteFinalBalance) != 0 {
 					fmt.Println("【data error】account vite balance not match, addr" + addr.String() + ", final " + d.viteFinalBalance.String() + ", calc " + calc.String())
 				}
@@ -502,7 +508,6 @@ func printGenesisSummary(g *Genesis, details map[types.Address]*accountDetail) {
 
 	totalViteAmount := big.NewInt(0)
 	totalViteAmount.Add(totalViteAmount, balanceTotalMap[ledger.ViteTokenId.String()])
-	totalViteAmount.Add(totalViteAmount, mintageFee)
 	totalSupply := new(big.Int).Mul(big.NewInt(1e9), big.NewInt(1e18))
 	if totalViteAmount.Cmp(totalSupply) != 0 {
 		fmt.Println("【data error】vite token total amount not match, expected " + totalSupply.String() + ", got " + totalViteAmount.String())
