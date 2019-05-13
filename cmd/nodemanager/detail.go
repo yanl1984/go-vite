@@ -87,6 +87,11 @@ func (m accountDetailMap) setViteAccountBalance(account types.Address, amount *b
 	d.viteAccountBalance.Set(amount)
 	d.viteFinalBalance.Add(d.viteFinalBalance, amount)
 }
+func (m accountDetailMap) addViteAccountBalance(account types.Address, amount *big.Int) {
+	d := m.accountDetail(account)
+	d.viteAccountBalance.Add(d.viteAccountBalance, amount)
+	d.viteFinalBalance.Add(d.viteFinalBalance, amount)
+}
 func (m accountDetailMap) addViteOnroadBalance(account types.Address, amount *big.Int, hash types.Hash) {
 	d := m.accountDetail(account)
 	d.viteOnroadBalance.Add(d.viteOnroadBalance, amount)

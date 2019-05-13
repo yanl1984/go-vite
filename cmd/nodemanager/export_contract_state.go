@@ -109,6 +109,9 @@ func exportRegisterBalanceAndStorage(m map[types.Address]*big.Int, g *Genesis, t
 			details.addRegisterRefund(old.PledgeAddr, old.Name)
 		}
 	}
+	accountBalance := new(big.Int).Mul(big.NewInt(int64(len(g.ConsensusGroupInfo.RegistrationInfoMap[types.SNAPSHOT_GID.String()]))), registerPledgeAmount)
+	m = updateBalance(m, types.AddressConsensusGroup, accountBalance)
+	details.addViteAccountBalance(types.AddressConsensusGroup, accountBalance)
 	return m, g
 }
 
@@ -118,6 +121,7 @@ func exportPledgeBalanceAndStorage(m map[types.Address]*big.Int, g *Genesis, tri
 	g.PledgeInfo = &PledgeContractInfo{}
 	g.PledgeInfo.PledgeInfoMap = make(map[string][]PledgeInfo)
 	g.PledgeInfo.PledgeBeneficialMap = make(map[string]*big.Int)
+	totalAmount := big.NewInt(0)
 	iter := trie.NewIterator(nil)
 	for {
 		key, value, ok := iter.Next()
@@ -140,6 +144,7 @@ func exportPledgeBalanceAndStorage(m map[types.Address]*big.Int, g *Genesis, tri
 					PledgeInfo{old.Amount, pledgeWithdrawHeight, beneficial})
 				m = updateBalance(m, pledgeAddr, emptyBalance)
 				details.addPledgeInfo(pledgeAddr, beneficial, old.Amount)
+				totalAmount.Add(totalAmount, old.Amount)
 			}
 		} else {
 			amount := new(cabi.VariablePledgeBeneficial)
@@ -149,6 +154,8 @@ func exportPledgeBalanceAndStorage(m map[types.Address]*big.Int, g *Genesis, tri
 
 		}
 	}
+	m = updateBalance(m, types.AddressPledge, totalAmount)
+	details.addViteAccountBalance(types.AddressPledge, totalAmount)
 	return m, g
 }
 
@@ -491,9 +498,7 @@ func printGenesisSummary(g *Genesis, details map[types.Address]*accountDetail) {
 
 	totalViteAmount := big.NewInt(0)
 	totalViteAmount.Add(totalViteAmount, balanceTotalMap[ledger.ViteTokenId.String()])
-	totalViteAmount.Add(totalViteAmount, pledgeAmountTotal)
-	totalViteAmount.Add(totalViteAmount, new(big.Int).Mul(new(big.Int).Mul(big.NewInt(1e3), big.NewInt(1e18)), big.NewInt(int64(tokenCount-2))))
-	totalViteAmount.Add(totalViteAmount, new(big.Int).Mul(new(big.Int).Mul(big.NewInt(1e5), big.NewInt(1e18)), big.NewInt(int64(sbpCount))))
+	totalViteAmount.Add(totalViteAmount, mintageFee)
 	totalSupply := new(big.Int).Mul(big.NewInt(1e9), big.NewInt(1e18))
 	if totalViteAmount.Cmp(totalSupply) != 0 {
 		fmt.Println("【data error】vite token total amount not match, expected " + totalSupply.String() + ", got " + totalViteAmount.String())
