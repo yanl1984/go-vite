@@ -64,11 +64,10 @@ func exportContractBalanceAndStorage(m map[types.Address]*big.Int, g *Genesis, a
 }
 
 var (
-	registerPledgeAmount       = new(big.Int).Mul(big.NewInt(100000), big.NewInt(1e18))
-	registerRefundPledgeAmount = new(big.Int).Mul(big.NewInt(400000), big.NewInt(1e18))
-	registerWithdrawHeight     = uint64(7776000)
-	registerRewardTime         = int64(1)
-	registerCancelTime         = int64(0)
+	registerPledgeAmount   = new(big.Int).Mul(big.NewInt(500000), big.NewInt(1e18))
+	registerWithdrawHeight = uint64(7776000)
+	registerRewardTime     = int64(1)
+	registerCancelTime     = int64(0)
 )
 
 func exportRegisterBalanceAndStorage(m map[types.Address]*big.Int, g *Genesis, trie *trie.Trie) (map[types.Address]*big.Int, *Genesis) {
@@ -105,8 +104,7 @@ func exportRegisterBalanceAndStorage(m map[types.Address]*big.Int, g *Genesis, t
 				g.ConsensusGroupInfo.HisNameMap[gidStr] = make(map[string]string)
 			}
 			g.ConsensusGroupInfo.HisNameMap[gidStr][old.NodeAddr.String()] = old.Name
-			m = updateBalance(m, old.PledgeAddr, registerRefundPledgeAmount)
-			details.addRegisterRefund(old.PledgeAddr, old.Name)
+			details.addRegisterInfo(old.PledgeAddr, old.Name)
 		}
 	}
 	accountBalance := new(big.Int).Mul(big.NewInt(int64(len(g.ConsensusGroupInfo.RegistrationInfoMap[types.SNAPSHOT_GID.String()]))), registerPledgeAmount)
@@ -527,7 +525,7 @@ func printGenesisSummary(g *Genesis, details map[types.Address]*accountDetail) {
 		if len(d.viteVoteSbpName) > 0 {
 			detailVoteCount = detailVoteCount + 1
 		}
-		detailSbpCount = detailSbpCount + len(d.viteRegisterRefundNameList)
+		detailSbpCount = detailSbpCount + len(d.viteRegisterNameList)
 		if len(d.vitePledgeBeneficialMap) > 0 {
 			detailPledgeCount = detailPledgeCount + 1
 			for bAddr, amount := range d.vitePledgeBeneficialMap {

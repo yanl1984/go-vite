@@ -22,8 +22,8 @@ type accountDetail struct {
 	viteOnroadHashList           []types.Hash
 	viteToContractOnroadBalance  *big.Int
 	viteToContractOnroadHashList []types.Hash
-	viteRegisterRefundBalance    *big.Int
-	viteRegisterRefundNameList   []string
+	viteRegisterPledge           *big.Int
+	viteRegisterNameList         []string
 	viteContractRefundFee        *big.Int
 	viteContractRefundBalance    *big.Int
 	viteContractAddrList         []types.Address
@@ -52,8 +52,8 @@ func newAccountDetail() *accountDetail {
 		viteOnroadHashList:           make([]types.Hash, 0),
 		viteToContractOnroadBalance:  big.NewInt(0),
 		viteToContractOnroadHashList: make([]types.Hash, 0),
-		viteRegisterRefundBalance:    big.NewInt(0),
-		viteRegisterRefundNameList:   make([]string, 0),
+		viteRegisterPledge:           big.NewInt(0),
+		viteRegisterNameList:         make([]string, 0),
 		viteContractRefundFee:        big.NewInt(0),
 		viteContractRefundBalance:    big.NewInt(0),
 		viteContractAddrList:         make([]types.Address, 0),
@@ -104,11 +104,10 @@ func (m accountDetailMap) addViteToContractOnroadBalance(account types.Address, 
 	d.viteFinalBalance.Add(d.viteFinalBalance, amount)
 	d.viteToContractOnroadHashList = append(d.viteToContractOnroadHashList, hash)
 }
-func (m accountDetailMap) addRegisterRefund(account types.Address, name string) {
+func (m accountDetailMap) addRegisterInfo(account types.Address, name string) {
 	d := m.accountDetail(account)
-	d.viteFinalBalance.Add(d.viteFinalBalance, registerRefundPledgeAmount)
-	d.viteRegisterRefundBalance.Add(d.viteRegisterRefundBalance, registerRefundPledgeAmount)
-	d.viteRegisterRefundNameList = append(d.viteRegisterRefundNameList, name)
+	d.viteRegisterPledge.Add(d.viteRegisterPledge, registerPledgeAmount)
+	d.viteRegisterNameList = append(d.viteRegisterNameList, name)
 }
 func (m accountDetailMap) addContractRefund(account types.Address, addr types.Address, amount *big.Int) {
 	d := m.accountDetail(account)
@@ -144,7 +143,6 @@ func (d accountDetail) calcVcpFinalBalance() *big.Int {
 func (d accountDetail) calcViteFinalBalance() *big.Int {
 	amount := new(big.Int).Add(d.viteAccountBalance, d.viteOnroadBalance)
 	amount.Add(amount, d.viteToContractOnroadBalance)
-	amount.Add(amount, d.viteRegisterRefundBalance)
 	amount.Add(amount, d.viteContractRefundFee)
 	amount.Add(amount, d.viteContractRefundBalance)
 	amount.Add(amount, d.viteTokenRefundFee)
@@ -165,8 +163,8 @@ func (m accountDetailMap) print() {
 		"viteOnroadHashList" + seperateStr +
 		"viteToContractOnroadBalance" + seperateStr +
 		"viteToContractOnroadHashList" + seperateStr +
-		"viteRegisterRefundBalance" + seperateStr +
-		"viteRegisterRefundNameList" + seperateStr +
+		"viteRegisterPledge" + seperateStr +
+		"viteRegisterNameList" + seperateStr +
 		"viteContractRefundFee " + seperateStr +
 		"viteContractRefundBalance" + seperateStr +
 		"viteContractAddrList" + seperateStr +
@@ -187,8 +185,8 @@ func (m accountDetailMap) print() {
 			printHashList(detail.viteOnroadHashList) + seperateStr +
 			detail.viteToContractOnroadBalance.String() + seperateStr +
 			printHashList(detail.viteToContractOnroadHashList) + seperateStr +
-			detail.viteRegisterRefundBalance.String() + seperateStr +
-			printStringList(detail.viteRegisterRefundNameList) + seperateStr +
+			detail.viteRegisterPledge.String() + seperateStr +
+			printStringList(detail.viteRegisterNameList) + seperateStr +
 			detail.viteContractRefundFee.String() + seperateStr +
 			detail.viteContractRefundBalance.String() + seperateStr +
 			printAddrList(detail.viteContractAddrList) + seperateStr +
