@@ -162,6 +162,10 @@ var mintageFee = new(big.Int).Mul(big.NewInt(1e3), big.NewInt(1e18))
 var vcptokenId, _ = types.HexToTokenTypeId("tti_251a3e67a41b5ea2373936c8")
 var vtttokenId, _ = types.HexToTokenTypeId("tti_c55ec37a916b7f447575ae59")
 
+var vxTokenId = types.TokenTypeId{'V', 'I', 'T', 'E', 'X', ' ', 'C', 'O', 'I', 'N'}
+var vxOwner, _ = types.HexToAddress("vite_050697d3810c30816b005a03511c734c1159f50907662b046f")
+var vxTotalSupply = new(big.Int).Mul(big.NewInt(1e8), big.NewInt(1e18))
+
 func exportMintageBalanceAndStorage(m map[types.Address]*big.Int, g *Genesis, trie *trie.Trie) (map[types.Address]*big.Int, *Genesis) {
 	g.MintageInfo = &MintageContractInfo{}
 	g.MintageInfo.TokenInfoMap = make(map[string]TokenInfo)
@@ -210,9 +214,7 @@ func exportMintageBalanceAndStorage(m map[types.Address]*big.Int, g *Genesis, tr
 
 	}
 	// mint vx coin
-	vxTokenId := types.TokenTypeId{'V', 'I', 'T', 'E', 'X', ' ', 'C', 'O', 'I', 'N'}
-	vxOwner, _ := types.HexToAddress("vite_050697d3810c30816b005a03511c734c1159f50907662b046f")
-	g.MintageInfo.TokenInfoMap[vxTokenId.String()] = TokenInfo{"ViteX Coin", "VX", big.NewInt(1e8), 18, vxOwner, big.NewInt(0), false, false}
+	g.MintageInfo.TokenInfoMap[vxTokenId.String()] = TokenInfo{"ViteX Coin", "VX", vxTotalSupply, 18, vxOwner, big.NewInt(0), false, false}
 	log := util.NewLog(ABIMintageNew, "mint", vxTokenId)
 	g.MintageInfo.LogList = append(g.MintageInfo.LogList, GenesisVmLog{hex.EncodeToString(log.Data), log.Topics})
 	details.addToken(vxOwner, vxTokenId)

@@ -294,6 +294,7 @@ func (nodeManager *ExportNodeManager) Start() error {
 	filterGenesis(genesis, contractRevertBalanceMap)
 	sumBalanceMap := nodeManager.calculateSumBalanceMap(inAccountBalanceMap, contractRevertBalanceMap, onroadBalanceMap)
 	sumVCPBalanceMap := nodeManager.calculateSumBalanceMap(inAccountVCPBalanceMap, onroadVCPBalanceMap)
+	sumVxBalanceMap := map[types.Address]*big.Int{vxOwner: vxTotalSupply}
 
 	/*fmt.Println("======sum balance map======")
 	nodeManager.printBalanceMap(sumBalanceMap, "vite")
@@ -311,6 +312,7 @@ func (nodeManager *ExportNodeManager) Start() error {
 	genesis.AccountBalanceMap = make(map[string]map[string]*big.Int)
 	genesis.AccountBalanceMap = convertBalanceMap(genesis.AccountBalanceMap, ledger.ViteTokenId.String(), sumBalanceMap)
 	genesis.AccountBalanceMap = convertBalanceMap(genesis.AccountBalanceMap, vcpTokenId.String(), sumVCPBalanceMap)
+	genesis.AccountBalanceMap = convertBalanceMap(genesis.AccountBalanceMap, vxTokenId.String(), sumVxBalanceMap)
 	printGenesis(genesis)
 	printGenesisSummary(genesis, details)
 
