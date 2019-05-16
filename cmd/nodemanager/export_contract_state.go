@@ -184,7 +184,7 @@ func exportMintageBalanceAndStorage(m map[types.Address]*big.Int, g *Genesis, tr
 			continue
 		}
 		if tokenId == ledger.ViteTokenId {
-			g.MintageInfo.TokenInfoMap[tokenId.String()] = TokenInfo{old.TokenName, old.TokenSymbol, old.TotalSupply, old.Decimals, types.AddressConsensusGroup, helper.Tt256m1, false, true}
+			g.MintageInfo.TokenInfoMap[tokenId.String()] = TokenInfo{"VITE", "VITE", old.TotalSupply, old.Decimals, types.AddressConsensusGroup, helper.Tt256m1, false, true}
 			log := util.NewLog(ABIMintageNew, "mint", tokenId)
 			g.MintageInfo.LogList = append(g.MintageInfo.LogList, GenesisVmLog{hex.EncodeToString(log.Data), log.Topics})
 			m = updateBalance(m, old.PledgeAddr, emptyBalance)
@@ -209,6 +209,14 @@ func exportMintageBalanceAndStorage(m map[types.Address]*big.Int, g *Genesis, tr
 		}
 
 	}
+	// mint vx coin
+	vxTokenId := types.TokenTypeId{'V', 'I', 'T', 'E', 'X', ' ', 'C', 'O', 'I', 'N'}
+	vxOwner, _ := types.HexToAddress("vite_050697d3810c30816b005a03511c734c1159f50907662b046f")
+	g.MintageInfo.TokenInfoMap[vxTokenId.String()] = TokenInfo{"ViteX Coin", "VX", big.NewInt(1e8), 18, vxOwner, big.NewInt(0), false, false}
+	log := util.NewLog(ABIMintageNew, "mint", vxTokenId)
+	g.MintageInfo.LogList = append(g.MintageInfo.LogList, GenesisVmLog{hex.EncodeToString(log.Data), log.Topics})
+	details.addToken(vxOwner, vxTokenId)
+	m = updateBalance(m, vxOwner, emptyBalance)
 	return m, g
 }
 
