@@ -10,11 +10,13 @@ import (
 )
 
 func (c *chain) IsGenesisAccountBlock(hash types.Hash) bool {
+	c.statistic.Add(IsGenesisAccountBlockFunc)
 	_, ok := c.genesisAccountBlockHash[hash]
 	return ok
 }
 
 func (c *chain) IsAccountBlockExisted(hash types.Hash) (bool, error) {
+	c.statistic.Add(IsAccountBlockExistedFunc)
 	// cache
 	if ok := c.cache.IsAccountBlockExisted(hash); ok {
 		return ok, nil
@@ -31,6 +33,7 @@ func (c *chain) IsAccountBlockExisted(hash types.Hash) (bool, error) {
 }
 
 func (c *chain) GetAccountBlockByHeight(addr types.Address, height uint64) (*ledger.AccountBlock, error) {
+	c.statistic.Add(GetAccountBlockByHeightFunc)
 	// cache
 	if block := c.cache.GetAccountBlockByHeight(addr, height); block != nil {
 		return block, nil
@@ -63,6 +66,7 @@ func (c *chain) GetAccountBlockByHeight(addr types.Address, height uint64) (*led
 }
 
 func (c *chain) GetCompleteBlockByHash(blockHash types.Hash) (*ledger.AccountBlock, error) {
+	c.statistic.Add(GetCompleteBlockByHashFunc)
 
 	// cache
 	if block := c.cache.GetAccountBlockByHash(blockHash); block != nil {
@@ -96,6 +100,7 @@ func (c *chain) GetCompleteBlockByHash(blockHash types.Hash) (*ledger.AccountBlo
 }
 
 func (c *chain) GetAccountBlockByHash(blockHash types.Hash) (*ledger.AccountBlock, error) {
+	c.statistic.Add(GetAccountBlockByHashFunc)
 
 	accountBlock, err := c.GetCompleteBlockByHash(blockHash)
 	if err != nil {
@@ -110,6 +115,8 @@ func (c *chain) GetAccountBlockByHash(blockHash types.Hash) (*ledger.AccountBloc
 
 // query receive block of send block
 func (c *chain) GetReceiveAbBySendAb(sendBlockHash types.Hash) (*ledger.AccountBlock, error) {
+	c.statistic.Add(GetReceiveAbBySendAbFunc)
+
 	receiveBlockHash, err := c.indexDB.GetReceivedBySend(&sendBlockHash)
 	if err != nil {
 		cErr := errors.New(fmt.Sprintf("c.indexDB.GetReceivedBySend failed, hash is %s. Error: %s",
@@ -133,6 +140,8 @@ func (c *chain) GetReceiveAbBySendAb(sendBlockHash types.Hash) (*ledger.AccountB
 
 // is received
 func (c *chain) IsReceived(sendBlockHash types.Hash) (bool, error) {
+	c.statistic.Add(IsReceivedFunc)
+
 	result, err := c.indexDB.IsReceived(&sendBlockHash)
 	if err != nil {
 		cErr := errors.New(fmt.Sprintf("c.indexDB.IsReceived failed, error is %s,  hash is %s",
@@ -145,6 +154,8 @@ func (c *chain) IsReceived(sendBlockHash types.Hash) (bool, error) {
 
 // high to low, contains the block that has the blockHash
 func (c *chain) GetAccountBlocks(blockHash types.Hash, count uint64) ([]*ledger.AccountBlock, error) {
+	c.statistic.Add(GetAccountBlocksFunc)
+
 	if count <= 0 {
 		return nil, nil
 	}
@@ -164,6 +175,8 @@ func (c *chain) GetAccountBlocks(blockHash types.Hash, count uint64) ([]*ledger.
 
 // high to low, contains the block that has the blockHash
 func (c *chain) GetAccountBlocksByHeight(addr types.Address, height uint64, count uint64) ([]*ledger.AccountBlock, error) {
+	c.statistic.Add(GetAccountBlocksByHeightFunc)
+
 	if count <= 0 {
 		return nil, nil
 	}
@@ -185,6 +198,8 @@ func (c *chain) GetAccountBlocksByHeight(addr types.Address, height uint64, coun
 
 // get call depth
 func (c *chain) GetCallDepth(sendBlockHash types.Hash) (uint16, error) {
+	c.statistic.Add(GetCallDepthFunc)
+
 	callDepth, err := c.stateDB.GetCallDepth(&sendBlockHash)
 	if err != nil {
 		cErr := errors.New(fmt.Sprintf("c.stateDB.GetCallDepth failed, sendBlockHash is %s. Error: %s",
@@ -196,6 +211,8 @@ func (c *chain) GetCallDepth(sendBlockHash types.Hash) (uint16, error) {
 }
 
 func (c *chain) GetConfirmedTimes(blockHash types.Hash) (uint64, error) {
+	c.statistic.Add(GetConfirmedTimesFunc)
+
 	confirmHeight, err := c.indexDB.GetConfirmHeightByHash(&blockHash)
 	if err != nil {
 		cErr := errors.New(fmt.Sprintf("c.indexDB.GetConfirmHeightByHash failed, blockHash is %s. Error: %s",
@@ -214,6 +231,8 @@ func (c *chain) GetConfirmedTimes(blockHash types.Hash) (uint64, error) {
 }
 
 func (c *chain) GetLatestAccountBlock(addr types.Address) (*ledger.AccountBlock, error) {
+	c.statistic.Add(GetLatestAccountBlockFunc)
+
 	if block := c.cache.GetLatestAccountBlock(addr); block != nil {
 		return block, nil
 	}
@@ -247,6 +266,8 @@ func (c *chain) GetLatestAccountBlock(addr types.Address) (*ledger.AccountBlock,
 }
 
 func (c *chain) GetLatestAccountHeight(addr types.Address) (uint64, error) {
+	c.statistic.Add(GetLatestAccountHeightFunc)
+
 	if block := c.cache.GetLatestAccountBlock(addr); block != nil {
 		return block.Height, nil
 	}
@@ -262,6 +283,7 @@ func (c *chain) GetLatestAccountHeight(addr types.Address) (uint64, error) {
 }
 
 func (c *chain) getAccountBlocks(addr types.Address, locations []*chain_file_manager.Location, heightRange [2]uint64) ([]*ledger.AccountBlock, error) {
+
 	blocks := make([]*ledger.AccountBlock, len(locations))
 
 	startHeight := heightRange[0]

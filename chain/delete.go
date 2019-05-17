@@ -8,6 +8,8 @@ import (
 )
 
 func (c *chain) DeleteSnapshotBlocks(toHash types.Hash) ([]*ledger.SnapshotChunk, error) {
+	c.statistic.Add(DeleteSnapshotBlocksFunc)
+
 	height, err := c.indexDB.GetSnapshotBlockHeight(&toHash)
 
 	if err != nil {
@@ -26,6 +28,8 @@ func (c *chain) DeleteSnapshotBlocks(toHash types.Hash) ([]*ledger.SnapshotChunk
 
 // delete and recover unconfirmed cache
 func (c *chain) DeleteSnapshotBlocksToHeight(toHeight uint64) ([]*ledger.SnapshotChunk, error) {
+	c.statistic.Add(DeleteSnapshotBlocksToHeightFunc)
+
 	latestHeight := c.GetLatestSnapshotBlock().Height
 	if toHeight > latestHeight || toHeight <= 1 {
 		cErr := errors.New(fmt.Sprintf("toHeight is %d, GetLatestHeight is %d", toHeight, latestHeight))
@@ -208,10 +212,14 @@ func (c *chain) deleteSnapshotBlocksToHeight(toHeight uint64) (chunks []*ledger.
 }
 
 func (c *chain) DeleteAccountBlocks(addr types.Address, toHash types.Hash) ([]*ledger.AccountBlock, error) {
+	c.statistic.Add(DeleteAccountBlocksFunc)
+
 	return c.deleteAccountBlockByHeightOrHash(addr, 0, &toHash)
 }
 
 func (c *chain) DeleteAccountBlocksToHeight(addr types.Address, toHeight uint64) ([]*ledger.AccountBlock, error) {
+	c.statistic.Add(DeleteAccountBlocksToHeightFunc)
+
 	if toHeight <= 0 {
 		return nil, errors.New("DeleteAccountBlocksToHeight failed, toHeight is 0")
 	}

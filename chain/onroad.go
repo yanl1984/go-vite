@@ -9,6 +9,8 @@ import (
 )
 
 func (c *chain) LoadOnRoad(gid types.Gid) (map[types.Address]map[types.Address][]ledger.HashHeight, error) {
+	c.statistic.Add(LoadOnRoadFunc)
+
 	addrList, err := c.GetContractList(gid)
 	if err != nil {
 		return nil, err
@@ -26,6 +28,8 @@ func (c *chain) LoadOnRoad(gid types.Gid) (map[types.Address]map[types.Address][
 }
 
 func (c *chain) GetOnRoadBlocksByAddr(addr types.Address, pageNum, pageSize int) ([]*ledger.AccountBlock, error) {
+	c.statistic.Add(GetOnRoadBlocksByAddrFunc)
+
 	hashList, err := c.indexDB.GetOnRoadHashList(addr, pageNum, pageSize)
 	if err != nil {
 		cErr := errors.New(fmt.Sprintf("c.GetOnRoadBlocksByAddr failed, error is %s, address is %s, pageNum is %d, countPerPage is %d",
@@ -51,10 +55,13 @@ func (c *chain) GetOnRoadBlocksByAddr(addr types.Address, pageNum, pageSize int)
 }
 
 func (c *chain) DeleteOnRoad(toAddress types.Address, sendBlockHash types.Hash) {
+	c.statistic.Add(DeleteOnRoadFunc)
 	c.indexDB.DeleteOnRoad(toAddress, sendBlockHash)
 }
 
 func (c *chain) GetAccountOnRoadInfo(addr types.Address) (*ledger.AccountInfo, error) {
+	c.statistic.Add(GetAccountOnRoadInfoFunc)
+
 	if c.plugins == nil {
 		return nil, errors.New("plugins-OnRoadInfo's service not provided")
 	}
@@ -70,5 +77,7 @@ func (c *chain) GetAccountOnRoadInfo(addr types.Address) (*ledger.AccountInfo, e
 }
 
 func (c *chain) LoadAllOnRoad() (map[types.Address][]types.Hash, error) {
+	c.statistic.Add(LoadAllOnRoadFunc)
+
 	return c.indexDB.LoadAllHash()
 }

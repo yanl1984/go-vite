@@ -12,6 +12,7 @@ import (
 )
 
 func (c *chain) GetLedgerReaderByHeight(startHeight uint64, endHeight uint64) (cr interfaces.LedgerReader, err error) {
+	c.statistic.Add(GetLedgerReaderByHeightFunc)
 	if startHeight < 2 {
 		return nil, errors.New(fmt.Sprintf("startHeight is %d", startHeight))
 	}

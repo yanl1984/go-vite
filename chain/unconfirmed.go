@@ -9,16 +9,20 @@ import (
 )
 
 func (c *chain) GetAllUnconfirmedBlocks() []*ledger.AccountBlock {
+	c.statistic.Add(GetAllUnconfirmedBlocksFunc)
 	return c.cache.GetUnconfirmedBlocks()
 }
 
 func (c *chain) GetUnconfirmedBlocks(addr types.Address) []*ledger.AccountBlock {
+	c.statistic.Add(GetUnconfirmedBlocksFunc)
 	return c.cache.GetUnconfirmedBlocksByAddress(&addr)
 }
 
 const maxSnapshotLength = 40000
 
 func (c *chain) GetContentNeedSnapshot() ledger.SnapshotContent {
+	c.statistic.Add(GetContentNeedSnapshotFunc)
+
 	unconfirmedBlocks := c.cache.GetUnconfirmedBlocks()
 
 	sc := make(ledger.SnapshotContent)

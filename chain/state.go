@@ -11,6 +11,7 @@ import (
 )
 
 func (c *chain) GetBalance(addr types.Address, tokenId types.TokenTypeId) (*big.Int, error) {
+	c.statistic.Add(GetBalanceFunc)
 	result, err := c.stateDB.GetBalance(addr, tokenId)
 	if err != nil {
 		cErr := errors.New(fmt.Sprintf("c.stateDB.GetBalance failed, Addr is %s, tokenId is %s. Error: %s", addr, tokenId, err))
@@ -20,6 +21,7 @@ func (c *chain) GetBalance(addr types.Address, tokenId types.TokenTypeId) (*big.
 	return result, nil
 }
 func (c *chain) GetBalanceMap(addr types.Address) (map[types.TokenTypeId]*big.Int, error) {
+	c.statistic.Add(GetBalanceMapFunc)
 	result, err := c.stateDB.GetBalanceMap(addr)
 	if err != nil {
 		cErr := errors.New(fmt.Sprintf("c.stateDB.GetBalanceMap failed, Addr is %s. Error: %s,", addr, err))
@@ -31,6 +33,7 @@ func (c *chain) GetBalanceMap(addr types.Address) (map[types.TokenTypeId]*big.In
 
 // get confirmed snapshot Balance, if history is too old, failed
 func (c *chain) GetConfirmedBalanceList(addrList []types.Address, tokenId types.TokenTypeId, sbHash types.Hash) (map[types.Address]*big.Int, error) {
+	c.statistic.Add(GetConfirmedBalanceListFunc)
 	balances, err := c.stateDB.GetSnapshotBalanceList(sbHash, addrList, tokenId)
 	if err != nil {
 		c.log.Error(err.Error(), "method", "GetConfirmedBalance")
@@ -42,6 +45,7 @@ func (c *chain) GetConfirmedBalanceList(addrList []types.Address, tokenId types.
 
 // get contract code
 func (c *chain) GetContractCode(contractAddress types.Address) ([]byte, error) {
+	c.statistic.Add(GetContractCodeFunc)
 	code, err := c.stateDB.GetCode(contractAddress)
 	if err != nil {
 		cErr := errors.New(fmt.Sprintf("c.stateDB.GetCode failed, error is %s, Addr is %s", err, contractAddress))
@@ -52,6 +56,7 @@ func (c *chain) GetContractCode(contractAddress types.Address) ([]byte, error) {
 }
 
 func (c *chain) GetContractMeta(contractAddress types.Address) (*ledger.ContractMeta, error) {
+	c.statistic.Add(GetContractMetaFunc)
 	if meta := ledger.GetBuiltinContractMeta(contractAddress); meta != nil {
 		return meta, nil
 	}
@@ -65,6 +70,8 @@ func (c *chain) GetContractMeta(contractAddress types.Address) (*ledger.Contract
 }
 
 func (c *chain) GetContractMetaInSnapshot(contractAddress types.Address, snapshotHeight uint64) (*ledger.ContractMeta, error) {
+	c.statistic.Add(GetContractMetaInSnapshotFunc)
+
 	if meta := ledger.GetBuiltinContractMeta(contractAddress); meta != nil {
 		return meta, nil
 	}
@@ -94,6 +101,8 @@ func (c *chain) GetContractMetaInSnapshot(contractAddress types.Address, snapsho
 }
 
 func (c *chain) GetContractList(gid types.Gid) ([]types.Address, error) {
+	c.statistic.Add(GetContractListFunc)
+
 	addrList, err := c.stateDB.GetContractList(&gid)
 	if err != nil {
 		cErr := errors.New(fmt.Sprintf("c.stateDB.GetContractList failed, gid is %s. Error: %s", gid, err))
@@ -107,6 +116,8 @@ func (c *chain) GetContractList(gid types.Gid) ([]types.Address, error) {
 }
 
 func (c *chain) GetVmLogList(logListHash *types.Hash) (ledger.VmLogList, error) {
+	c.statistic.Add(GetVmLogListFunc)
+
 	if logListHash == nil {
 		return nil, nil
 	}
@@ -121,6 +132,7 @@ func (c *chain) GetVmLogList(logListHash *types.Hash) (ledger.VmLogList, error) 
 }
 
 func (c *chain) GetQuotaUnused(address types.Address) (uint64, error) {
+	c.statistic.Add(GetQuotaUnusedFunc)
 	quotaInfo, err := c.GetPledgeQuota(address)
 	if err != nil {
 		cErr := errors.New(fmt.Sprintf("c.GetPledgeQuota failed, address is %s. Error: %s", address, err))
@@ -132,20 +144,25 @@ func (c *chain) GetQuotaUnused(address types.Address) (uint64, error) {
 }
 
 func (c *chain) GetGlobalQuota() types.QuotaInfo {
+	c.statistic.Add(GetGlobalQuotaFunc)
+
 	return c.cache.GetGlobalQuota()
 }
 
 func (c *chain) GetQuotaUsedList(address types.Address) []types.QuotaInfo {
+	c.statistic.Add(GetQuotaUsedListFunc)
 	//return c.cache.GetQuotaUsedList(&address)
 	return c.cache.GetQuotaUsedList(address)
 }
 
 func (c *chain) GetStorageIterator(address types.Address, prefix []byte) (interfaces.StorageIterator, error) {
+	c.statistic.Add(GetStorageIteratorFunc)
 	ss := c.stateDB.NewStorageIterator(&address, prefix)
 	return ss, nil
 }
 
 func (c *chain) GetValue(address types.Address, key []byte) ([]byte, error) {
+	c.statistic.Add(GetValueFunc)
 	value, err := c.stateDB.GetStorageValue(&address, key)
 	if err != nil {
 		cErr := errors.New(fmt.Sprintf("c.stateDB.GetStorageValue failed, address is %s. key is %s", address, key))

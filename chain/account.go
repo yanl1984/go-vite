@@ -8,6 +8,7 @@ import (
 )
 
 func (c *chain) IsContractAccount(address types.Address) (bool, error) {
+	c.statistic.Add(IsContractAccountFunc)
 	if ok := types.IsBuiltinContractAddrInUse(address); ok {
 		return ok, nil
 	}
@@ -48,10 +49,12 @@ func (c *chain) GetAccountAddress(accountId uint64) (*types.Address, error) {
 }
 
 func (c *chain) IterateAccounts(iterateFunc func(addr types.Address, accountId uint64, err error) bool) {
+
 	c.indexDB.IterateAccounts(iterateFunc)
 
 }
 
 func (c *chain) IterateContracts(iterateFunc func(addr types.Address, meta *ledger.ContractMeta, err error) bool) {
+	c.statistic.Add(IterateContractsFunc)
 	c.stateDB.IterateContracts(iterateFunc)
 }

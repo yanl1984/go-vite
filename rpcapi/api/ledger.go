@@ -338,3 +338,7 @@ func (l *LedgerApi) GetSeed(snapshotHash types.Hash, fromHash types.Hash) (uint6
 func (l *LedgerApi) GetChainStatus() []interfaces.DBStatus {
 	return l.chain.GetStatus()
 }
+
+func (l *LedgerApi) GetChainStatistic() []*interfaces.StatisticInfo {
+	return l.chain.GetStatistic()
+}

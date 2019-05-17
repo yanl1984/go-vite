@@ -276,4 +276,6 @@ type Chain interface {
 	CheckOnRoad() error
 
 	GetStatus() []interfaces.DBStatus
+
+	GetStatistic() []*interfaces.StatisticInfo
 }

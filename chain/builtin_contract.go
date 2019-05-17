@@ -12,6 +12,8 @@ import (
 
 // sb height
 func (c *chain) GetRegisterList(snapshotHash types.Hash, gid types.Gid) ([]*types.Registration, error) {
+	c.statistic.Add(GetRegisterListFunc)
+
 	sd, err := c.stateDB.NewStorageDatabase(snapshotHash, types.AddressConsensusGroup)
 	if err != nil {
 		cErr := errors.New(fmt.Sprintf("c.stateDB.NewStorageDatabase failed, snapshotHash is %s",
@@ -25,6 +27,8 @@ func (c *chain) GetRegisterList(snapshotHash types.Hash, gid types.Gid) ([]*type
 }
 
 func (c *chain) GetAllRegisterList(snapshotHash types.Hash, gid types.Gid) ([]*types.Registration, error) {
+	c.statistic.Add(GetAllRegisterListFunc)
+
 	sd, err := c.stateDB.NewStorageDatabase(snapshotHash, types.AddressConsensusGroup)
 	if err != nil {
 		cErr := errors.New(fmt.Sprintf("c.stateDB.NewStorageDatabase failed, snapshotHash is %s",
@@ -38,6 +42,8 @@ func (c *chain) GetAllRegisterList(snapshotHash types.Hash, gid types.Gid) ([]*t
 }
 
 func (c *chain) GetConsensusGroupList(snapshotHash types.Hash) ([]*types.ConsensusGroupInfo, error) {
+	c.statistic.Add(GetConsensusGroupListFunc)
+
 	sd, err := c.stateDB.NewStorageDatabase(snapshotHash, types.AddressConsensusGroup)
 	if err != nil {
 		cErr := errors.New(fmt.Sprintf("c.stateDB.NewStorageDatabase failed, snapshotHash is %s",
@@ -51,6 +57,8 @@ func (c *chain) GetConsensusGroupList(snapshotHash types.Hash) ([]*types.Consens
 }
 
 func (c *chain) GetVoteList(snapshotHash types.Hash, gid types.Gid) ([]*types.VoteInfo, error) {
+	c.statistic.Add(GetVoteListFunc)
+
 	sd, err := c.stateDB.NewStorageDatabase(snapshotHash, types.AddressConsensusGroup)
 	if err != nil {
 		cErr := errors.New(fmt.Sprintf("c.stateDB.NewStorageDatabase failed, snapshotHash is %s",
@@ -64,6 +72,7 @@ func (c *chain) GetVoteList(snapshotHash types.Hash, gid types.Gid) ([]*types.Vo
 }
 
 func (c *chain) GetPledgeBeneficialAmount(addr types.Address) (*big.Int, error) {
+	c.statistic.Add(GetPledgeBeneficialAmountFunc)
 
 	sd, err := c.stateDB.NewStorageDatabase(c.GetLatestSnapshotBlock().Hash, types.AddressPledge)
 	if err != nil {
@@ -78,6 +87,7 @@ func (c *chain) GetPledgeBeneficialAmount(addr types.Address) (*big.Int, error) 
 
 // total
 func (c *chain) GetPledgeQuota(addr types.Address) (*types.Quota, error) {
+	c.statistic.Add(GetPledgeQuotaFunc)
 
 	amount, err := c.GetPledgeBeneficialAmount(addr)
 	if err != nil {
@@ -95,6 +105,7 @@ func (c *chain) GetPledgeQuota(addr types.Address) (*types.Quota, error) {
 
 // total
 func (c *chain) GetPledgeQuotas(addrList []types.Address) (map[types.Address]*types.Quota, error) {
+	c.statistic.Add(GetPledgeQuotasFunc)
 
 	sd, err := c.stateDB.NewStorageDatabase(c.GetLatestSnapshotBlock().Hash, types.AddressPledge)
 	if err != nil {
@@ -127,6 +138,8 @@ func (c *chain) GetPledgeQuotas(addrList []types.Address) (map[types.Address]*ty
 }
 
 func (c *chain) GetTokenInfoById(tokenId types.TokenTypeId) (*types.TokenInfo, error) {
+	c.statistic.Add(GetTokenInfoByIdFunc)
+
 	sd, err := c.stateDB.NewStorageDatabase(c.GetLatestSnapshotBlock().Hash, types.AddressMintage)
 	if err != nil {
 		cErr := errors.New(fmt.Sprintf("c.stateDB.NewStorageDatabase failed"))
@@ -138,6 +151,8 @@ func (c *chain) GetTokenInfoById(tokenId types.TokenTypeId) (*types.TokenInfo, e
 }
 
 func (c *chain) GetAllTokenInfo() (map[types.TokenTypeId]*types.TokenInfo, error) {
+	c.statistic.Add(GetAllTokenInfoFunc)
+
 	sd, err := c.stateDB.NewStorageDatabase(c.GetLatestSnapshotBlock().Hash, types.AddressMintage)
 	if err != nil {
 		cErr := errors.New(fmt.Sprintf("c.stateDB.NewStorageDatabase failed"))

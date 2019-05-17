@@ -87,3 +87,9 @@ type DBStatus struct {
 	Size   uint64
 	Status string
 }
+
+type StatisticInfo struct {
+	Name  string
+	Count uint64
+	Tps   float64
+}

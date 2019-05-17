@@ -14,10 +14,13 @@ import (
 )
 
 func (c *chain) IsGenesisSnapshotBlock(hash types.Hash) bool {
+	c.statistic.Add(IsGenesisSnapshotBlockFunc)
+
 	return c.genesisSnapshotBlock.Hash == hash
 
 }
 func (c *chain) IsSnapshotBlockExisted(hash types.Hash) (bool, error) {
+	c.statistic.Add(IsSnapshotBlockExistedFunc)
 	// cache
 	if ok := c.cache.IsSnapshotBlockExisted(hash); ok {
 		return ok, nil
@@ -34,14 +37,19 @@ func (c *chain) IsSnapshotBlockExisted(hash types.Hash) (bool, error) {
 }
 
 func (c *chain) GetGenesisSnapshotBlock() *ledger.SnapshotBlock {
+	c.statistic.Add(GetGenesisSnapshotBlockFunc)
 	return c.genesisSnapshotBlock
 }
 
 func (c *chain) GetLatestSnapshotBlock() *ledger.SnapshotBlock {
+	c.statistic.Add(GetLatestSnapshotBlockFunc)
+
 	return c.cache.GetLatestSnapshotBlock()
 }
 
 func (c *chain) GetSnapshotHeightByHash(hash types.Hash) (uint64, error) {
+	c.statistic.Add(GetSnapshotHeightByHashFunc)
+
 	// cache
 	if header := c.cache.GetSnapshotHeaderByHash(hash); header != nil {
 		return header.Height, nil
@@ -60,6 +68,8 @@ func (c *chain) GetSnapshotHeightByHash(hash types.Hash) (uint64, error) {
 
 // header without snapshot content
 func (c *chain) GetSnapshotHeaderByHeight(height uint64) (*ledger.SnapshotBlock, error) {
+	c.statistic.Add(GetSnapshotHeaderByHeightFunc)
+
 	// cache
 	if header := c.cache.GetSnapshotHeaderByHeight(height); header != nil {
 		return header, nil
@@ -96,6 +106,8 @@ func (c *chain) GetSnapshotHeaderByHeight(height uint64) (*ledger.SnapshotBlock,
 
 // block contains header、snapshot content
 func (c *chain) GetSnapshotBlockByHeight(height uint64) (*ledger.SnapshotBlock, error) {
+	c.statistic.Add(GetSnapshotBlockByHeightFunc)
+
 	// cache
 	if block := c.cache.GetSnapshotBlockByHeight(height); block != nil {
 		return block, nil
@@ -106,6 +118,8 @@ func (c *chain) GetSnapshotBlockByHeight(height uint64) (*ledger.SnapshotBlock, 
 }
 
 func (c *chain) GetSnapshotHeaderByHash(hash types.Hash) (*ledger.SnapshotBlock, error) {
+	c.statistic.Add(GetSnapshotHeaderByHashFunc)
+
 	// cache
 	if block := c.cache.GetSnapshotHeaderByHash(hash); block != nil {
 		return block, nil
@@ -137,6 +151,8 @@ func (c *chain) GetSnapshotHeaderByHash(hash types.Hash) (*ledger.SnapshotBlock,
 }
 
 func (c *chain) GetSnapshotBlockByHash(hash types.Hash) (*ledger.SnapshotBlock, error) {
+	c.statistic.Add(GetSnapshotBlockByHashFunc)
+
 	// cache
 	if header := c.cache.GetSnapshotBlockByHash(hash); header != nil {
 		return header, nil
@@ -168,6 +184,8 @@ func (c *chain) GetSnapshotBlockByHash(hash types.Hash) (*ledger.SnapshotBlock, 
 
 // contains start snapshot block and end snapshot block
 func (c *chain) GetRangeSnapshotHeaders(startHash types.Hash, endHash types.Hash) ([]*ledger.SnapshotBlock, error) {
+	c.statistic.Add(GetRangeSnapshotHeadersFunc)
+
 	blocks, err := c.getSnapshotBlockList(func() ([]*chain_file_manager.Location, [2]uint64, error) {
 		return c.indexDB.GetRangeSnapshotBlockLocations(&startHash, &endHash)
 	}, true, true)
@@ -182,7 +200,7 @@ func (c *chain) GetRangeSnapshotHeaders(startHash types.Hash, endHash types.Hash
 }
 
 func (c *chain) GetRangeSnapshotBlocks(startHash types.Hash, endHash types.Hash) ([]*ledger.SnapshotBlock, error) {
-
+	c.statistic.Add(GetRangeSnapshotBlocksFunc)
 	blocks, err := c.getSnapshotBlockList(func() ([]*chain_file_manager.Location, [2]uint64, error) {
 		return c.indexDB.GetRangeSnapshotBlockLocations(&startHash, &endHash)
 	}, true, false)
@@ -198,6 +216,8 @@ func (c *chain) GetRangeSnapshotBlocks(startHash types.Hash, endHash types.Hash)
 
 // contains the snapshot header that has the blockHash
 func (c *chain) GetSnapshotHeaders(blockHash types.Hash, higher bool, count uint64) ([]*ledger.SnapshotBlock, error) {
+	c.statistic.Add(GetSnapshotHeadersFunc)
+
 	blocks, err := c.getSnapshotBlockList(func() ([]*chain_file_manager.Location, [2]uint64, error) {
 		return c.indexDB.GetSnapshotBlockLocationList(&blockHash, higher, count)
 	}, higher, true)
@@ -213,6 +233,8 @@ func (c *chain) GetSnapshotHeaders(blockHash types.Hash, higher bool, count uint
 
 // contains the snapshot block that has the blockHash
 func (c *chain) GetSnapshotBlocks(blockHash types.Hash, higher bool, count uint64) ([]*ledger.SnapshotBlock, error) {
+	c.statistic.Add(GetSnapshotBlocksFunc)
+
 	blocks, err := c.getSnapshotBlockList(func() ([]*chain_file_manager.Location, [2]uint64, error) {
 		return c.indexDB.GetSnapshotBlockLocationList(&blockHash, higher, count)
 	}, higher, false)
@@ -228,6 +250,8 @@ func (c *chain) GetSnapshotBlocks(blockHash types.Hash, higher bool, count uint6
 
 // contains the snapshot header that has the blockHash
 func (c *chain) GetSnapshotHeadersByHeight(height uint64, higher bool, count uint64) ([]*ledger.SnapshotBlock, error) {
+	c.statistic.Add(GetSnapshotHeadersByHeightFunc)
+
 	blocks, err := c.getSnapshotBlockList(func() ([]*chain_file_manager.Location, [2]uint64, error) {
 		return c.indexDB.GetSnapshotBlockLocationListByHeight(height, higher, count)
 	}, higher, true)
@@ -243,6 +267,8 @@ func (c *chain) GetSnapshotHeadersByHeight(height uint64, higher bool, count uin
 
 // contains the snapshot block that has the blockHash
 func (c *chain) GetSnapshotBlocksByHeight(height uint64, higher bool, count uint64) ([]*ledger.SnapshotBlock, error) {
+	c.statistic.Add(GetSnapshotBlocksByHeightFunc)
+
 	blocks, err := c.getSnapshotBlockList(func() ([]*chain_file_manager.Location, [2]uint64, error) {
 		return c.indexDB.GetSnapshotBlockLocationListByHeight(height, higher, count)
 	}, higher, false)
@@ -257,6 +283,8 @@ func (c *chain) GetSnapshotBlocksByHeight(height uint64, higher bool, count uint
 }
 
 func (c *chain) GetConfirmSnapshotHeaderByAbHash(abHash types.Hash) (*ledger.SnapshotBlock, error) {
+	c.statistic.Add(GetConfirmSnapshotHeaderByAbHashFunc)
+
 	confirmHeight, err := c.indexDB.GetConfirmHeightByHash(&abHash)
 	if err != nil {
 		cErr := errors.New(fmt.Sprintf("c.indexDB.GetConfirmHeightByHash failed, error is %s, blockHash is %s",
@@ -272,6 +300,8 @@ func (c *chain) GetConfirmSnapshotHeaderByAbHash(abHash types.Hash) (*ledger.Sna
 }
 
 func (c *chain) GetConfirmSnapshotBlockByAbHash(abHash types.Hash) (*ledger.SnapshotBlock, error) {
+	c.statistic.Add(GetConfirmSnapshotBlockByAbHashFunc)
+
 	confirmHeight, err := c.indexDB.GetConfirmHeightByHash(&abHash)
 	if err != nil {
 		cErr := errors.New(fmt.Sprintf("c.indexDB.GetConfirmHeightByHash failed, error is %s, blockHash is %s",
@@ -287,6 +317,8 @@ func (c *chain) GetConfirmSnapshotBlockByAbHash(abHash types.Hash) (*ledger.Snap
 }
 
 func (c *chain) GetSnapshotHeaderBeforeTime(timestamp *time.Time) (*ledger.SnapshotBlock, error) {
+	c.statistic.Add(GetSnapshotHeaderBeforeTimeFunc)
+
 	// normal logic
 	genesis := c.GetGenesisSnapshotBlock()
 	latest := c.GetLatestSnapshotBlock()
@@ -363,6 +395,8 @@ func (c *chain) GetSnapshotHeaderBeforeTime(timestamp *time.Time) (*ledger.Snaps
 }
 
 func (c *chain) GetSnapshotHeadersAfterOrEqualTime(endHashHeight *ledger.HashHeight, startTime *time.Time, producer *types.Address) ([]*ledger.SnapshotBlock, error) {
+	c.statistic.Add(GetSnapshotHeadersAfterOrEqualTimeFunc)
+
 	startHeader, err := c.GetSnapshotHeaderBeforeTime(startTime)
 	if err != nil {
 		cErr := errors.New(fmt.Sprintf("c.GetSnapshotHeaderBeforeTime failed,  error is %s, startTime is %s",
@@ -399,6 +433,7 @@ func (c *chain) GetSnapshotHeadersAfterOrEqualTime(endHashHeight *ledger.HashHei
 }
 
 func (c *chain) QuerySnapshotBlockByHeight(height uint64) (*ledger.SnapshotBlock, error) {
+
 	// query location
 	location, err := c.indexDB.GetSnapshotBlockLocation(height)
 	if err != nil {
@@ -424,6 +459,7 @@ func (c *chain) QuerySnapshotBlockByHeight(height uint64) (*ledger.SnapshotBlock
 }
 
 func (c *chain) QueryLatestSnapshotBlock() (*ledger.SnapshotBlock, error) {
+
 	var err error
 	location, err := c.indexDB.GetLatestSnapshotBlockLocation()
 	if err != nil {
@@ -448,6 +484,7 @@ func (c *chain) QueryLatestSnapshotBlock() (*ledger.SnapshotBlock, error) {
 }
 
 func (c *chain) GetRandomSeed(snapshotHash types.Hash, n int) uint64 {
+	c.statistic.Add(GetRandomSeedFunc)
 	count := uint64(10 * 60)
 
 	headHeight, err := c.GetSnapshotHeightByHash(snapshotHash)
@@ -513,6 +550,7 @@ func (c *chain) GetRandomSeed(snapshotHash types.Hash, n int) uint64 {
 const DefaultSeedRangeCount = 25
 
 func (c *chain) GetSnapshotBlockByContractMeta(addr *types.Address, fromHash *types.Hash) (*ledger.SnapshotBlock, error) {
+	c.statistic.Add(GetSnapshotBlockByContractMetaFunc)
 	meta, err := c.GetContractMeta(*addr)
 	if err != nil {
 		return nil, err
@@ -538,6 +576,8 @@ func (c *chain) GetSnapshotBlockByContractMeta(addr *types.Address, fromHash *ty
 }
 
 func (c *chain) GetSeed(limitSb *ledger.SnapshotBlock, fromHash types.Hash) (uint64, error) {
+	c.statistic.Add(GetSeedFunc)
+
 	seed := c.GetRandomSeed(limitSb.Hash, DefaultSeedRangeCount)
 	seedByte := helper.LeftPadBytes(new(big.Int).SetUint64(seed).Bytes(), types.HashSize)
 	var resultSeed types.Hash
@@ -548,6 +588,8 @@ func (c *chain) GetSeed(limitSb *ledger.SnapshotBlock, fromHash types.Hash) (uin
 }
 
 func (c *chain) GetLastSeedSnapshotHeader(producer types.Address) (*ledger.SnapshotBlock, error) {
+	c.statistic.Add(GetLastSeedSnapshotHeaderFunc)
+
 	headHeight := c.GetLatestSnapshotBlock().Height
 
 	tailHeight := uint64(1)
@@ -582,7 +624,7 @@ func (c *chain) GetLastSeedSnapshotHeader(producer types.Address) (*ledger.Snaps
 
 // [snapshotBlock(startHeight), ...blocks... , snapshotBlock(endHeight)]
 func (c *chain) GetSubLedger(startHeight, endHeight uint64) ([]*ledger.SnapshotChunk, error) {
-
+	c.statistic.Add(GetSubLedgerFunc)
 	latestSb, err := c.QueryLatestSnapshotBlock()
 	if err != nil {
 		cErr := errors.New(fmt.Sprintf("c.QueryLatestSnapshotBlock failed. Error: %s,",
@@ -635,6 +677,7 @@ func (c *chain) GetSubLedger(startHeight, endHeight uint64) ([]*ledger.SnapshotC
 
 // [startHeight, GetLatestHeight]
 func (c *chain) GetSubLedgerAfterHeight(height uint64) ([]*ledger.SnapshotChunk, error) {
+	c.statistic.Add(GetSubLedgerAfterHeightFunc)
 	// query location
 	startLocation, err := c.indexDB.GetSnapshotBlockLocation(height)
 	if err != nil {

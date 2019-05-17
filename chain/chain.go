@@ -69,6 +69,8 @@ type chain struct {
 	plugins *chain_plugins.Plugins
 
 	status uint32
+
+	statistic *Statistic
 }
 
 /*
@@ -86,6 +88,8 @@ func NewChain(dir string, chainCfg *config.Chain, genesisCfg *config.Genesis) *c
 		log:        log15.New("module", "chain"),
 		em:         newEventManager(),
 		chainCfg:   chainCfg,
+
+		statistic: NewStatistic(),
 	}
 
 	c.genesisAccountBlocks = chain_genesis.NewGenesisAccountBlocks(genesisCfg)
@@ -276,7 +280,7 @@ func (c *chain) newDbAndRecover() error {
 	if c.cache, err = chain_cache.NewCache(c); err != nil {
 		cErr := errors.New(fmt.Sprintf("chain_cache.NewCache failed, error is %s", err))
 
-		c.log.Error(cErr.Error(), "method", "checkAndInitData")
+		c.log.Error(cErr.Error(), "method", "newDbAndRecover")
 		return cErr
 	}
 
@@ -444,4 +448,8 @@ func (c *chain) GetStatus() []interfaces.DBStatus {
 	statusList = append(statusList, c.stateDB.GetStatus()...)
 
 	return statusList
+}
+
+func (c *chain) GetStatistic() []*interfaces.StatisticInfo {
+	return c.statistic.GetSummary()
 }

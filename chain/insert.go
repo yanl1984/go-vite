@@ -16,6 +16,8 @@ func (c *chain) InsertAccountBlock(vmAccountBlock *vm_db.VmAccountBlock) error {
 	c.flushMu.RLock()
 	defer c.flushMu.RUnlock()
 
+	c.statistic.Add(InsertAccountBlockFunc)
+
 	vmAbList := []*vm_db.VmAccountBlock{vmAccountBlock}
 	if err := c.em.TriggerInsertAbs(prepareInsertAbsEvent, vmAbList); err != nil {
 		return err
@@ -45,6 +47,7 @@ func (c *chain) InsertAccountBlock(vmAccountBlock *vm_db.VmAccountBlock) error {
 func (c *chain) InsertSnapshotBlock(snapshotBlock *ledger.SnapshotBlock) ([]*ledger.AccountBlock, error) {
 	//FOR DEBUG
 	//c.log.Info(fmt.Sprintf("insert snapshot block %s %d\n", snapshotBlock.Hash, snapshotBlock.Height))
+	c.statistic.Add(InsertSnapshotBlockFunc)
 
 	if err := c.insertSnapshotBlock(snapshotBlock); err != nil {
 		return nil, err
