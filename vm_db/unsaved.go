@@ -66,9 +66,11 @@ func (unsaved *Unsaved) GetStorage() [][2][]byte {
 		defer iter.Release()
 
 		unsaved.storageCache = make([][2][]byte, 0, len(unsaved.keys))
+
 		for iter.Next() {
 			unsaved.storageCache = append(unsaved.storageCache, [2][]byte{iter.Key(), iter.Value()})
 		}
+
 		unsaved.storageDirty = false
 	}
 

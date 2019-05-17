@@ -29,6 +29,7 @@ func (c *chain) GetLedgerReaderByHeight(startHeight uint64, endHeight uint64) (c
 }
 
 func (c *chain) GetSyncCache() interfaces.SyncCache {
+	c.statistic.Add(GetSyncCacheFunc)
 	return c.syncCache
 }
 

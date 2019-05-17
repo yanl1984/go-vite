@@ -269,7 +269,8 @@ func NewStatistic() *Statistic {
 
 func (s *Statistic) Add(flag int) {
 	atomic.AddUint64(&s.list[flag].Count, 1)
-	monitor.LogDuration("chain", s.list[flag].Name, 1)
+	// duration is nanoseconds
+	monitor.LogDuration("chain", s.list[flag].Name, 1000)
 	//monitor.LogTimerConsuming([]string{"chain", s.list[flag].Name}, s)
 }
 

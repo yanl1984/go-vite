@@ -5,12 +5,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/vitelabs/go-vite/consensus"
-	"github.com/vitelabs/go-vite/vite/net"
-	"go.uber.org/atomic"
 	"math/big"
 	"math/rand"
 	"time"
+
+	"github.com/vitelabs/go-vite/consensus"
+	"github.com/vitelabs/go-vite/vite/net"
+	"go.uber.org/atomic"
 
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/crypto/ed25519"
