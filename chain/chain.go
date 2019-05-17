@@ -248,7 +248,7 @@ func (c *chain) newDbAndRecover() error {
 		var err error
 		if c.plugins, err = chain_plugins.NewPlugins(c.chainDir, c); err != nil {
 			cErr := errors.New(fmt.Sprintf("chain_plugins.NewPlugins failed. Error: %s", err))
-			c.log.Error(cErr.Error(), "method", "checkAndInitData")
+			c.log.Error(cErr.Error(), "method", "newDbAndRecover")
 			return cErr
 		}
 		c.Register(c.plugins)
@@ -387,7 +387,6 @@ func (c *chain) closeAndCleanData() error {
 			c.log.Error(cErr.Error(), "method", "closeAndCleanData")
 			return err
 		}
-
 	}
 
 	// clean all data
@@ -427,7 +426,22 @@ func (c *chain) ResetLog(dir string, lvl string) {
 	}
 	path := filepath.Join(dir, "chain_logs", time.Now().Format("2006-01-02T15-04"))
 	filename := filepath.Join(path, "chain.log")
+
+	h := log15.LvlFilterHandler(logLevel, log15.StreamHandler(common.MakeDefaultLogger(filename), log15.LogfmtFormat()))
+
 	c.log.SetHandler(
-		log15.LvlFilterHandler(logLevel, log15.StreamHandler(common.MakeDefaultLogger(filename), log15.LogfmtFormat())),
+		h,
 	)
+
+	c.blockDB.SetLog(h)
+}
+
+func (c *chain) GetStatus() []interfaces.DBStatus {
+	var statusList = make([]interfaces.DBStatus, 0)
+
+	statusList = append(statusList, c.indexDB.GetStatus()...)
+	statusList = append(statusList, c.blockDB.GetStatus()...)
+	statusList = append(statusList, c.stateDB.GetStatus()...)
+
+	return statusList
 }

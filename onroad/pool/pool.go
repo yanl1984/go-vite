@@ -6,13 +6,14 @@ import (
 )
 
 type OnRoadPool interface {
-	InsertAccountBlock(block *ledger.AccountBlock) error
-	DeleteAccountBlock(block *ledger.AccountBlock) error
+	InsertAccountBlocks(orAddr types.Address, blocks []*ledger.AccountBlock) error
+	DeleteAccountBlocks(orAddr types.Address, blocks []*ledger.AccountBlock) error
 
 	GetOnRoadTotalNumByAddr(addr types.Address) (uint64, error)
 	GetFrontOnRoadBlocksByAddr(addr types.Address) ([]*ledger.AccountBlock, error)
 
 	IsFrontOnRoadOfCaller(orAddr, caller types.Address, hash types.Hash) (bool, error)
+	Info() map[string]interface{}
 }
 
 type chainReader interface {

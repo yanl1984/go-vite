@@ -6,6 +6,7 @@ import (
 	"github.com/vitelabs/go-vite/chain"
 	"github.com/vitelabs/go-vite/chain/plugins"
 	"github.com/vitelabs/go-vite/common/types"
+	"github.com/vitelabs/go-vite/interfaces"
 	"github.com/vitelabs/go-vite/ledger"
 	"github.com/vitelabs/go-vite/log15"
 	"github.com/vitelabs/go-vite/vite"
@@ -40,7 +41,7 @@ func (l LedgerApi) String() string {
 }
 
 func (l *LedgerApi) ledgerBlockToRpcBlock(block *ledger.AccountBlock) (*AccountBlock, error) {
-	return ledgerToRpcBlock(block, l.chain)
+	return ledgerToRpcBlock(l.chain, block)
 }
 
 func (l *LedgerApi) ledgerBlocksToRpcBlocks(list []*ledger.AccountBlock) ([]*AccountBlock, error) {
@@ -55,11 +56,29 @@ func (l *LedgerApi) ledgerBlocksToRpcBlocks(list []*ledger.AccountBlock) ([]*Acc
 	return blocks, nil
 }
 
+func (l *LedgerApi) GetRawBlockByHash(blockHash types.Hash) (*ledger.AccountBlock, error) {
+	return l.chain.GetAccountBlockByHash(blockHash)
+}
+
 func (l *LedgerApi) GetBlockByHash(blockHash types.Hash) (*AccountBlock, error) {
 	block, getError := l.chain.GetAccountBlockByHash(blockHash)
-
 	if getError != nil {
 		l.log.Error("GetAccountBlockByHash failed, error is "+getError.Error(), "method", "GetBlockByHash")
+
+		return nil, getError
+	}
+	if block == nil {
+		return nil, nil
+	}
+
+	return l.ledgerBlockToRpcBlock(block)
+}
+
+func (l *LedgerApi) GetCompleteBlockByHash(blockHash types.Hash) (*AccountBlock, error) {
+	block, getError := l.chain.GetCompleteBlockByHash(blockHash)
+
+	if getError != nil {
+		l.log.Error("GetCompleteBlockByHash failed, error is "+getError.Error(), "method", "GetCompleteBlockByHash")
 
 		return nil, getError
 	}
@@ -214,6 +233,9 @@ func (l *LedgerApi) GetAccountByAccAddr(addr types.Address) (*RpcAccountInfo, er
 	tokenBalanceInfoMap := make(map[types.TokenTypeId]*RpcTokenBalanceInfo)
 	for tokenId, amount := range balanceMap {
 		token, _ := l.chain.GetTokenInfoById(tokenId)
+		if token == nil {
+			continue
+		}
 		tokenBalanceInfoMap[tokenId] = &RpcTokenBalanceInfo{
 			TokenInfo:   RawTokenInfoToRpc(token, tokenId),
 			TotalAmount: amount.String(),
@@ -311,4 +333,8 @@ func (l *LedgerApi) GetSeed(snapshotHash types.Hash, fromHash types.Hash) (uint6
 		return 0, err
 	}
 	return l.chain.GetSeed(sb, fromHash)
+}
+
+func (l *LedgerApi) GetChainStatus() []interfaces.DBStatus {
+	return l.chain.GetStatus()
 }

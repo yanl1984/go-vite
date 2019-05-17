@@ -5,23 +5,23 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/vitelabs/go-vite/consensus"
+	"github.com/vitelabs/go-vite/vite/net"
+	"go.uber.org/atomic"
 	"math/big"
 	"math/rand"
 	"time"
 
 	"github.com/vitelabs/go-vite/common/types"
-	"github.com/vitelabs/go-vite/consensus"
 	"github.com/vitelabs/go-vite/crypto/ed25519"
 	"github.com/vitelabs/go-vite/generator"
 	"github.com/vitelabs/go-vite/ledger"
 	"github.com/vitelabs/go-vite/verifier"
 	"github.com/vitelabs/go-vite/vite"
-	"github.com/vitelabs/go-vite/vite/net"
 	"github.com/vitelabs/go-vite/vm"
 	"github.com/vitelabs/go-vite/vm/quota"
 	"github.com/vitelabs/go-vite/vm/util"
 	"github.com/vitelabs/go-vite/vm_db"
-	"go.uber.org/atomic"
 )
 
 type Tx struct {
@@ -137,7 +137,7 @@ func NewTxApi(vite *vite.Vite) *Tx {
 	tx := &Tx{
 		vite: vite,
 		N:    0,
-		M:    5,
+		M:    1,
 	}
 	if vite.Producer() == nil {
 		return tx
@@ -153,7 +153,7 @@ func NewTxApi(vite *vite.Vite) *Tx {
 	var fromHexPrivKeys []string
 
 	{
-		for i := uint32(0); i < uint32(10); i++ {
+		for i := uint32(0); i < uint32(5); i++ {
 			_, key, err := manager.DeriveForIndexPath(i)
 			if err != nil {
 				panic(err)
@@ -288,25 +288,21 @@ func (t Tx) SendRawTx(block *AccountBlock) error {
 	if block == nil {
 		return errors.New("empty block")
 	}
-
-	lb, err := block.LedgerAccountBlock()
+	lb, err := block.RpcToLedgerBlock()
 	if err != nil {
 		return err
 	}
-	// need to remove Later
-	//if len(lb.Data) != 0 && !isBuiltinContracts(lb.ToAddress) {
-	//	return ErrorNotSupportAddNot
-	//}
-	//
-	//if len(lb.Data) != 0 && block.BlockType == ledger.BlockTypeReceive {
-	//	return ErrorNotSupportRecvAddNote
-	//}
 
-	v := verifier.NewVerifier(nil, verifier.NewAccountVerifier(t.vite.Chain(), t.vite.Consensus()))
 	latestSb := t.vite.Chain().GetLatestSnapshotBlock()
 	if latestSb == nil {
 		return errors.New("failed to get latest snapshotBlock")
 	}
+	nowTime := time.Now()
+	if nowTime.Before(latestSb.Timestamp.Add(-10*time.Minute)) || nowTime.After(latestSb.Timestamp.Add(10*time.Minute)) {
+		return IllegalNodeTime
+	}
+
+	v := verifier.NewVerifier(nil, verifier.NewAccountVerifier(t.vite.Chain(), t.vite.Consensus()))
 	result, err := v.VerifyRPCAccBlock(lb, &latestSb.Hash)
 	if err != nil {
 		return err
@@ -394,11 +390,11 @@ func (t Tx) SendTxWithPrivateKey(param SendTxWithPrivateKeyParam) (*AccountBlock
 	if result.Err != nil {
 		return nil, result.Err
 	}
-	if result.VmBlock != nil {
-		if err := t.vite.Pool().AddDirectAccountBlock(msg.AccountAddress, result.VmBlock); err != nil {
+	if result.VMBlock != nil {
+		if err := t.vite.Pool().AddDirectAccountBlock(msg.AccountAddress, result.VMBlock); err != nil {
 			return nil, err
 		}
-		return ledgerToRpcBlock(result.VmBlock.AccountBlock, t.vite.Chain())
+		return ledgerToRpcBlock(t.vite.Chain(), result.VMBlock.AccountBlock)
 	} else {
 		return nil, errors.New("generator gen an empty block")
 	}

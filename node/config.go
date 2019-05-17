@@ -58,6 +58,9 @@ type Config struct {
 	PublicAddress   string   `json:"PublicAddress"`
 	NetID           int      `json:"NetID"`
 	Discover        bool     `json:"Discover"`
+	AccessControl   string   `json:"AccessControl"` // producer special any
+	AccessAllowKeys []string `json:"AccessAllowKeys"`
+	AccessDenyKeys  []string `json:"AccessDenyKeys"`
 
 	//producer
 	EntropyStorePath     string `json:"EntropyStorePath"`
@@ -86,7 +89,7 @@ type Config struct {
 	TestTokenHexPrivKey string   `json:"TestTokenHexPrivKey"`
 	TestTokenTti        string   `json:"TestTokenTti"`
 
-	PowServerUrl string `json:"PowServerUrl”`
+	PowServerUrl string `json:"PowServerUrl"`
 
 	//Log level
 	LogLevel    string `json:"LogLevel"`
@@ -106,6 +109,7 @@ type Config struct {
 	FileListenAddress string `json:"FileListenAddress"`
 	FilePublicAddress string `json:"FileAddress"`
 	ForwardStrategy   string `json:"ForwardStrategy"`
+	TraceEnabled      bool   `json:"TraceEnabled"`
 
 	// dashboard
 	DashboardTargetURL string
@@ -150,8 +154,11 @@ func (c *Config) makeNetConfig() *config.Net {
 	return &config.Net{
 		Single:            c.Single,
 		FileListenAddress: fileListenAddress,
-		FilePublicAddress: c.FilePublicAddress,
-		FilePort:          c.FilePort,
+		ForwardStrategy:   c.ForwardStrategy,
+		TraceEnabled:      c.TraceEnabled,
+		AccessControl:     c.AccessControl,
+		AccessAllowKeys:   c.AccessAllowKeys,
+		AccessDenyKeys:    c.AccessDenyKeys,
 	}
 }
 
@@ -232,18 +239,20 @@ func (c *Config) makeP2PConfig() (cfg *p2p.Config, err error) {
 			ListenAddress: listenAddress,
 			PublicAddress: c.PublicAddress,
 			DataDir:       p2pDataDir,
-			PeerKey:       c.PeerKey,
+			PeerKey:       peerKey,
 			BootNodes:     c.BootNodes,
 			BootSeeds:     c.BootSeeds,
 			NetID:         c.NetID,
 		},
-		Discover:        c.Discover,
-		Name:            c.Identity,
-		MaxPeers:        c.MaxPeers,
-		MaxInboundRatio: c.MaxInboundRatio,
-		MinPeers:        c.MinPeers,
-		MaxPendingPeers: c.MaxPendingPeers,
-		StaticNodes:     c.StaticNodes,
+		Discover:          c.Discover,
+		Name:              c.Identity,
+		MaxPeers:          c.MaxPeers,
+		MaxInboundRatio:   c.MaxInboundRatio,
+		MinPeers:          c.MinPeers,
+		MaxPendingPeers:   c.MaxPendingPeers,
+		StaticNodes:       c.StaticNodes,
+		FilePublicAddress: c.FilePublicAddress,
+		FilePort:          c.FilePort,
 	}
 
 	err = cfg.Ensure()

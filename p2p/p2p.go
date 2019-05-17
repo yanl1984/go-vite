@@ -24,22 +24,21 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"path"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/vitelabs/go-vite/common/types"
+
 	"github.com/vitelabs/go-vite/log15"
 	"github.com/vitelabs/go-vite/p2p/discovery"
 	"github.com/vitelabs/go-vite/p2p/netool"
-	"github.com/vitelabs/go-vite/p2p/protos"
 	"github.com/vitelabs/go-vite/p2p/vnode"
 )
 
 var errP2PAlreadyRunning = errors.New("p2p is already running")
 var errP2PNotRunning = errors.New("p2p is not running")
-var errInvalidProtocolID = errors.New("protocol id must larger than 0")
-var errProtocolExisted = errors.New("protocol has existed")
 var errPeerNotExist = errors.New("peer not exist")
 var errLevelIsFull = errors.New("level is full")
 
@@ -59,7 +58,6 @@ type NodeInfo struct {
 	NetID     int        `json:"netId"`
 	Version   int        `json:"version"`
 	Address   string     `json:"address"`
-	Protocols []string   `json:"protocols"`
 	PeerCount int        `json:"peerCount"`
 	Peers     []PeerInfo `json:"peers"`
 }
@@ -72,10 +70,13 @@ type P2P interface {
 	ConnectNode(node *vnode.Node) error
 	Info() NodeInfo
 	Register(pt Protocol) error
+	Discovery() discovery.Discovery
+	Node() *vnode.Node
 }
 
 type Handshaker interface {
-	Handshake(conn net.Conn, level Level) (peer PeerMux, err error)
+	ReceiveHandshake(c Codec) (peer PeerMux, err error)
+	InitiateHandshake(c Codec, id vnode.NodeID) (peer PeerMux, err error)
 }
 
 type basePeer interface {
@@ -84,15 +85,18 @@ type basePeer interface {
 	String() string
 	Address() net.Addr
 	Info() PeerInfo
-	Close(err PeerError) error
+	Close(err error) error
 	Level() Level
 	SetLevel(level Level) error
+	Height() uint64
+	Head() types.Hash
+	SetHead(head types.Hash, height uint64)
+	FileAddress() string
+	Weight() int64
 }
 
 type Peer interface {
 	basePeer
-	State() interface{}
-	SetState(state interface{})
 }
 
 type PeerMux interface {
@@ -109,19 +113,21 @@ type peerManager interface {
 type p2p struct {
 	cfg *Config
 
-	node vnode.Node
+	node *vnode.Node
 
 	discv discovery.Discovery
+
+	db *nodeDB
 
 	mu sync.Mutex
 	dialer
 	staticNodes []*vnode.Node
 
-	ptMap map[ProtocolID]Protocol
+	protocol Protocol
 
 	*peers
 
-	handshaker Handshaker
+	handshaker *handshaker
 
 	blackList netool.BlackList
 
@@ -164,40 +170,58 @@ func New(cfg *Config) P2P {
 		staticNodes = append(staticNodes, n)
 	}
 
-	ptMap := make(map[ProtocolID]Protocol)
 	hkr := &handshaker{
-		version: version,
-		netId:   uint32(cfg.NetID),
-		name:    cfg.Name,
-		id:      cfg.Node().ID,
-		priv:    cfg.PrivateKey(),
-		codecFactory: &transportFactory{
-			minCompressLength: 100,
-			readTimeout:       readMsgTimeout,
-			writeTimeout:      writeMsgTimeout,
-		},
-		ptMap: ptMap,
-		log:   p2pLog.New("module", "handshaker"),
+		version:     version,
+		netId:       cfg.NetID,
+		name:        cfg.Name,
+		id:          cfg.Node().ID,
+		genesis:     types.Hash{},
+		fileAddress: cfg.fileAddress,
+		peerKey:     cfg.PrivateKey(),
+		key:         cfg.MineKey,
+		protocol:    nil, // will be set when protocol registered
+		log:         p2pLog.New("module", "handshaker"),
+	}
+
+	codecFactory := &transportFactory{
+		minCompressLength: 100,
+		readTimeout:       readMsgTimeout,
+		writeTimeout:      writeMsgTimeout,
 	}
 
 	var p = &p2p{
 		cfg:         cfg,
 		staticNodes: staticNodes,
-		ptMap:       ptMap,
 		peers:       newPeers(cfg.maxPeers),
 		handshaker:  hkr,
 		blackList:   netool.NewBlackList(strategy),
-		dialer:      newDialer(5*time.Second, 5, hkr),
+		dialer:      newDialer(5*time.Second, 5, hkr, codecFactory),
 		log:         p2pLog,
+		node:        cfg.Node(),
+	}
+
+	// open database
+	var err error
+	p.db, err = newNodeDB(path.Join(cfg.DataDir, DBDirName), 1, p.node.ID)
+	if err != nil {
+		panic(fmt.Errorf("failed to create database: %v", err))
 	}
 
 	if cfg.Discover {
-		p.discv = discovery.New(cfg.Config)
+		p.discv = discovery.New(cfg.Config, p.db)
 	}
 
-	p.server = newServer(retryStartDuration, retryStartCount, cfg.maxPeers[Inbound], cfg.MaxPendingPeers, p.handshaker, p, cfg.ListenAddress)
+	p.server = newServer(retryStartDuration, retryStartCount, cfg.maxPeers[Inbound], cfg.MaxPendingPeers, p.handshaker, p, cfg.ListenAddress, p.blackList, codecFactory)
 
 	return p
+}
+
+func (p *p2p) Node() *vnode.Node {
+	return p.node
+}
+
+func (p *p2p) Discovery() discovery.Discovery {
+	return p.discv
 }
 
 // add success return true
@@ -206,11 +230,7 @@ func (p *p2p) tryAdd(peer PeerMux) (PeerError, bool) {
 		return PeerConnectSelf, false
 	}
 
-	if pe, ok := p.peers.add(peer); ok {
-		return 0, true
-	} else {
-		return pe, false
-	}
+	return p.peers.add(peer)
 }
 
 func (p *p2p) Start() (err error) {
@@ -268,27 +288,13 @@ func (p *p2p) Connect(node string) error {
 	return p.ConnectNode(n)
 }
 
-func (p *p2p) Ban(ip net.IP) {
-	panic("implement me")
-}
-
-func (p *p2p) Unban(ip net.IP) {
-	panic("implement me")
-}
-
 func (p *p2p) Info() NodeInfo {
-	pts := make([]string, 0, len(p.ptMap))
-	for _, pt := range p.ptMap {
-		pts = append(pts, pt.Name())
-	}
-
 	return NodeInfo{
 		ID:        p.cfg.Node().ID.String(),
 		Name:      p.cfg.Name,
 		NetID:     p.cfg.NetID,
 		Version:   version,
 		Address:   p.cfg.ListenAddress,
-		Protocols: pts,
 		PeerCount: p.peers.count(),
 		Peers:     p.peers.info(),
 	}
@@ -298,17 +304,13 @@ func (p *p2p) Register(pt Protocol) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	pid := pt.ID()
-
-	if pid < 1 {
-		return errInvalidProtocolID
+	if p.protocol != nil {
+		return errors.New("has protocol")
 	}
 
-	if _, ok := p.ptMap[pid]; ok {
-		return errProtocolExisted
-	}
-
-	p.ptMap[pid] = pt
+	p.protocol = pt
+	p.handshaker.protocol = pt
+	_, _, p.handshaker.genesis = pt.ProtoData()
 
 	return nil
 }
@@ -336,8 +338,14 @@ func (p *p2p) register(peer PeerMux) {
 	// run
 	if err = peer.run(); err != nil {
 		p.log.Error(fmt.Sprintf("peer %s run error: %v", peer, err))
+		_ = peer.Close(err)
+
 		if pe, ok := err.(PeerError); ok {
-			_ = peer.Close(pe)
+			if pe != PeerQuitting {
+				p.banPeer(peer)
+			}
+		} else {
+			p.banPeer(peer)
 		}
 	} else {
 		p.log.Warn(fmt.Sprintf("peer %s run done", peer))
@@ -352,43 +360,30 @@ func (p *p2p) register(peer PeerMux) {
 	return
 }
 
+func (p *p2p) banPeer(peer basePeer) {
+	p.blackList.Ban(peer.ID().Bytes())
+	if addr, ok := peer.Address().(*net.TCPAddr); ok {
+		p.blackList.Ban(addr.IP)
+	}
+}
+
 func (p *p2p) beatLoop() {
 	defer p.wg.Done()
 
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
-	var now time.Time
-
 	for {
 		select {
 		case <-p.term:
 			return
-		case now = <-ticker.C:
-		}
-
-		var heartBeat = &protos.HeartBeat{
-			State:     make(map[int32][]byte),
-			Timestamp: now.Unix(),
-		}
-
-		for pid, pt := range p.ptMap {
-			if state := pt.State(); state != nil {
-				heartBeat.State[int32(pid)] = pt.State()
-			}
-		}
-
-		data, err := proto.Marshal(heartBeat)
-		if err != nil {
-			p.log.Error(fmt.Sprintf("failed to marshal heartbeat data: %v", err))
-			continue
+		case <-ticker.C:
 		}
 
 		for _, pe := range p.peers.peers() {
 			_ = pe.WriteMsg(Msg{
-				pid:     baseProtocolID,
-				Code:    baseHeartBeat,
-				Payload: data,
+				Code:    CodeHeartBeat,
+				Payload: p.protocol.State(),
 			})
 		}
 	}
@@ -405,11 +400,29 @@ func (p *p2p) findLoop() {
 
 	need := p.cfg.MinPeers
 
-	var initduration = 10 * time.Second
+	var initDuration = 10 * time.Second
 	var maxDuration = 160 * time.Second
-	var duration = initduration
-	var timer = time.NewTimer(initduration)
+	var duration = initDuration
+	var timer = time.NewTimer(initDuration)
 	defer timer.Stop()
+
+	var markChan <-chan time.Time
+	var db *nodeDB
+
+	if p.db != nil {
+		db = p.db
+		nodes := db.RetrieveEndPoints(p.cfg.MinPeers)
+		for _, n := range nodes {
+			err := p.ConnectNode(n)
+			if err != nil {
+				db.RemoveEndPoint(n.ID)
+			}
+		}
+
+		markTicker := time.NewTicker(time.Minute)
+		markChan = markTicker.C
+		defer markTicker.Stop()
+	}
 
 Loop:
 	for {
@@ -424,20 +437,34 @@ Loop:
 					need = max
 				}
 
-				p.log.Warn(fmt.Sprintf("need %d nodes, max %d, levels %v", need, max, p.peers.levelsCount()))
 				nodes := p.discv.GetNodes(need)
 				for _, n := range nodes {
-					p.ConnectNode(n)
+					_ = p.ConnectNode(n)
 				}
 			}
 
 			if duration < maxDuration {
 				duration *= 2
 			} else {
-				duration = initduration
+				duration = initDuration
 			}
 
 			timer.Reset(duration)
+
+		case <-markChan:
+			ps := p.peers.peers()
+			for _, peer := range ps {
+				if peer.Level() > Inbound {
+					addr := peer.Address().String()
+					ep, err := vnode.ParseEndPoint(addr)
+					if err != nil {
+						continue
+					}
+
+					db.StoreEndPoint(peer.ID(), ep, peer.Weight())
+				}
+			}
+
 		case <-p.term:
 			break Loop
 		}
@@ -445,8 +472,16 @@ Loop:
 }
 
 func (p *p2p) ConnectNode(node *vnode.Node) error {
+	if node.ID == p.node.ID {
+		return PeerConnectSelf
+	}
+
 	if p.peers.has(node.ID) {
 		return PeerAlreadyConnected
+	}
+
+	if p.blackList.Banned(node.ID.Bytes()) || p.blackList.Banned(node.EndPoint.Host) {
+		return PeerBanned
 	}
 
 	peer, err := p.dialer.dialNode(node)
