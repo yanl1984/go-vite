@@ -3,6 +3,7 @@ package chain
 import (
 	"fmt"
 	"github.com/pkg/errors"
+	"github.com/vitelabs/go-vite/common/fork"
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/ledger"
 	"github.com/vitelabs/go-vite/vm/quota"
@@ -42,9 +43,20 @@ func (c *chain) GetContentNeedSnapshot() ledger.SnapshotContent {
 
 func (c *chain) filterUnconfirmedBlocks(checkConsensus bool) []*ledger.AccountBlock {
 	blocks := c.cache.GetUnconfirmedBlocks()
+
 	if len(blocks) <= 0 {
 		return nil
 	}
+
+	// check fork
+	latestSnapshotBlock := c.GetLatestSnapshotBlock()
+	// If the current latest snapshot block is the fork point, delete all unconfirmed blocks
+	isInFork := fork.IsInForkPoint(latestSnapshotBlock.Height, latestSnapshotBlock.Hash)
+
+	if isInFork {
+		return blocks
+	}
+
 	invalidBlocks := make([]*ledger.AccountBlock, 0)
 
 	invalidAddrSet := make(map[types.Address]struct{})
@@ -87,7 +99,7 @@ func (c *chain) filterUnconfirmedBlocks(checkConsensus bool) []*ledger.AccountBl
 			}
 		}
 		// consensus
-		if valid &&checkConsensus {
+		if valid && checkConsensus {
 			if isContract, err := c.IsContractAccount(addr); err != nil {
 				cErr := errors.New(fmt.Sprintf("c.IsContractAccount failed, block is %+v. Error: %s", block, err))
 				c.log.Error(cErr.Error(), "method", "filterInvalidUnconfirmedBlocks")

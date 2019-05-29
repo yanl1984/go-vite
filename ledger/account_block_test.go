@@ -3,6 +3,7 @@ package ledger
 import (
 	"github.com/vitelabs/go-vite/common/types"
 
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/vitelabs/go-vite/crypto"
@@ -79,7 +80,7 @@ func createBlock() *AccountBlock {
 
 func TestAccountBlock_ComputeHash(t *testing.T) {
 	//prevHash, _ := types.BytesToHash(crypto.Hash256([]byte("This is prevHash")))
-	prevHash, err := types.HexToHash("0000000000000000000000000000000000000000000000000000000000000000")
+	prevHash, err := types.HexToHash("54cf273947d6e027aca35a9c0f1bba256c14dcc7bf86e8042b0f4e4f26f2fc7f")
 	if err != nil {
 		panic(err)
 	}
@@ -87,11 +88,11 @@ func TestAccountBlock_ComputeHash(t *testing.T) {
 	fromBlockHash, _ := types.HexToHash("4b4d6cf7d2f0f6ef25f8b63c1e8d58cecbf29bd3b5fb484a9b53060ecea19f34")
 	//logHash, _ := types.BytesToHash(crypto.Hash256([]byte("This is logHash")))
 
-	addr1, err := types.HexToAddress("vite_afc922b148b3b792ecff2e79fa17255c22f15d43a77dd79f15")
+	addr1, err := types.HexToAddress("vite_42f9a5d93e1e392624b97dfa3d7cab057b79c2489d6bc13682")
 	if err != nil {
 		panic(err)
 	}
-	addr2, err := types.HexToAddress("vite_360232b0378111b122685a15e612143dc9a89cfa7e803f4b5a")
+	addr2, err := types.HexToAddress("vite_ff38174de69ddc63b2e05402e5c67c356d7d17e819a0ffadee")
 	if err != nil {
 		panic(err)
 	}
@@ -104,10 +105,10 @@ func TestAccountBlock_ComputeHash(t *testing.T) {
 	//	panic(err)
 	//}
 
-	//amount, ok := big.NewInt(0).SetString("1293523228570825505871", 10)
-	//if !ok {
-	//	panic("err")
-	//}
+	amount, ok := big.NewInt(0).SetString("115000", 10)
+	if !ok {
+		panic("err")
+	}
 
 	//fee, ok := big.NewInt(0).SetString("10000000000000000000", 10)
 	//if !ok {
@@ -119,36 +120,46 @@ func TestAccountBlock_ComputeHash(t *testing.T) {
 	//	panic(err)
 	//}
 	//
-	//data, err := base64.StdEncoding.DecodeString("EanfpRVAa7OSHYn9MSXMmicAOWVDaoHqyVKGSwVqLoA")
-	//if err != nil {
-	//	panic(err)
-	//}
+	data, err := base64.StdEncoding.DecodeString("MDBjNGZiYTQ0MjEyNTg2NmM5MDExMGNjYzBmY2E2Nzg0YjhlNGQzMjlmMTJmMGVjNWZjYjE0MmFjNmVjMjg5MzpPVVQ6MQ==")
+	if err != nil {
+		panic(err)
+	}
 
+	nonce, err := base64.StdEncoding.DecodeString("eo/h4fdKHB4=")
+	if err != nil {
+		panic(err)
+	}
 	//ab := &AccountBlock{}
 	//json.Unmarshal([]byte(`{"blockType":4,"hash":"57410f8496598113220fd7f8780cedec5f23f13bbe0d4852e1c0e782092b3a46","prevHash":"0000000000000000000000000000000000000000000000000000000000000000","height":1,"accountAddress":"vite_afc922b148b3b792ecff2e79fa17255c22f15d43a77dd79f15","publicKey":"P8UiTllDO9PSMg8DrTt6g5MQuppfgTN7HF9A+UNUgA=","toAddress":"vite_0000000000000000000000000000000000000000a4f3a0cb58","amount":null,"tokenId":"tti_000000000000000000004cfd","fromBlockHash":"4b4d6cf7d2f0f6ef25f8b63c1e8d58cecbf29bd3b5fb484a9b53060ecea19f34","data":"EanfpRVAa7OSHYn9MSXMmicAOWVDaoHqyVKGSwVqLoA","quota":0,"quotaUsed":0,"fee":10000000000000000000,"logHash":null,"difficulty":null,"nonce":null,"sendBlockList":[],"signature":"s5puuFRSREH7eug1lAEcl9RORNNf04KvZQa0ghBgy80lVvl8K1VOp7H4vZ88nxfQecSmMP3ges91iU0RzVlDg=="}`), ab)
 	//fmt.Printf("haha:%+v\n", ab)
 
+	tokenId, err := types.HexToTokenTypeId("tti_9aac45107571956530010075")
+	if err != nil {
+		panic(err)
+	}
+
 	block := &AccountBlock{
-		BlockType: BlockTypeReceive,
+		BlockType: BlockTypeSendCall,
 		PrevHash:  prevHash,
-		Height:    1,
+		Height:    4,
 
 		AccountAddress: addr1,
 		PublicKey:      publicKey,
 		ToAddress:      addr2,
 
-		//Amount:        amount,
-		//TokenId:       ViteTokenId,
+		Amount:        amount,
+		TokenId:       tokenId,
 		FromBlockHash: fromBlockHash,
 
-		Data: []byte{17, 169, 223, 165, 21, 64, 107, 179, 146, 29, 137, 253, 49, 37, 204, 154, 39, 0, 57, 101, 67, 106, 129, 234, 203, 245, 74, 25, 44, 21, 168, 186, 0},
+		Data: data,
+		//Data: []byte{17, 169, 223, 165, 21, 64, 107, 179, 146, 29, 137, 253, 49, 37, 204, 154, 39, 0, 57, 101, 67, 106, 129, 234, 203, 245, 74, 25, 44, 21, 168, 186, 0},
 
 		//Quota: 1234,
 		//Fee: fee,
 		//LogHash: &logHash,
 
-		//Difficulty: big.NewInt(10),
-		//Nonce:      []byte("12345678"),
+		Difficulty: big.NewInt(80395),
+		Nonce:      nonce,
 	}
 
 	str, err := json.Marshal(block)

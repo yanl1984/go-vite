@@ -1,6 +1,7 @@
 package fork
 
 import (
+	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/config"
 	"reflect"
 	"sort"
@@ -50,4 +51,23 @@ func GetRecentForkName(blockHeight uint64) string {
 		}
 	}
 	return ""
+}
+
+func IsInForkPoint(height uint64, hash types.Hash) bool {
+	l := forkPointList.Len()
+	for i := l - 1; i >= 0; i-- {
+		forkPoint := forkPointList[i]
+		if forkPoint.Height < height {
+			return false
+		} else if forkPoint.Height == height {
+			if forkPoint.Hash == nil ||
+				*forkPoint.Hash == hash {
+				return true
+			} else {
+				return false
+			}
+		}
+	}
+
+	return false
 }
