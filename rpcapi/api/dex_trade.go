@@ -31,7 +31,7 @@ func (f DexTradeApi) String() string {
 	return "DexTradeApi"
 }
 
-func (f DexTradeApi) GetOrderById(orderIdStr string, tradeToken, quoteToken types.TokenTypeId, side bool) (order *dex.Order, err error) {
+func (f DexTradeApi) GetOrderById(orderIdStr string) (order *dex.Order, err error) {
 	var (
 		orderId []byte
 		db vm_db.VmDb
