@@ -43,6 +43,7 @@ func (c *chain) GetOnRoadBlocksByAddr(addr types.Address, pageNum, pageSize int)
 			return nil, err
 		}
 		if b == nil {
+			c.log.Error(fmt.Sprintf("GetAccountBlockByHash %v failed ", v), "method", "GetOnRoadBlocksByAddr")
 			continue
 		}
 		blockList[count] = b
