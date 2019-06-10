@@ -36,13 +36,20 @@ const (
 	start = 1
 )
 
-type chain struct {
-	genesisCfg *config.Genesis
-	chainCfg   *config.Chain
+/*
+  This is the interface definition of the Chain module. This module will be started by the vite
 
+*/
+type chain struct {
+	// genesis config: contains genesis account, forkPoint, consensus group Info, mintage contract Info,Pledge Contract Info, Account Balance Map
+	genesisCfg *config.Genesis
+
+	// chain basic config : gc time, genesis file , LedgerGc ,OpenPlugins
+	chainCfg *config.Chain
+	//
 	genesisSnapshotBlock    *ledger.SnapshotBlock
 	genesisAccountBlocks    []*vm_db.VmAccountBlock
-	genesisAccountBlockHash map[types.Hash]struct{}
+	genesisAccountBlockHash map[types.Hash]struct{} // hash ->
 
 	dataDir   string
 	chainDir  string
