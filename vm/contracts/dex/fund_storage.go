@@ -55,9 +55,9 @@ var (
 	PledgeForVipAmount         = new(big.Int).Mul(commonTokenPow, big.NewInt(10000))
 	PledgeForVipDuration int64 = 3600 * 24 * 30
 
-	bitcoinToken, _ = types.HexToTokenTypeId("tti_4e88a475c675971dab7ec917")
-	ethToken, _     = types.HexToTokenTypeId("tti_2152a3d33c5e2fc90073fad4")
-	usdtToken, _    = types.HexToTokenTypeId("tti_77a7a54d540d5c587dd666d6")
+	bitcoinToken, _ = types.HexToTokenTypeId("tti_322862b3f8edae3b02b110b1")
+	ethToken, _     = types.HexToTokenTypeId("tti_06822f8d096ecdf9356b666c")
+	usdtToken, _    = types.HexToTokenTypeId("tti_973afc9ffd18c4679de42e93")
 
 	QuoteTokenInfos = map[types.TokenTypeId]*TokenInfo{
 		ledger.ViteTokenId: &TokenInfo{dexproto.TokenInfo{Decimals: 18, Symbol: "VITE", Index: 0}},
