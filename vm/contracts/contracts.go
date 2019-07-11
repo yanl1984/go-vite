@@ -118,17 +118,17 @@ var simpleContracts = map[types.Address]*builtinContract{
 	},
 }
 
-func GetBuiltinContractMethod(addr types.Address, methodSelector []byte) (BuiltinContractMethod, bool, error) {
+func GetBuiltinContractMethod(addr types.Address, methodSelector []byte) (string, BuiltinContractMethod, bool, error) {
 	p, ok := simpleContracts[addr]
 	if ok {
 		if method, err := p.abi.MethodById(methodSelector); err == nil {
 			c, ok := p.m[method.Name]
-			return c, ok, nil
+			return method.Name, c, ok, nil
 		} else {
-			return nil, ok, util.ErrAbiMethodNotFound
+			return "", nil, ok, util.ErrAbiMethodNotFound
 		}
 	}
-	return nil, ok, nil
+	return "", nil, ok, nil
 }
 
 func GetOriginSendBlock(db vm_db.VmDb, sendBlockHash types.Hash) (*ledger.AccountBlock, error) {
