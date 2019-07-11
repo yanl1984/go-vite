@@ -12,7 +12,7 @@ var (
 	exportCommand = cli.Command{
 		Action:   utils.MigrateFlags(exportLedgerAction),
 		Name:     "export",
-		Usage:    "export --sbHeight=5000000",
+		Usage:    "export --sbHeight=5000000 --token tti_5649544520544f4b454e6e40,tti_251a3e67a41b5ea2373936c8",
 		Flags:    append(exportFlags, configFlags...),
 		Category: "EXPORT COMMANDS",
 		Description: `
