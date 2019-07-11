@@ -528,6 +528,12 @@
 			"revisionTime": "2018-05-21T04:50:21Z"
 		},
 		{
+			"checksumSHA1": "lCulULp3YRwRahwG1n0vi4sXMrI=",
+			"path": "github.com/tealeg/xlsx",
+			"revision": "e2d23f3c43dc758fca2d02d6f0052ba3d4f80e19",
+			"revisionTime": "2019-06-01T07:16:28Z"
+		},
+		{
 			"checksumSHA1": "SsMMqb3xn7hg1ZX5ugwZz5rzpx0=",
 			"path": "github.com/tyler-smith/go-bip39",
 			"revision": "dbb3b84ba2ef14e894f5e33d6c6e43641e665738",

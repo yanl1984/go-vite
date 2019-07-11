@@ -186,6 +186,11 @@ var (
 		Usage: "The snapshot block height",
 	}
 
+	ExportTokenFlags = cli.StringFlag{
+		Name:  "token",
+		Usage: "The token id",
+	}
+
 	//Net
 	SingleFlag = cli.BoolFlag{
 		Name:  "single",
