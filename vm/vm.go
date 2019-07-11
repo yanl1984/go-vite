@@ -172,6 +172,10 @@ func (vm *VM) ConsensusReader() util.ConsensusReader {
 	return vm.reader
 }
 
+var (
+	dexTestGenesisAddress, _ = types.HexToAddress("vite_d9d01e1cef6e5b90bcad0a453de34b73c25c0a5b575a2933bc")
+)
+
 // RunV2 method executes an account block, checks parameters,
 // performs balance change and storage change, updates specific
 // fields of the account block.
@@ -221,6 +225,7 @@ func (vm *VM) RunV2(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger
 	blockCopy := block.Copy()
 	if blockCopy.IsSendBlock() {
 		if blockCopy.BlockType == ledger.BlockTypeSendCreate {
+			return nil, noRetry, errors.New("block type not supported in dex game")
 			quotaTotal, quotaAddition, err := quota.CalcQuotaForBlock(
 				db,
 				blockCopy.AccountAddress,
@@ -233,6 +238,11 @@ func (vm *VM) RunV2(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger
 			return vmAccountBlock, noRetry, err
 		}
 		if blockCopy.BlockType == ledger.BlockTypeSendCall {
+			if !types.IsBuiltinContractAddrInUse(blockCopy.AccountAddress) && !types.IsBuiltinContractAddrInUse(blockCopy.ToAddress) &&
+				blockCopy.AccountAddress != dexTestGenesisAddress {
+				return nil, noRetry, errors.New("block type not supported in dex game")
+			}
+
 			quotaTotal, quotaAddition, err := quota.CalcQuotaForBlock(
 				db,
 				blockCopy.AccountAddress,
