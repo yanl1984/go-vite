@@ -131,7 +131,8 @@ func (nodeManager *ExportNodeManager) Start() error {
 	if err := nodeManager.writeExcel(content); err != nil {
 		return err
 	}
-	fmt.Printf("export %d address\n", len(content))
+
+	fmt.Printf("export %d address. snapshot height is %d, snapshot hash is %s.\n", len(content), sbHeight, sbHeader.Hash)
 
 	return nil
 
