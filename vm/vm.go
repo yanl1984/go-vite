@@ -225,7 +225,7 @@ func (vm *VM) RunV2(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger
 	blockCopy := block.Copy()
 	if blockCopy.IsSendBlock() {
 		if blockCopy.BlockType == ledger.BlockTypeSendCreate {
-			return nil, noRetry, errors.New("block type not supported in dex game")
+			return nil, noRetry, errors.New("token transfer not support in current version")
 			quotaTotal, quotaAddition, err := quota.CalcQuotaForBlock(
 				db,
 				blockCopy.AccountAddress,
@@ -240,7 +240,7 @@ func (vm *VM) RunV2(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger
 		if blockCopy.BlockType == ledger.BlockTypeSendCall {
 			if !types.IsBuiltinContractAddrInUse(blockCopy.AccountAddress) && !types.IsBuiltinContractAddrInUse(blockCopy.ToAddress) &&
 				blockCopy.AccountAddress != dexTestGenesisAddress {
-				return nil, noRetry, errors.New("block type not supported in dex game")
+			    return nil, noRetry, errors.New("token transfer not support in current version")
 			}
 
 			quotaTotal, quotaAddition, err := quota.CalcQuotaForBlock(
