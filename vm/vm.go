@@ -547,9 +547,9 @@ func (vm *VM) receiveCall(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *
 			}
 		}
 		util.AddBalance(db, &sendBlock.TokenId, sendBlock.Amount)
-		startReceive := time.Now().Nanosecond()
+		startReceive := time.Now().UnixNano()
 		blockListToSend, err := p.DoReceive(db, block, sendBlock, vm)
-		nodeConfig.log.Info("vm receiveCall", "method", methodName, "cost", (time.Now().Nanosecond()-startReceive)/1e6)
+		nodeConfig.log.Info("vm receiveCall", "method", methodName, "cost", (time.Now().UnixNano()-startReceive)/1e6)
 		if err == nil {
 			vm.updateBlock(db, block, err, qutoaUsed, qutoaUsed)
 			vm.vmContext.sendBlockList = blockListToSend
