@@ -381,7 +381,7 @@ func (tx Tx) autoSend() {
 		return
 	}
 
-	M := 2
+	M := 4
 	N := 0
 	coinbase := tx.vite.Producer().GetCoinBase()
 
