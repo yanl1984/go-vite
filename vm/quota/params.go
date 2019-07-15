@@ -3612,7 +3612,7 @@ var (
 	QuotaParamMainnet = NewQuotaParams("4.201037667e-24", "6.259408129e-10")
 	QuotaParamTestnet = NewQuotaParams("4.200617563e-21", "6.409829346e-07")
 
-	qcIndexMinMainnet uint64 = 80
+	qcIndexMinMainnet uint64 = 40
 	qcIndexMaxMainnet uint64 = 100
 	qcMapMainnet             = map[uint64]*big.Int{
 		41:  big.NewInt(983824218829555200),

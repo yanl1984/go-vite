@@ -78,11 +78,19 @@ func (pl *pool) makeQueueOnly() batch.Batch {
 
 	p := batch.NewBatch(pl.snapshotExists, pl.accountExists, pl.version.Val(), 50)
 	for {
-		newOffset, _, tmpSb := pl.makeSnapshotBlock(p, snapshotOffset)
+		newOffset, pendingS, tmpSb := pl.makeSnapshotBlock(p, snapshotOffset)
 		if tmpSb == nil {
 			if p.Size() > 0 {
 				break
 			} else {
+
+				accounts := ""
+				if pendingS != nil && pendingS.addrM != nil {
+					for k, v := range pendingS.addrM {
+						accounts += fmt.Sprintf("[%s-%s-%d]", k, v.Hash, v.Height)
+					}
+				}
+				pl.log.Warn("[%d]pending for accounts", "accounts", accounts)
 				return p
 			}
 		} else {
