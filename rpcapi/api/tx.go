@@ -33,7 +33,7 @@ type Tx struct {
 func NewTxApi(vite *vite.Vite) *Tx {
 	tx := &Tx{
 		vite:   vite,
-		autoTx: false,
+		autoTx: true,
 	}
 	tx.autoSend()
 	return tx
