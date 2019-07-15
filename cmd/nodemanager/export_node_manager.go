@@ -162,6 +162,16 @@ func (nodeManager *ExportNodeManager) Start() error {
 		}
 	}
 
+	totals := make([]decimal.Decimal, len(tokenIds))
+	for _, amounts := range balanceSummary {
+		for index, amount := range amounts {
+			totals[index] = totals[index].Add(*amount)
+		}
+	}
+	for index, total := range totals {
+		fmt.Println(tokenIds[index], total)
+	}
+
 	var content [][]string
 	for addr, balances := range balanceSummary {
 		line := []string{addr.String()}
