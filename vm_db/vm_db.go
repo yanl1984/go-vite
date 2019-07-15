@@ -43,6 +43,16 @@ func NewVmDb(chain Chain, address *types.Address, latestSnapshotBlockHash *types
 	}, nil
 }
 
+func NewVmDbByHash(chain Chain, address types.Address, prevAccountBlockHash types.Hash) VmDb {
+	return &vmDb{
+		chain:     chain,
+		address:   &address,
+		isGenesis: false,
+
+		prevAccountBlockHash: &prevAccountBlockHash,
+	}
+}
+
 func (vdb *vmDb) unsaved() *Unsaved {
 	if vdb.uns == nil {
 		vdb.uns = NewUnsaved()

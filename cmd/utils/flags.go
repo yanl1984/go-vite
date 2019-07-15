@@ -186,6 +186,11 @@ var (
 		Usage: "The snapshot block height",
 	}
 
+	ExportBeforeTimeFlags = cli.Int64Flag{
+		Name:  "beforeTime",
+		Usage: "Before time",
+	}
+
 	ExportTokenFlags = cli.StringFlag{
 		Name:  "token",
 		Usage: "The token id",

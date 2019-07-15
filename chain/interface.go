@@ -251,6 +251,8 @@ type Chain interface {
 
 	GetAllTokenInfo() (map[types.TokenTypeId]*types.TokenInfo, error)
 
+	NewSnapshotStorageDatabase(snapshotHash types.Hash, address types.Address) (*chain_state.StorageDatabase, error)
+
 	// ====== Sync ledger ======
 	GetLedgerReaderByHeight(startHeight uint64, endHeight uint64) (cr interfaces.LedgerReader, err error)
 

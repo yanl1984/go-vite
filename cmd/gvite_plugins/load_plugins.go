@@ -127,6 +127,7 @@ var (
 	exportFlags = []cli.Flag{
 		utils.ExportSbHeightFlags,
 		utils.ExportTokenFlags,
+		utils.ExportBeforeTimeFlags,
 	}
 )
 

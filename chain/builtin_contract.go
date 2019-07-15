@@ -3,6 +3,7 @@ package chain
 import (
 	"fmt"
 	"github.com/pkg/errors"
+	chain_state "github.com/vitelabs/go-vite/chain/state"
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/vm/contracts/abi"
 	"github.com/vitelabs/go-vite/vm/quota"
@@ -146,4 +147,8 @@ func (c *chain) GetAllTokenInfo() (map[types.TokenTypeId]*types.TokenInfo, error
 		return nil, cErr
 	}
 	return abi.GetTokenMap(sd)
+}
+
+func (c *chain) NewSnapshotStorageDatabase(snapshotHash types.Hash, address types.Address) (*chain_state.StorageDatabase, error) {
+	return c.stateDB.NewStorageDatabase(snapshotHash, address)
 }
