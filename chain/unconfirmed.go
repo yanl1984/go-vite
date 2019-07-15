@@ -2,6 +2,7 @@ package chain
 
 import (
 	"fmt"
+
 	"github.com/pkg/errors"
 	"github.com/vitelabs/go-vite/common/fork"
 	"github.com/vitelabs/go-vite/common/types"
@@ -17,7 +18,7 @@ func (c *chain) GetUnconfirmedBlocks(addr types.Address) []*ledger.AccountBlock 
 	return c.cache.GetUnconfirmedBlocksByAddress(&addr)
 }
 
-const maxSnapshotLength = 40000
+const maxSnapshotLength = 150
 
 func (c *chain) GetContentNeedSnapshot() ledger.SnapshotContent {
 	unconfirmedBlocks := c.cache.GetUnconfirmedBlocks()
