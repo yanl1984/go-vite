@@ -444,8 +444,9 @@ func (tx Tx) autoSend() {
 
 	num := atomic.NewUint32(0)
 
+	fmt.Println("auto send...................................")
 	tx.vite.Consensus().Subscribe(types.SNAPSHOT_GID, "api-auto-send", nil, func(e consensus.Event) {
-
+		log.Info("api-auto-send trigger", "time", e.Timestamp)
 		if num.Load() > 0 {
 			fmt.Printf("something is loading[return].%s\n", time.Now())
 			return
