@@ -84,6 +84,9 @@ func (ft *FilterToken) DeleteSnapshotBlocks(batch *leveldb.Batch, chunks []*ledg
 	}
 	return nil
 }
+func (ft *FilterToken) RemoveNewUnconfirmed(*leveldb.Batch, []*ledger.AccountBlock) error {
+	return nil
+}
 
 func (ft *FilterToken) GetBlocks(addr types.Address, tokenId types.TokenTypeId, blockHash *types.Hash, count uint64) ([]*ledger.AccountBlock, error) {
 	maxHeight := helper.MaxUint64
@@ -96,8 +99,23 @@ func (ft *FilterToken) GetBlocks(addr types.Address, tokenId types.TokenTypeId, 
 			return nil, errors.New(fmt.Sprintf("block %s is not exited", blockHash))
 		}
 
-		if block.TokenId != tokenId {
-			return nil, nil
+		if block.BlockType != ledger.BlockTypeGenesisReceive {
+			var blockTokenId types.TokenTypeId
+			if block.IsReceiveBlock() {
+				fromBlock, err := ft.chain.GetAccountBlockByHash(block.FromBlockHash)
+				if err != nil {
+					return nil, errors.New(fmt.Sprintf("from block %s is not exited", block.FromBlockHash))
+				}
+				if fromBlock == nil {
+					return nil, errors.New(fmt.Sprintf("from block %s is nil", block.FromBlockHash))
+				}
+				blockTokenId = fromBlock.TokenId
+			} else {
+				blockTokenId = block.TokenId
+			}
+			if blockTokenId != tokenId {
+				return nil, nil
+			}
 		}
 
 		maxHeight = block.Height + 1

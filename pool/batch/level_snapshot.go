@@ -1,6 +1,9 @@
 package batch
 
-import "github.com/go-errors/errors"
+import (
+	"github.com/go-errors/errors"
+	"github.com/vitelabs/go-vite/common/types"
+)
 
 type snapshotLevel struct {
 	level
@@ -18,6 +21,10 @@ func (self *snapshotLevel) Add(b Item) error {
 	return self.bu.add(b)
 }
 
+func (self *snapshotLevel) SHash() *types.Hash {
+	return nil
+}
+
 func (self *snapshotLevel) Snapshot() bool {
 	return true
 }
@@ -25,4 +32,8 @@ func (self *snapshotLevel) Snapshot() bool {
 func (self *snapshotLevel) Buckets() (result []Bucket) {
 	result = append(result, self.bu)
 	return
+}
+
+func (self *snapshotLevel) Size() int {
+	return len(self.bu.Items())
 }

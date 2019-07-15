@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vitelabs/go-vite/consensus/cdb"
+
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/vitelabs/go-vite/common"
@@ -31,10 +33,6 @@ func TestPeriodLinkedArray_GetByIndex(t *testing.T) {
 	b5 := GenSnapshotBlock(5, "e0de77ffdc2719eb1d8e89139da9747bd413bfe59781c43fc078bb37d8cbd77a", b4.Hash, simpleGenesis.Add(time.Second*4))
 	b6 := GenSnapshotBlock(6, "e0de77ffdc2719eb1d8e89139da9747bd413bfe59781c43fc078bb37d8cbd77a", b5.Hash, simpleGenesis.Add(time.Second*5))
 
-	fmt.Println(b1.Hash)
-	fmt.Println(b2.Hash)
-	fmt.Println(b6.Hash)
-
 	mch.EXPECT().IsGenesisSnapshotBlock(gomock.Not(b1.Hash)).Return(false).Times(1)
 	var r []*ledger.SnapshotBlock
 	r = append(r, b6)
@@ -44,7 +42,7 @@ func TestPeriodLinkedArray_GetByIndex(t *testing.T) {
 	r = append(r, b2)
 	r = append(r, b1)
 	mch.EXPECT().GetSnapshotHeadersAfterOrEqualTime(gomock.Eq(&ledger.HashHeight{Hash: b6.Hash, Height: b6.Height}), gomock.Eq(&simpleGenesis), gomock.Nil()).Return(r, nil)
-	mch.EXPECT().GetSnapshotBlockByHash(gomock.Eq(b6.Hash)).Return(&ledger.SnapshotBlock{Hash: b6.Hash, Height: b6.Height}, nil)
+	mch.EXPECT().GetSnapshotBlockByHash(gomock.Eq(b6.Hash)).Return(&ledger.SnapshotBlock{Hash: b6.Hash, Height: b6.Height, Timestamp: b6.Timestamp}, nil)
 
 	stime, etime := simple.Index2Time(0)
 	mproof.EXPECT().ProofEmpty(stime, etime).Return(false, nil).Times(1)
@@ -54,10 +52,6 @@ func TestPeriodLinkedArray_GetByIndex(t *testing.T) {
 
 	point, err := periods.GetByIndex(0)
 	assert.NoError(t, err)
-
-	for k, v := range point.Sbps {
-		t.Log(k, v)
-	}
 
 	assert.Equal(t, uint32(3), point.Sbps[b1.Producer()].FactualNum)
 	assert.Equal(t, uint32(3), point.Sbps[b1.Producer()].ExpectedNum)
@@ -95,7 +89,7 @@ func TestHourLinkedArray_GetByIndex(t *testing.T) {
 	defer ctrl.Finish()
 	db := NewDb(t, UnitTestDir)
 	defer ClearDb(t, UnitTestDir)
-	consensusDB := db.NewConsensusDB(db)
+	consensusDB := cdb.NewConsensusDB(db)
 
 	num := 48
 	hashArr := genHashArr(num + 1)
@@ -103,20 +97,20 @@ func TestHourLinkedArray_GetByIndex(t *testing.T) {
 	mockPerids := NewMockLinkedArray(ctrl)
 	mockProof := NewMockRollbackProof(ctrl)
 
-	sbps := make(map[types.Address]*db.Content)
+	sbps := make(map[types.Address]*cdb.Content)
 	addr1 := types.HexToAddressPanic("vite_360232b0378111b122685a15e612143dc9a89cfa7e803f4b5a")
-	sbps[addr1] = &db.Content{
+	sbps[addr1] = &cdb.Content{
 		ExpectedNum: 10,
 		FactualNum:  8,
 	}
 	addr2 := types.HexToAddressPanic("vite_826a1ab4c85062b239879544dc6b67e3b5ce32d0a1eba21461")
-	sbps[addr2] = &db.Content{
+	sbps[addr2] = &cdb.Content{
 		ExpectedNum: 9,
 		FactualNum:  7,
 	}
 
 	for i := 0; i < num; i++ {
-		mockPerids.EXPECT().GetByIndexWithProof(gomock.Eq(uint64(i)), gomock.Any()).Return(&db.Point{
+		mockPerids.EXPECT().GetByIndexWithProof(gomock.Eq(uint64(i)), gomock.Any()).Return(&cdb.Point{
 			PrevHash: hashArr[i],
 			Hash:     hashArr[i+1],
 			Sbps:     sbps,

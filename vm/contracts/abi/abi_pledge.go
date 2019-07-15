@@ -14,10 +14,10 @@ const (
 	[
 		{"type":"function","name":"Pledge", "inputs":[{"name":"beneficial","type":"address"}]},
 		{"type":"function","name":"CancelPledge","inputs":[{"name":"beneficial","type":"address"},{"name":"amount","type":"uint256"}]},
-		{"type":"function","name":"AgentPledge", "inputs":[{"name":"pledgeAddress","type":"address"},{"name":"beneficial","type":"address"},{"name":"bid","type":"uint8"}]},
+		{"type":"function","name":"AgentPledge", "inputs":[{"name":"pledgeAddress","type":"address"},{"name":"beneficial","type":"address"},{"name":"bid","type":"uint8"},{"name":"stakeHeight","type":"uint64"}]},
 		{"type":"function","name":"AgentCancelPledge","inputs":[{"name":"pledgeAddress","type":"address"},{"name":"beneficial","type":"address"},{"name":"amount","type":"uint256"},{"name":"bid","type":"uint8"}]},
-		{"type":"callback","name":"AgentPledge","inputs":[{"name":"success","type":"bool"}]},
-		{"type":"callback","name":"AgentCancelPledge","inputs":[{"name":"success","type":"bool"}]},
+		{"type":"callback","name":"AgentPledge","inputs":[{"name":"pledgeAddress","type":"address"},{"name":"beneficial","type":"address"},{"name":"amount","type":"uint256"},{"name":"bid","type":"uint8"},{"name":"success","type":"bool"}]},
+		{"type":"callback","name":"AgentCancelPledge","inputs":[{"name":"pledgeAddress","type":"address"},{"name":"beneficial","type":"address"},{"name":"amount","type":"uint256"},{"name":"bid","type":"uint8"},{"name":"success","type":"bool"}]},
 		{"type":"variable","name":"pledgeInfo","inputs":[{"name":"amount","type":"uint256"},{"name":"withdrawHeight","type":"uint64"},{"name":"beneficialAddr","type":"address"},{"name":"agent","type":"bool"},{"name":"agentAddress","type":"address"},{"name":"bid","type":"uint8"}]},
 		{"type":"variable","name":"pledgeBeneficial","inputs":[{"name":"amount","type":"uint256"}]}
 	]`
@@ -46,6 +46,7 @@ type ParamAgentPledge struct {
 	PledgeAddress types.Address
 	Beneficial    types.Address
 	Bid           uint8
+	StakeHeight   uint64
 }
 type ParamAgentCancelPledge struct {
 	PledgeAddress types.Address
@@ -97,7 +98,7 @@ func GetPledgeInfoList(db StorageDatabase, pledgeAddr types.Address) ([]*PledgeI
 	for {
 		if !iterator.Next() {
 			if iterator.Error() != nil {
-				return nil, nil, err
+				return nil, nil, iterator.Error()
 			}
 			break
 		}
@@ -128,4 +129,28 @@ func GetPledgeBeneficialAmount(db StorageDatabase, beneficialAddr types.Address)
 	amount := new(VariablePledgeBeneficial)
 	ABIPledge.UnpackVariable(amount, VariableNamePledgeBeneficial, v)
 	return amount.Amount, nil
+}
+
+func GetPledgeInfo(db StorageDatabase, pledgeAddr, beneficialAddr, agentAddr types.Address, agent bool, bid uint8) (*PledgeInfo, error) {
+	iterator, err := db.NewStorageIterator(GetPledgeKeyPrefix(pledgeAddr))
+	util.DealWithErr(err)
+	defer iterator.Release()
+	for {
+		if !iterator.Next() {
+			if iterator.Error() != nil {
+				return nil, iterator.Error()
+			}
+			break
+		}
+		if !IsPledgeKey(iterator.Key()) {
+			continue
+		}
+		pledgeInfo := new(PledgeInfo)
+		ABIPledge.UnpackVariable(pledgeInfo, VariableNamePledgeInfo, iterator.Value())
+		if pledgeInfo.BeneficialAddr == beneficialAddr && pledgeInfo.Agent == agent &&
+			pledgeInfo.AgentAddress == agentAddr && pledgeInfo.Bid == bid {
+			return pledgeInfo, nil
+		}
+	}
+	return nil, nil
 }

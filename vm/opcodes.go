@@ -58,7 +58,7 @@ const (
 	BLAKE2B opCode = 0x21
 )
 
-// 0x30 range - closure state_bak.
+// 0x30 range - closure state.
 const (
 	ADDRESS opCode = 0x30 + iota
 	BALANCE
@@ -91,6 +91,7 @@ const (
 	PREVHASH
 	FROMHASH
 	SEED
+	RANDOM
 )
 
 // 0x50 range - 'storage' and execution.
@@ -234,7 +235,7 @@ var opCodeToString = map[opCode]string{
 	// 0x20 range - crypto.
 	BLAKE2B: "BLAKE2B",
 
-	// 0x30 range - closure state_bak.
+	// 0x30 range - closure state.
 	ADDRESS:        "ADDRESS",
 	BALANCE:        "BALANCE",
 	ORIGIN:         "ORIGIN",
@@ -264,6 +265,7 @@ var opCodeToString = map[opCode]string{
 	PREVHASH:      "PREVHASH",
 	FROMHASH:      "FROMHASH",
 	SEED:          "SEED",
+	RANDOM:        "RANDOM",
 
 	// 0x50 range - 'storage' and execution.
 	POP: "POP",
@@ -431,6 +433,7 @@ var stringToOp = map[string]opCode{
 	"PREVHASH":       PREVHASH,
 	"FROMHASH":       FROMHASH,
 	"SEED":           SEED,
+	"RANDOM":         RANDOM,
 	"POP":            POP,
 	"MLOAD":          MLOAD,
 	"MSTORE":         MSTORE,

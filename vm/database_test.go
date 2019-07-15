@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"github.com/vitelabs/go-vite/interfaces"
 	"math/big"
+	"sort"
 	"testing"
 	"time"
 
@@ -100,6 +101,9 @@ func (db *testDatabase) SetContractMeta(toAddr types.Address, meta *ledger.Contr
 	db.contractMetaMap[toAddr] = meta
 }
 func (db *testDatabase) GetContractMeta() (*ledger.ContractMeta, error) {
+	if types.IsBuiltinContractAddrInUse(db.addr) {
+		return &ledger.ContractMeta{QuotaRatio: 10}, nil
+	}
 	return db.contractMetaMap[db.addr], nil
 }
 func (db *testDatabase) SetContractCode(code []byte) {
@@ -134,13 +138,14 @@ func (db *testDatabase) GetValue(key []byte) ([]byte, error) {
 	return []byte{}, nil
 }
 func (db *testDatabase) SetValue(key []byte, value []byte) error {
-	if len(value) == 0 {
-		delete(db.storageMap[db.addr], ToKey(key))
-	}
 	if _, ok := db.storageMap[db.addr]; !ok {
 		db.storageMap[db.addr] = make(map[string][]byte)
 	}
-	db.storageMap[db.addr][ToKey(key)] = value
+	if len(value) == 0 {
+		delete(db.storageMap[db.addr], ToKey(key))
+	} else {
+		db.storageMap[db.addr][ToKey(key)] = value
+	}
 	return nil
 }
 
@@ -182,6 +187,9 @@ func (db *testDatabase) GetConfirmSnapshotHeader(blockHash types.Hash) (*ledger.
 func (db *testDatabase) GetContractMetaInSnapshot(contractAddress types.Address, snapshotBlock *ledger.SnapshotBlock) (*ledger.ContractMeta, error) {
 	meta := db.contractMetaMap[contractAddress]
 	return meta, nil
+}
+func (db *testDatabase) CanWrite() bool {
+	return false
 }
 
 type testIteratorItem struct {
@@ -231,15 +239,37 @@ func (db *testDatabase) NewStorageIterator(prefix []byte) (interfaces.StorageIte
 	storageMap := db.storageMap[db.addr]
 	items := make([]testIteratorItem, 0)
 	for key, value := range storageMap {
-		if len(prefix) > 0 {
-			if bytes.Equal(ToBytes(key)[:len(prefix)], prefix) {
-				items = append(items, testIteratorItem{ToBytes(key), value})
+		keyBytes := ToBytes(key)
+		prefixLen := len(prefix)
+		if prefixLen > 0 {
+			if len(keyBytes) >= prefixLen && bytes.Equal(keyBytes[:prefixLen], prefix) {
+				items = append(items, testIteratorItem{keyBytes, value})
 			}
 		} else {
-			items = append(items, testIteratorItem{ToBytes(key), value})
+			items = append(items, testIteratorItem{keyBytes, value})
 		}
 	}
+	sort.Sort(testIteratorSorter(items))
 	return &testIterator{-1, items}, nil
+}
+
+type testIteratorSorter []testIteratorItem
+
+func (st testIteratorSorter) Len() int {
+	return len(st)
+}
+
+func (st testIteratorSorter) Swap(i, j int) {
+	st[i], st[j] = st[j], st[i]
+}
+
+func (st testIteratorSorter) Less(i, j int) bool {
+	tkCmp := bytes.Compare(st[i].key, st[j].key)
+	if tkCmp < 0 {
+		return true
+	} else {
+		return false
+	}
 }
 
 func (db *testDatabase) GetUnsavedStorage() [][2][]byte {
@@ -261,6 +291,18 @@ func (db *testDatabase) GetQuotaUsedList(addr types.Address) []types.QuotaInfo {
 	return list
 }
 
+func (db *testDatabase) GetGlobalQuota() types.QuotaInfo {
+	return types.QuotaInfo{}
+}
+
+func (db *testDatabase) GetAccountBlockByHash(blockHash types.Hash) (*ledger.AccountBlock, error) {
+	return nil, nil
+}
+
+func (db *testDatabase) GetCompleteBlockByHash(blockHash types.Hash) (*ledger.AccountBlock, error) {
+	return nil, nil
+}
+
 func (db *testDatabase) GetPledgeBeneficialAmount(addr *types.Address) (*big.Int, error) {
 	data := db.storageMap[types.AddressPledge][ToKey(abi.GetPledgeBeneficialKey(*addr))]
 	if len(data) > 0 {
@@ -274,9 +316,24 @@ func (db *testDatabase) GetPledgeBeneficialAmount(addr *types.Address) (*big.Int
 func (db *testDatabase) DebugGetStorage() (map[string][]byte, error) {
 	return db.storageMap[db.addr], nil
 }
+func (db *testDatabase) GetConfirmedTimes(blockHash types.Hash) (uint64, error) {
+	return 1, nil
+}
+func (db *testDatabase) GetLatestAccountBlock(addr types.Address) (*ledger.AccountBlock, error) {
+	if m, ok := db.accountBlockMap[addr]; ok {
+		var block *ledger.AccountBlock
+		for _, b := range m {
+			if block == nil || block.Height < b.Height {
+				block = b
+			}
+		}
+		return block, nil
+	}
+	return nil, nil
+}
 
 func prepareDb(viteTotalSupply *big.Int) (db *testDatabase, addr1 types.Address, privKey ed25519.PrivateKey, hash12 types.Hash, snapshot2 *ledger.SnapshotBlock, timestamp int64) {
-	addr1, _ = types.BytesToAddress(helper.HexToBytes("6c1032417f80329f3abe0a024fa3a7aa0e952b0f"))
+	addr1, _ = types.BytesToAddress(helper.HexToBytes("6c1032417f80329f3abe0a024fa3a7aa0e952b0f00"))
 	privKey, _ = ed25519.HexToPrivateKey("44e9768b7d8320a282e75337df8fc1f12a4f000b9f9906ddb886c6823bb599addfda7318e7824d25aae3c749c1cbd4e72ce9401653c66479554a05a2e3cb4f88")
 	db = newNoDatabase()
 	db.storageMap[types.AddressMintage] = make(map[string][]byte)

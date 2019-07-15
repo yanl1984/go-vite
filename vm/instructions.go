@@ -504,12 +504,16 @@ func opOffchainTokenID(pc *uint64, vm *VM, c *contract, mem *memory, stack *stac
 func opAccountHeight(pc *uint64, vm *VM, c *contract, mem *memory, stack *stack) ([]byte, error) {
 	ab, err := c.db.PrevAccountBlock()
 	util.DealWithErr(err)
-	stack.push(helper.U256(c.intPool.get().SetUint64(ab.Height)))
+	if ab != nil {
+		stack.push(helper.U256(c.intPool.get().SetUint64(ab.Height)))
+	} else {
+		stack.push(c.intPool.getZero())
+	}
 	return nil, nil
 }
 
 func opOffchainAccountHeight(pc *uint64, vm *VM, c *contract, mem *memory, stack *stack) ([]byte, error) {
-	stack.push((c.intPool.getZero()))
+	stack.push(c.intPool.getZero())
 	return nil, nil
 }
 
@@ -552,6 +556,18 @@ func opOffchainSeed(pc *uint64, vm *VM, c *contract, mem *memory, stack *stack) 
 	return nil, nil
 }
 
+func opRandom(pc *uint64, vm *VM, c *contract, mem *memory, stack *stack) ([]byte, error) {
+	seed, err := vm.globalStatus.Random()
+	util.DealWithErr(err)
+	stack.push(c.intPool.get().SetUint64(seed))
+	return nil, nil
+}
+
+func opOffchainRandom(pc *uint64, vm *VM, c *contract, mem *memory, stack *stack) ([]byte, error) {
+	stack.push(c.intPool.getZero())
+	return nil, nil
+}
+
 func opPop(pc *uint64, vm *VM, c *contract, mem *memory, stack *stack) ([]byte, error) {
 	c.intPool.put(stack.pop())
 	return nil, nil
@@ -585,8 +601,7 @@ func opMstore8(pc *uint64, vm *VM, c *contract, mem *memory, stack *stack) ([]by
 func opSLoad(pc *uint64, vm *VM, c *contract, mem *memory, stack *stack) ([]byte, error) {
 	loc := stack.peek()
 	locHash, _ := types.BigToHash(loc)
-	val, err := c.db.GetValue(locHash.Bytes())
-	util.DealWithErr(err)
+	val := util.GetValue(c.db, locHash.Bytes())
 	loc.SetBytes(val)
 	return nil, nil
 }
@@ -594,7 +609,7 @@ func opSLoad(pc *uint64, vm *VM, c *contract, mem *memory, stack *stack) ([]byte
 func opSStore(pc *uint64, vm *VM, c *contract, mem *memory, stack *stack) ([]byte, error) {
 	loc, val := stack.pop(), stack.pop()
 	locHash, _ := types.BigToHash(loc)
-	c.db.SetValue(locHash.Bytes(), val.Bytes())
+	util.SetValue(c.db, locHash.Bytes(), val.Bytes())
 
 	c.intPool.put(loc, val)
 	return nil, nil
@@ -711,13 +726,34 @@ func makeLog(size int) executionFunc {
 				}
 				topicsStr = topicsStr[:len(topicsStr)-1]
 			}
-			nodeConfig.log.Info("vm log",
-				"blockType", c.block.BlockType,
-				"address", c.block.AccountAddress.String(),
-				"height", c.block.Height,
-				"fromHash", c.block.FromBlockHash.String(),
-				"topics", topicsStr,
-				"data", hex.EncodeToString(d))
+			var params []interface{}
+			var name string
+			var err error
+			if contractAbi, ok := GetContractABI(c.block.AccountAddress); ok {
+				name, params, err = contractAbi.DirectUnpackEvent(topics, d)
+				if err != nil {
+					nodeConfig.log.Warn("unpack event failed", "topics", topics, "data", d, "err", err)
+				}
+			}
+			if len(name) > 0 {
+				nodeConfig.log.Info("vm log",
+					"blockType", c.block.BlockType,
+					"address", c.block.AccountAddress.String(),
+					"height", c.block.Height,
+					"fromHash", c.block.FromBlockHash.String(),
+					"topics", topicsStr,
+					"data", hex.EncodeToString(d),
+					"logName", name,
+					"params", params)
+			} else {
+				nodeConfig.log.Info("vm log",
+					"blockType", c.block.BlockType,
+					"address", c.block.AccountAddress.String(),
+					"height", c.block.Height,
+					"fromHash", c.block.FromBlockHash.String(),
+					"topics", topicsStr,
+					"data", hex.EncodeToString(d))
+			}
 		}
 
 		c.intPool.put(mStart, mSize)

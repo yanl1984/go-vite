@@ -5,6 +5,7 @@ import (
 	"github.com/patrickmn/go-cache"
 	"github.com/vitelabs/go-vite/chain/utils"
 	"github.com/vitelabs/go-vite/common"
+	"github.com/vitelabs/go-vite/common/db/xleveldb/errors"
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/interfaces"
 	"github.com/vitelabs/go-vite/ledger"
@@ -15,7 +16,12 @@ func (sDB *StateDB) Write(block *vm_db.VmAccountBlock) error {
 	batch := sDB.store.NewBatch()
 
 	vmDb := block.VmDb
+	if !vmDb.CanWrite() {
+		return errors.New("vmDb.CanWrite() is false")
+	}
+
 	accountBlock := block.AccountBlock
+
 	var redoLog LogItem
 
 	// write unsaved storage
@@ -23,8 +29,13 @@ func (sDB *StateDB) Write(block *vm_db.VmAccountBlock) error {
 
 	for _, kv := range unsavedStorage {
 		// set latest kv
-		batch.Put(chain_utils.CreateStorageValueKey(&accountBlock.AccountAddress, kv[0]), kv[1])
+		if len(kv[1]) <= 0 {
+			batch.Delete(chain_utils.CreateStorageValueKey(&accountBlock.AccountAddress, kv[0]))
+		} else {
+			batch.Put(chain_utils.CreateStorageValueKey(&accountBlock.AccountAddress, kv[0]), kv[1])
+		}
 	}
+
 	redoLog.Storage = unsavedStorage
 
 	// write unsaved balance
@@ -71,7 +82,7 @@ func (sDB *StateDB) Write(block *vm_db.VmAccountBlock) error {
 	}
 
 	// write vm log
-	if accountBlock.LogHash != nil {
+	if accountBlock.LogHash != nil && sDB.canWriteVmLog(accountBlock.AccountAddress) {
 		vmLogListKey := chain_utils.CreateVmLogListKey(accountBlock.LogHash)
 
 		bytes, err := vmDb.GetLogList().Serialize()
@@ -118,7 +129,12 @@ func (sDB *StateDB) WriteByRedo(blockHash types.Hash, addr types.Address, redoLo
 	// write unsaved storage
 	for _, kv := range redoLog.Storage {
 		// set latest kv
-		batch.Put(chain_utils.CreateStorageValueKey(&addr, kv[0]), kv[1])
+		if len(kv[1]) <= 0 {
+			batch.Delete(chain_utils.CreateStorageValueKey(&addr, kv[0]))
+		} else {
+			batch.Put(chain_utils.CreateStorageValueKey(&addr, kv[0]), kv[1])
+		}
+
 	}
 
 	// write unsaved balance
@@ -155,7 +171,6 @@ func (sDB *StateDB) WriteByRedo(blockHash types.Hash, addr types.Address, redoLo
 	// write vm log
 
 	for logHash, vmLogListBytes := range redoLog.VmLogList {
-
 		batch.Put(chain_utils.CreateVmLogListKey(&logHash), vmLogListBytes)
 	}
 
@@ -252,4 +267,14 @@ func (sDB *StateDB) writeHistoryKey(batch interfaces.Batch, key, value []byte) {
 	if types.IsBuiltinContractAddr(addr) {
 		sDB.cache.Set(snapshotValuePrefix+string(addrBytes)+string(sDB.parseStorageKey(key)), sDB.copyValue(value), cache.NoExpiration)
 	}
+}
+
+func (sDB *StateDB) canWriteVmLog(addr types.Address) bool {
+	// save all vm log when sDB.vmLogAll is true
+	if sDB.vmLogAll {
+		return true
+	}
+
+	_, ok := sDB.vmLogWhiteListSet[addr]
+	return ok
 }

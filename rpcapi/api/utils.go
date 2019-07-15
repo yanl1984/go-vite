@@ -9,6 +9,7 @@ import (
 	"github.com/vitelabs/go-vite/common"
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/log15"
+	"github.com/vitelabs/go-vite/vm_db"
 	"math/big"
 	"path/filepath"
 	"strconv"
@@ -111,12 +112,19 @@ func bigIntToString(big *big.Int) *string {
 	return &s
 }
 
-func uint64ToString(u uint64) string {
+func Uint64ToString(u uint64) string {
 	return strconv.FormatUint(u, 10)
 }
 
 func StringToUint64(s string) (uint64, error) {
 	return strconv.ParseUint(s, 10, 64)
+}
+
+func Float64ToString(f float64, prec int) string {
+	return strconv.FormatFloat(f, 'g', prec, 64)
+}
+func StringToFloat64(s string) (float64, error) {
+	return strconv.ParseFloat(s, 64)
 }
 
 const (
@@ -148,4 +156,13 @@ func getPrevBlockHash(c chain.Chain, addr types.Address) (*types.Hash, error) {
 		return &b.Hash, nil
 	}
 	return &types.Hash{}, nil
+}
+
+func getVmDb(c chain.Chain, addr types.Address) (vm_db.VmDb, error) {
+	prevHash, err := getPrevBlockHash(c, addr)
+	if err != nil {
+		return nil, err
+	}
+	db, err := vm_db.NewVmDb(c, &addr, &c.GetLatestSnapshotBlock().Hash, prevHash)
+	return db, err
 }

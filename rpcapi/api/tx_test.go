@@ -3,12 +3,22 @@ package api
 import (
 	"encoding/base64"
 	"fmt"
+	"math/big"
+	"testing"
+
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/crypto/ed25519"
 	"github.com/vitelabs/go-vite/ledger"
-	"math/big"
-	"testing"
 )
+
+func TestPubKeyToAddress(t *testing.T) {
+	publicKey, err := base64.StdEncoding.DecodeString("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	addr := types.PubkeyToAddress(publicKey)
+	fmt.Printf("publicKey to addr %v\n", addr)
+}
 
 func TestTx_SendRawTx_VerifyHashAndSig(t *testing.T) {
 	/*	hash, err := types.HexToHash("")
@@ -19,7 +29,7 @@ func TestTx_SendRawTx_VerifyHashAndSig(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		publicKey, err := base64.StdEncoding.DecodeString("P8UiTllDO/9PSMg8DrTt6g5MQuppfgTN7HF9A+UNUgA=")
+		publicKey, err := base64.StdEncoding.DecodeString("")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -113,4 +123,8 @@ func TestTx_SendRawTx_VerifyHashAndSig(t *testing.T) {
 		if !isVerified {
 			t.Fatal("verify hash failed")
 		}*/
+}
+
+func TestTx_Auto(t *testing.T) {
+
 }

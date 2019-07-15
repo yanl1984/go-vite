@@ -4,17 +4,14 @@ import (
 	"sort"
 	"time"
 
-	"github.com/go-errors/errors"
-	"github.com/vitelabs/go-vite/vm/contracts"
-	"github.com/vitelabs/go-vite/vm/util"
-	"github.com/vitelabs/go-vite/vm_db"
-
 	"github.com/vitelabs/go-vite/chain"
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/consensus"
 	"github.com/vitelabs/go-vite/log15"
 	"github.com/vitelabs/go-vite/vite"
+	"github.com/vitelabs/go-vite/vm/contracts"
 	"github.com/vitelabs/go-vite/vm/contracts/abi"
+	"github.com/vitelabs/go-vite/vm/util"
 )
 
 type RegisterApi struct {
@@ -74,12 +71,11 @@ func (a byRegistrationWithdrawHeight) Less(i, j int) bool {
 }
 
 func (r *RegisterApi) GetRegistrationList(gid types.Gid, pledgeAddr types.Address) ([]*RegistrationInfo, error) {
-	snapshotBlock := r.chain.GetLatestSnapshotBlock()
-	prevHash, err := getPrevBlockHash(r.chain, types.AddressConsensusGroup)
+	db, err := getVmDb(r.chain, types.AddressConsensusGroup)
 	if err != nil {
 		return nil, err
 	}
-	db, err := vm_db.NewVmDb(r.chain, &types.AddressConsensusGroup, &snapshotBlock.Hash, prevHash)
+	snapshotBlock, err := db.LatestSnapshotBlock()
 	if err != nil {
 		return nil, err
 	}
@@ -91,15 +87,12 @@ func (r *RegisterApi) GetRegistrationList(gid types.Gid, pledgeAddr types.Addres
 	if len(list) > 0 {
 		sort.Sort(byRegistrationWithdrawHeight(list))
 		for i, info := range list {
-			if err != nil {
-				return nil, err
-			}
 			targetList[i] = &RegistrationInfo{
 				Name:           info.Name,
 				NodeAddr:       info.NodeAddr,
 				PledgeAddr:     info.PledgeAddr,
 				PledgeAmount:   *bigIntToString(info.Amount),
-				WithdrawHeight: uint64ToString(info.WithdrawHeight),
+				WithdrawHeight: Uint64ToString(info.WithdrawHeight),
 				WithdrawTime:   getWithdrawTime(snapshotBlock.Timestamp, snapshotBlock.Height, info.WithdrawHeight),
 				CancelTime:     info.CancelTime,
 			}
@@ -109,27 +102,22 @@ func (r *RegisterApi) GetRegistrationList(gid types.Gid, pledgeAddr types.Addres
 }
 
 func (r *RegisterApi) GetAvailableReward(gid types.Gid, name string) (*Reward, error) {
-	ab, err := r.chain.GetLatestAccountBlock(types.AddressConsensusGroup)
+	db, err := getVmDb(r.chain, types.AddressConsensusGroup)
 	if err != nil {
 		return nil, err
 	}
-	var prevHash *types.Hash
-	if ab != nil {
-		prevHash = &ab.Hash
-	}
-	sb := r.chain.GetLatestSnapshotBlock()
-	if sb == nil {
-		return nil, errors.New("unexpected error, latest snapshot block is nil")
-	}
-	vmDb, err := vm_db.NewVmDb(r.chain, &types.AddressConsensusGroup, &sb.Hash, prevHash)
+	info, err := abi.GetRegistration(db, gid, name)
 	if err != nil {
 		return nil, err
 	}
-	info, err := abi.GetRegistration(vmDb, gid, name)
+	if info == nil {
+		return nil, nil
+	}
+	sb, err := db.LatestSnapshotBlock()
 	if err != nil {
 		return nil, err
 	}
-	_, _, reward, drained, err := contracts.CalcReward(util.NewVmConsensusReader(r.cs.SBPReader()), vmDb, info, sb)
+	_, _, reward, drained, err := contracts.CalcReward(util.NewVmConsensusReader(r.cs.SBPReader()), db, info, sb)
 	if err != nil {
 		return nil, err
 	}
@@ -139,34 +127,36 @@ func (r *RegisterApi) GetAvailableReward(gid types.Gid, name string) (*Reward, e
 }
 
 type Reward struct {
-	BlockReward string `json:"blockReward"`
-	VoteReward  string `json:"voteReward"`
-	TotalReward string `json:"totalReward"`
-	Drained     bool   `json:"drained"`
+	BlockReward      string `json:"blockReward"`
+	VoteReward       string `json:"voteReward"`
+	TotalReward      string `json:"totalReward"`
+	BlockNum         string `json:"blockNum"`
+	ExpectedBlockNum string `json:"expectedBlockNum"`
+	Drained          bool   `json:"drained"`
 }
 
 func ToReward(source *contracts.Reward) *Reward {
 	if source == nil {
 		return &Reward{TotalReward: "0",
-			VoteReward:  "0",
-			BlockReward: "0"}
+			VoteReward:       "0",
+			BlockReward:      "0",
+			BlockNum:         "0",
+			ExpectedBlockNum: "0"}
 	} else {
 		return &Reward{TotalReward: *bigIntToString(source.TotalReward),
-			VoteReward:  *bigIntToString(source.VoteReward),
-			BlockReward: *bigIntToString(source.BlockReward)}
+			VoteReward:       *bigIntToString(source.VoteReward),
+			BlockReward:      *bigIntToString(source.BlockReward),
+			BlockNum:         Uint64ToString(source.BlockNum),
+			ExpectedBlockNum: Uint64ToString(source.ExpectedBlockNum)}
 	}
 }
 
 func (r *RegisterApi) GetRewardByDay(gid types.Gid, timestamp int64) (map[string]*Reward, error) {
-	prevHash, err := getPrevBlockHash(r.chain, types.AddressConsensusGroup)
+	db, err := getVmDb(r.chain, types.AddressConsensusGroup)
 	if err != nil {
 		return nil, err
 	}
-	vmDb, err := vm_db.NewVmDb(r.chain, &types.AddressConsensusGroup, &r.chain.GetLatestSnapshotBlock().Hash, prevHash)
-	if err != nil {
-		return nil, err
-	}
-	m, err := contracts.CalcRewardByDay(vmDb, util.NewVmConsensusReader(r.cs.SBPReader()), timestamp)
+	m, err := contracts.CalcRewardByDay(db, util.NewVmConsensusReader(r.cs.SBPReader()), timestamp)
 	if err != nil {
 		return nil, err
 	}
@@ -177,12 +167,35 @@ func (r *RegisterApi) GetRewardByDay(gid types.Gid, timestamp int64) (map[string
 	return rewardMap, nil
 }
 
-func (r *RegisterApi) GetRegistration(name string, gid types.Gid) (*types.Registration, error) {
-	prevHash, err := getPrevBlockHash(r.chain, types.AddressConsensusGroup)
+type RewardInfo struct {
+	RewardMap map[string]*Reward `json:"rewardMap"`
+	StartTime int64              `json:"startTime"`
+	EndTime   int64              `json:"endTime"`
+}
+
+func (r *RegisterApi) GetRewardByIndex(gid types.Gid, indexStr string) (*RewardInfo, error) {
+	index, err := StringToUint64(indexStr)
 	if err != nil {
 		return nil, err
 	}
-	db, err := vm_db.NewVmDb(r.chain, &types.AddressConsensusGroup, &r.chain.GetLatestSnapshotBlock().Hash, prevHash)
+	db, err := getVmDb(r.chain, types.AddressConsensusGroup)
+	if err != nil {
+		return nil, err
+	}
+	m, err := contracts.CalcRewardByDayIndex(db, util.NewVmConsensusReader(r.cs.SBPReader()), index)
+	if err != nil {
+		return nil, err
+	}
+	rewardMap := make(map[string]*Reward, len(m))
+	for name, reward := range m {
+		rewardMap[name] = ToReward(reward)
+	}
+	startTime, endTime := r.cs.SBPReader().GetDayTimeIndex().Index2Time(index)
+	return &RewardInfo{rewardMap, startTime.Unix(), endTime.Unix()}, nil
+}
+
+func (r *RegisterApi) GetRegistration(name string, gid types.Gid) (*types.Registration, error) {
+	db, err := getVmDb(r.chain, types.AddressConsensusGroup)
 	if err != nil {
 		return nil, err
 	}
@@ -198,18 +211,11 @@ func (r *RegisterApi) GetRegisterPledgeAddrList(paramList []*RegistParam) ([]*ty
 	if len(paramList) == 0 {
 		return nil, nil
 	}
-	prevHash, err := getPrevBlockHash(r.chain, types.AddressConsensusGroup)
-	if err != nil {
-		return nil, err
-	}
-	db, err := vm_db.NewVmDb(r.chain, &types.AddressConsensusGroup, &r.chain.GetLatestSnapshotBlock().Hash, prevHash)
+	db, err := getVmDb(r.chain, types.AddressConsensusGroup)
 	if err != nil {
 		return nil, err
 	}
 	addrList := make([]*types.Address, len(paramList))
-	if err != nil {
-		return nil, err
-	}
 	for k, v := range paramList {
 		var r *types.Registration
 		if v.Gid == nil || *v.Gid == types.DELEGATE_GID {

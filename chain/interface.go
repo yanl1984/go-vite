@@ -86,6 +86,8 @@ type Chain interface {
 
 	GetAccountBlockByHeight(addr types.Address, height uint64) (*ledger.AccountBlock, error)
 
+	GetAccountBlockHashByHeight(addr types.Address, height uint64) (*types.Hash, error)
+
 	GetAccountBlockByHash(blockHash types.Hash) (*ledger.AccountBlock, error)
 
 	// query receive block of send block
@@ -103,6 +105,9 @@ type Chain interface {
 
 	// get call depth
 	GetCallDepth(sendBlock types.Hash) (uint16, error)
+
+	// judge the account block is confirmed by the N or more than N snapshot blocks with seed
+	IsSeedConfirmedNTimes(blockHash types.Hash, n uint64) (bool, error)
 
 	// get confirmed times
 	GetConfirmedTimes(blockHash types.Hash) (uint64, error)
@@ -126,6 +131,9 @@ type Chain interface {
 
 	// header without snapshot content
 	GetSnapshotHeaderByHeight(height uint64) (*ledger.SnapshotBlock, error)
+
+	// return snapshot hash
+	GetSnapshotHashByHeight(height uint64) (*types.Hash, error)
 
 	// block contains header、snapshot content
 	GetSnapshotBlockByHeight(height uint64) (*ledger.SnapshotBlock, error)
@@ -159,11 +167,13 @@ type Chain interface {
 
 	GetSnapshotHeadersAfterOrEqualTime(endHashHeight *ledger.HashHeight, startTime *time.Time, producer *types.Address) ([]*ledger.SnapshotBlock, error)
 
-	GetLastSeedSnapshotHeader(producer types.Address) (*ledger.SnapshotBlock, error)
+	GetLastUnpublishedSeedSnapshotHeader(producer types.Address, beforeTime time.Time) (*ledger.SnapshotBlock, error)
 
 	GetRandomSeed(snapshotHash types.Hash, n int) uint64
 
-	GetSnapshotBlockByContractMeta(addr *types.Address, fromHash *types.Hash) (*ledger.SnapshotBlock, error)
+	GetSnapshotBlockByContractMeta(addr types.Address, fromHash types.Hash) (*ledger.SnapshotBlock, error)
+
+	GetSeedConfirmedSnapshotBlock(addr types.Address, fromHash types.Hash) (*ledger.SnapshotBlock, error)
 
 	GetSeed(limitSb *ledger.SnapshotBlock, fromHash types.Hash) (uint64, error)
 
@@ -251,11 +261,17 @@ type Chain interface {
 
 	DeleteOnRoad(toAddress types.Address, sendBlockHash types.Hash)
 
-	GetAccountOnRoadInfo(addr types.Address) (*ledger.AccountInfo, error)
-
 	GetOnRoadBlocksByAddr(addr types.Address, pageNum, pageSize int) ([]*ledger.AccountBlock, error)
 
 	LoadAllOnRoad() (map[types.Address][]types.Hash, error)
+
+	GetAccountOnRoadInfo(addr types.Address) (*ledger.AccountInfo, error)
+
+	GetOnRoadInfoUnconfirmedHashList(addr types.Address) ([]*types.Hash, error)
+
+	UpdateOnRoadInfo(addr types.Address, tkId types.TokenTypeId, number uint64, amount big.Int) error
+
+	ClearOnRoadUnconfirmedCache(addr types.Address, hashList []*types.Hash) error
 
 	// ====== Other ======
 	NewDb(dirName string) (*leveldb.DB, error)

@@ -3,6 +3,7 @@ package node
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/vitelabs/go-vite/common/types"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -34,33 +35,36 @@ type Config struct {
 	KafkaProducers []string `json:"KafkaProducers"`
 
 	// chain
-	LedgerGcRetain uint64 `json:"LedgerGcRetain"`
-	LedgerGc       *bool  `json:"LedgerGc"`
-	OpenPlugins    *bool  `json:"OpenPlugins"`
+	LedgerGcRetain uint64          `json:"LedgerGcRetain"`
+	LedgerGc       *bool           `json:"LedgerGc"`
+	OpenPlugins    *bool           `json:"OpenPlugins"`
+	VmLogWhiteList []types.Address `json:"vmLogWhiteList"` // contract address white list which save VM logs
+	VmLogAll       *bool           `json:"vmLogAll"`       // save all VM logs, it will cost more disk space
 
 	// genesis
 	GenesisFile string `json:"GenesisFile"`
 
 	// p2p
-	Identity        string   `json:"Identity"`
-	PeerKey         string   `json:"PeerKey"`
-	PrivateKey      string   `json:"PrivateKey"`
-	MaxPeers        int      `json:"MaxPeers"`
-	MinPeers        int      `json:"MinPeers"`
-	MaxInboundRatio int      `json:"MaxInboundRatio"`
-	MaxPendingPeers int      `json:"MaxPendingPeers"`
-	BootNodes       []string `json:"BootNodes"`
-	BootSeeds       []string `json:"BootSeeds"`
-	StaticNodes     []string `json:"StaticNodes"`
-	ListenInterface string   `json:"ListenInterface"`
-	Port            int      `json:"Port"`
-	ListenAddress   string   `json:"ListenAddress"`
-	PublicAddress   string   `json:"PublicAddress"`
-	NetID           int      `json:"NetID"`
-	Discover        bool     `json:"Discover"`
-	AccessControl   string   `json:"AccessControl"` // producer special any
-	AccessAllowKeys []string `json:"AccessAllowKeys"`
-	AccessDenyKeys  []string `json:"AccessDenyKeys"`
+	Identity           string   `json:"Identity"`
+	PeerKey            string   `json:"PeerKey"`
+	PrivateKey         string   `json:"PrivateKey"`
+	MaxPeers           int      `json:"MaxPeers"`
+	MinPeers           int      `json:"MinPeers"`
+	MaxInboundRatio    int      `json:"MaxInboundRatio"`
+	MaxPendingPeers    int      `json:"MaxPendingPeers"`
+	BootNodes          []string `json:"BootNodes"`
+	BootSeeds          []string `json:"BootSeeds"`
+	StaticNodes        []string `json:"StaticNodes"`
+	ListenInterface    string   `json:"ListenInterface"`
+	Port               int      `json:"Port"`
+	ListenAddress      string   `json:"ListenAddress"`
+	PublicAddress      string   `json:"PublicAddress"`
+	NetID              int      `json:"NetID"`
+	Discover           bool     `json:"Discover"`
+	AccessControl      string   `json:"AccessControl"` // producer special any
+	AccessAllowKeys    []string `json:"AccessAllowKeys"`
+	AccessDenyKeys     []string `json:"AccessDenyKeys"`
+	BlackBlockHashList []string `json:"BlackBlockHashList"`
 
 	//producer
 	EntropyStorePath     string `json:"EntropyStorePath"`
@@ -152,13 +156,14 @@ func (c *Config) makeNetConfig() *config.Net {
 	}
 
 	return &config.Net{
-		Single:            c.Single,
-		FileListenAddress: fileListenAddress,
-		ForwardStrategy:   c.ForwardStrategy,
-		TraceEnabled:      c.TraceEnabled,
-		AccessControl:     c.AccessControl,
-		AccessAllowKeys:   c.AccessAllowKeys,
-		AccessDenyKeys:    c.AccessDenyKeys,
+		Single:             c.Single,
+		FileListenAddress:  fileListenAddress,
+		ForwardStrategy:    c.ForwardStrategy,
+		TraceEnabled:       c.TraceEnabled,
+		AccessControl:      c.AccessControl,
+		AccessAllowKeys:    c.AccessAllowKeys,
+		AccessDenyKeys:     c.AccessDenyKeys,
+		BlackBlockHashList: c.BlackBlockHashList,
 	}
 }
 
@@ -277,10 +282,17 @@ func (c *Config) makeChainConfig() *config.Chain {
 		openPlugins = *c.OpenPlugins
 	}
 
+	// save all VM logs, it will cost more disk space
+	vmLogAll := false
+	if c.VmLogAll != nil {
+		vmLogAll = *c.VmLogAll
+	}
 	return &config.Chain{
 		LedgerGcRetain: c.LedgerGcRetain,
 		LedgerGc:       ledgerGc,
 		OpenPlugins:    openPlugins,
+		VmLogWhiteList: c.VmLogWhiteList,
+		VmLogAll:       vmLogAll,
 	}
 }
 

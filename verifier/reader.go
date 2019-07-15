@@ -19,9 +19,8 @@ type onRoadPool interface {
 type accountChain interface {
 	vm_db.Chain
 
-	GetConfirmedTimes(blockHash types.Hash) (uint64, error)
-	GetLatestAccountBlock(addr types.Address) (*ledger.AccountBlock, error)
 	IsReceived(sendBlockHash types.Hash) (bool, error)
 	GetReceiveAbBySendAb(sendBlockHash types.Hash) (*ledger.AccountBlock, error)
 	IsGenesisAccountBlock(block types.Hash) bool
+	IsSeedConfirmedNTimes(blockHash types.Hash, n uint64) (bool, error)
 }

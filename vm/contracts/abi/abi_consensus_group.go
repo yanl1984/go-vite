@@ -55,10 +55,12 @@ const (
 	MethodNameCancelVote   = "CancelVote"
 	VariableNameVoteStatus = "voteStatus"
 
-	consensusGroupInfoKeySize = 1 + types.GidSize
-	registerKeySize           = 30
-	registerHisNameKeySize    = types.GidSize + types.AddressSize
-	voteKeySize               = 1 + types.GidSize + types.AddressSize
+	groupInfoKeyPrefixSize    = 1
+	voteKeyPrefixSize         = 1
+	consensusGroupInfoKeySize = groupInfoKeyPrefixSize + types.GidSize                // 11byte, 1 + 10byte gid
+	registerKeySize           = 30                                                    //30byte, 10byte gid + 20byte name hash
+	registerHisNameKeySize    = types.GidSize + types.AddressSize                     //31byte, 10byte gid + 21byte address
+	voteKeySize               = voteKeyPrefixSize + types.GidSize + types.AddressSize //32byte, 0 + 10byte gid + 21 byte address
 )
 
 var (
@@ -106,7 +108,7 @@ func GetConsensusGroupKey(gid types.Gid) []byte {
 	return append(groupInfoKeyPrefix, gid.Bytes()...)
 }
 func GetGidFromConsensusGroupKey(key []byte) types.Gid {
-	gid, _ := types.BytesToGid(key[1:])
+	gid, _ := types.BytesToGid(key[groupInfoKeyPrefixSize:])
 	return gid
 }
 func isConsensusGroupKey(key []byte) bool {
@@ -167,7 +169,7 @@ func GetActiveConsensusGroupList(db StorageDatabase) ([]*types.ConsensusGroupInf
 	for {
 		if !iterator.Next() {
 			if iterator.Error() != nil {
-				return nil, err
+				return nil, iterator.Error()
 			}
 			break
 		}
@@ -230,7 +232,7 @@ func IsActiveRegistration(db StorageDatabase, name string, gid types.Gid) (bool,
 			return registration.IsActive(), nil
 		}
 	}
-	return false, util.ErrDataNotExist
+	return false, nil
 }
 
 func GetAllRegistrationList(db StorageDatabase, gid types.Gid) ([]*types.Registration, error) {
@@ -261,7 +263,7 @@ func getRegistrationList(db StorageDatabase, gid types.Gid, filter bool) ([]*typ
 	for {
 		if !iterator.Next() {
 			if iterator.Error() != nil {
-				return nil, err
+				return nil, iterator.Error()
 			}
 			break
 		}
@@ -302,7 +304,7 @@ func GetRegistrationList(db StorageDatabase, gid types.Gid, pledgeAddr types.Add
 	for {
 		if !iterator.Next() {
 			if iterator.Error() != nil {
-				return nil, err
+				return nil, iterator.Error()
 			}
 			break
 		}
@@ -371,7 +373,7 @@ func GetVoteList(db StorageDatabase, gid types.Gid) ([]*types.VoteInfo, error) {
 	for {
 		if !iterator.Next() {
 			if iterator.Error() != nil {
-				return nil, err
+				return nil, iterator.Error()
 			}
 			break
 		}

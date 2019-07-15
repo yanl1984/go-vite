@@ -342,7 +342,9 @@ func (tab *table) nodes(count int) (nodes []*Node) {
 	tab.rw.RLock()
 	defer tab.rw.RUnlock()
 
-	for _, bkt := range tab.buckets {
+	ids := rand.Perm(tab.bucketNum)
+	for _, idx := range ids {
+		bkt := tab.buckets[idx]
 		ns := bkt.nodes(count)
 		nodes = append(nodes, ns...)
 		count -= len(ns)
@@ -504,7 +506,7 @@ func (tab *table) bubble(id vnode.NodeID) bool {
 	return bkt.bubble(id)
 }
 
-func (tab *table) findNeighbors(target vnode.NodeID, count int) []*Node {
+func (tab *table) findNeighbors(target vnode.NodeID, count int) (nodes []*Node) {
 	nes := closet{
 		nodes: make([]*Node, 0, count),
 		pivot: target,
@@ -515,11 +517,16 @@ func (tab *table) findNeighbors(target vnode.NodeID, count int) []*Node {
 
 	for _, bkt := range tab.buckets {
 		bkt.iterate(func(node *Node) {
-			nes.push(node)
+			if node.Ext != nil {
+				nodes = append(nodes, node)
+			} else {
+				nes.push(node)
+			}
 		})
 	}
 
-	return nes.nodes
+	nodes = append(nodes, nes.nodes...)
+	return nodes
 }
 
 func (tab *table) oldest() (nodes []*Node) {

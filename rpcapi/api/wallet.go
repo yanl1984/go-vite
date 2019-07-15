@@ -193,6 +193,10 @@ func (m WalletApi) RefreshCache() {
 	m.wallet.RefreshCache()
 }
 
+func (m WalletApi) ExtractMnemonic(entropyStore string, passphrase string) (string, error) {
+	return m.wallet.ExtractMnemonic(entropyStore, passphrase)
+}
+
 func (m WalletApi) Unlock(entropyStore string, passphrase string) error {
 	manager, e := m.wallet.GetEntropyStoreManager(entropyStore)
 	if e != nil {
@@ -390,4 +394,21 @@ func (m WalletApi) IsMayValidKeystoreFile(path string) IsMayValidKeystoreFileRes
 
 func (m WalletApi) GetDataDir() string {
 	return m.wallet.GetDataDir()
+}
+
+func (m WalletApi) GetPrivateKey(entropyStore string, passphrase string) (*string, error) {
+	manager, e := m.wallet.GetEntropyStoreManager(entropyStore)
+	if e != nil {
+		return nil, e
+	}
+	err := manager.Unlock(passphrase)
+	if err != nil {
+		return nil, err
+	}
+	pk, err := manager.GetPrivateKey(manager.GetPrimaryAddr())
+	if err != nil {
+		return nil, err
+	}
+	pkStr := hex.EncodeToString(pk)
+	return &pkStr, nil
 }

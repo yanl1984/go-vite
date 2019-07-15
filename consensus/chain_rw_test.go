@@ -4,8 +4,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/vitelabs/go-vite/pool/lock"
-
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/vitelabs/go-vite/chain"
@@ -13,6 +11,7 @@ import (
 	"github.com/vitelabs/go-vite/config/gen"
 	"github.com/vitelabs/go-vite/ledger"
 	"github.com/vitelabs/go-vite/log15"
+	"github.com/vitelabs/go-vite/pool/lock"
 )
 
 func GetConsensusGroupList() ([]*types.ConsensusGroupInfo, error) {
@@ -44,7 +43,9 @@ func testDataDir() string {
 
 func prepareChain() chain.Chain {
 	clearChain(nil)
-	c := chain.NewChain(testDataDir(), nil, config_gen.MakeGenesisConfig(""))
+	cfg := config_gen.MakeGenesisConfig("")
+
+	c := chain.NewChain(testDataDir(), nil, cfg)
 
 	err := c.Init()
 	if err != nil {
@@ -71,9 +72,6 @@ func Test_chainRw(t *testing.T) {
 	c := prepareChain()
 	defer clearChain(c)
 
-	//log := log15.New("unittest", "chainrw")
-	//rw := newChainRw(c, log)
-	//rw.initArray(nil)
 }
 
 func TestChainRw_GetMemberInfo(t *testing.T) {
@@ -105,8 +103,8 @@ func TestChainRw_GetMemberInfo(t *testing.T) {
 }
 
 func TestChainRw_GetMemberInfo2(t *testing.T) {
-	c := NewChain(t, UnitTestDir, GenesisJson)
-	defer ClearChain(UnitTestDir)
+	c := prepareChain()
+	defer clearChain(c)
 	genesis := c.GetGenesisSnapshotBlock()
 	infos, err := c.GetConsensusGroupList(genesis.Hash)
 	if err != nil {
@@ -125,5 +123,20 @@ func TestChainRw_GetMemberInfo2(t *testing.T) {
 		} else {
 			t.FailNow()
 		}
+	}
+}
+
+func TestChainRw_GenLruKey(t *testing.T) {
+	gid := types.SNAPSHOT_GID
+	hash := types.Hash{}
+
+	rw := chainRw{}
+	key := rw.genLruKey(gid, hash)
+
+	result := make(map[interface{}]string)
+	result[key] = "1"
+
+	for k, v := range key {
+		println(k, v)
 	}
 }

@@ -154,7 +154,14 @@ func (m Manager) ListEntropyFilesInStandardDir() ([]string, error) {
 
 	return filenames, nil
 }
+func (m Manager) ExtractMnemonic(entropyStore string, passphrase string) (string, error) {
+	manager, e := m.GetEntropyStoreManager(entropyStore)
+	if e != nil {
+		return "", e
+	}
+	return manager.ExtractMnemonic(passphrase)
 
+}
 func (m *Manager) GetEntropyStoreManager(entropyStore string) (*entropystore.Manager, error) {
 	absPath := entropyStore
 	if !filepath.IsAbs(absPath) {
@@ -244,17 +251,20 @@ func (m Manager) GetDataDir() string {
 	return m.config.DataDir
 }
 
-func (m *Manager) Start() {
+func (m *Manager) Start() error {
 	m.entropyStoreManager = make(map[string]*entropystore.Manager)
 	files, e := m.ListEntropyFilesInStandardDir()
 	if e != nil {
 		m.log.Error("wallet start err", "err", e)
+		return e
 	}
 	for _, entropyStore := range files {
 		if e = m.AddEntropyStore(entropyStore); e != nil {
 			m.log.Error("wallet start AddEntropyStore", "err", e)
+			return e
 		}
 	}
+	return nil
 }
 
 func (m *Manager) Stop() {

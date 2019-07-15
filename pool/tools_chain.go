@@ -16,11 +16,17 @@ import (
 )
 
 type chainDb interface {
+	/*
+	*	Event Manager
+	 */
+	Register(listener ch.EventListener)
+	UnRegister(listener ch.EventListener)
 	InsertAccountBlock(vmAccountBlocks *vm_db.VmAccountBlock) error
 	GetLatestAccountBlock(addr types.Address) (*ledger.AccountBlock, error)
 	GetAccountBlockByHeight(addr types.Address, height uint64) (*ledger.AccountBlock, error)
+	GetAccountBlockHashByHeight(addr types.Address, height uint64) (*types.Hash, error)
 	//DeleteAccountBlocks(addr *types.Address, toHeight uint64) (map[types.Address][]*ledger.AccountBlock, error)
-	GetUnconfirmedBlocks(addr types.Address) []*ledger.AccountBlock
+	GetAllUnconfirmedBlocks() []*ledger.AccountBlock
 	//GetFirstConfirmedAccountBlockBySbHeight(snapshotBlockHeight uint64, addr *types.Address) (*ledger.AccountBlock, error)
 	//GetSnapshotBlockByHeight(height uint64) (*ledger.SnapshotBlock, error)
 	GetSnapshotHeaderByHeight(height uint64) (*ledger.SnapshotBlock, error)
@@ -28,6 +34,7 @@ type chainDb interface {
 	GetSnapshotBlockByHash(hash types.Hash) (*ledger.SnapshotBlock, error)
 	GetLatestSnapshotBlock() *ledger.SnapshotBlock
 	GetSnapshotHeaderByHash(hash types.Hash) (*ledger.SnapshotBlock, error)
+	GetSnapshotHashByHeight(height uint64) (*types.Hash, error)
 	InsertSnapshotBlock(snapshotBlock *ledger.SnapshotBlock) ([]*ledger.AccountBlock, error)
 	DeleteSnapshotBlocksToHeight(toHeight uint64) ([]*ledger.SnapshotChunk, error)
 	DeleteAccountBlocksToHeight(addr types.Address, toHeight uint64) ([]*ledger.AccountBlock, error)
@@ -47,6 +54,7 @@ type chainRw interface {
 
 	head() commonBlock
 	getBlock(height uint64) commonBlock
+	getHash(height uint64) *types.Hash
 }
 
 type accountCh struct {
@@ -59,7 +67,15 @@ type accountCh struct {
 func (accCh *accountCh) insertBlock(b commonBlock) error {
 	monitor.LogEvent("pool", "insertChain")
 	block := b.(*accountPoolBlock)
-	accCh.log.Info("insert account block", "addr", block.block.AccountAddress, "height", block.block.Height, "hash", block.block.Hash)
+	sendInfo := "none"
+	reqInfo := "none"
+	if block.block.IsReceiveBlock() {
+		for _, v := range block.block.SendBlockList {
+			sendInfo += v.Hash.String() + "|"
+		}
+		reqInfo = block.block.FromBlockHash.String()
+	}
+	accCh.log.Info("insert account block", "addr", block.block.AccountAddress, "height", block.block.Height, "hash", block.block.Hash, "sendList", sendInfo, "requestHash", reqInfo)
 	accountBlock := &vm_db.VmAccountBlock{AccountBlock: block.block, VmDb: block.vmBlock}
 	return accCh.rw.InsertAccountBlock(accountBlock)
 }
@@ -95,6 +111,17 @@ func (accCh *accountCh) getBlock(height uint64) commonBlock {
 	return newAccountPoolBlock(block, nil, accCh.version, types.RollbackChain)
 }
 
+func (accCh *accountCh) getHash(height uint64) *types.Hash {
+	if height == types.EmptyHeight {
+		return &types.Hash{}
+	}
+	hash, e := accCh.rw.GetAccountBlockHashByHeight(accCh.address, height)
+	if e != nil {
+		return nil
+	}
+	return hash
+}
+
 func (accCh *accountCh) insertBlocks(bs []commonBlock) error {
 	var blocks []*vm_db.VmAccountBlock
 	for _, b := range bs {
@@ -127,21 +154,26 @@ func (accCh *accountCh) delToHeight(height uint64) ([]commonBlock, map[types.Add
 		results[b.AccountAddress] = append(results[b.AccountAddress], newAccountPoolBlock(b, nil, accCh.version, types.RollbackChain))
 		accCh.log.Info("actual delToHeight", "height", b.Height, "hash", b.Hash, "address", b.AccountAddress)
 	}
-	block, err := accCh.rw.GetLatestAccountBlock(accCh.address)
-	if err != nil {
-		panic(err)
-	}
-	if block == nil && height != 1 {
-		panic(fmt.Sprintf("latest block is nil"))
-	}
-	if block.Height > height {
-		panic(fmt.Sprintf("delete fail.%d-%d", block.Height, height))
+
+	{ // todo delete
+		block, err := accCh.rw.GetLatestAccountBlock(accCh.address)
+		if err != nil {
+			panic(err)
+		}
+		if height == 1 {
+			if block != nil {
+				panic(fmt.Sprintf("latest block should be nil"))
+			}
+		} else {
+			if block == nil {
+				panic(fmt.Sprintf("latest block is nil"))
+			}
+			if block.Height > height {
+				panic(fmt.Sprintf("delete fail.%d-%d", block.Height, height))
+			}
+		}
 	}
 	return nil, results, nil
-}
-
-func (accCh *accountCh) getUnConfirmedBlocks() []*ledger.AccountBlock {
-	return accCh.rw.GetUnconfirmedBlocks(accCh.address)
 }
 
 func (accCh *accountCh) getLatestSnapshotBlock() *ledger.SnapshotBlock {
@@ -188,6 +220,17 @@ func (sCh *snapshotCh) getBlock(height uint64) commonBlock {
 		return nil
 	}
 	return newSnapshotPoolBlock(block, sCh.version, types.QueryChain)
+}
+
+func (sCh *snapshotCh) getHash(height uint64) *types.Hash {
+	if height == types.EmptyHeight {
+		return &types.Hash{}
+	}
+	hash, e := sCh.bc.GetSnapshotHashByHeight(height)
+	if e != nil {
+		return nil
+	}
+	return hash
 }
 
 func (sCh *snapshotCh) head() commonBlock {

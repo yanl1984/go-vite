@@ -23,6 +23,7 @@ type producerSubscribeEvent struct {
 }
 
 func (cs *consensus) VerifySnapshotProducer(header *ledger.SnapshotBlock) (bool, error) {
+	cs.snapshot.verifyProducerAndSeed(header)
 	return cs.snapshot.VerifyProducer(header.Producer(), *header.Timestamp)
 }
 
@@ -118,7 +119,7 @@ func (cs *consensus) Init() error {
 
 	snapshot := newSnapshotCs(cs.rw, cs.mLog)
 	cs.snapshot = snapshot
-	cs.rw.initArray(snapshot)
+	cs.rw.init(snapshot)
 
 	cs.contracts = newContractCs(cs.rw, cs.mLog)
 	err := cs.contracts.LoadGid(types.DELEGATE_GID)
@@ -157,11 +158,13 @@ func (cs *consensus) Start() {
 	})
 
 	cs.rw.Start()
+	//cs.rw.rw.Register(cs)
 }
 
 func (cs *consensus) Stop() {
 	cs.PreStop()
 	defer cs.PostStop()
+	//cs.rw.rw.UnRegister(cs)
 	cs.rw.Stop()
 	close(cs.closed)
 	cs.wg.Wait()

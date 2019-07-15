@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/vitelabs/go-vite/monitor"
+
 	"github.com/vitelabs/go-vite/crypto/ed25519"
 
 	"github.com/vitelabs/go-vite/wallet/hd-bip/derivation"
@@ -245,6 +247,7 @@ func (node *Node) Start() error {
 		log.Error(fmt.Sprintf("Node startRPC error: %v", err))
 		return err
 	}
+	monitor.InitNTPChecker(log)
 
 	return nil
 }
@@ -330,7 +333,10 @@ func (node *Node) WalletManager() *wallet.Manager {
 
 //wallet start
 func (node *Node) startWallet() (err error) {
-	node.walletManager.Start()
+	err = node.walletManager.Start()
+	if err != nil {
+		return
+	}
 	//unlock account
 	if node.config.EntropyStorePath != "" {
 

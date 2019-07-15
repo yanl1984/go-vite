@@ -291,6 +291,12 @@ func (bp *blockPool) delHashFromCompound(hash types.Hash) {
 	bp.compoundBlocks.Delete(hash)
 }
 
+func (bp *blockPool) size() int {
+	bp.pendingMu.Lock()
+	defer bp.pendingMu.Unlock()
+	return len(bp.freeBlocks)
+}
+
 func (bcp *BCPool) addBlock(block commonBlock) {
 	bcp.blockpool.pendingMu.Lock()
 	defer bcp.blockpool.pendingMu.Unlock()
@@ -389,7 +395,7 @@ func (bcp *BCPool) loopAppendChains() int {
 			if err == nil {
 				bcp.delSnippet(w)
 				// todo
-				bcp.log.Info(fmt.Sprintf("insert new chain[%s][%s][%s],[%s][%s][%s]", c.ID(), c.SprintHead(), c.SprintTail(), newChain.ID(), newChain.SprintHead(), newChain.SprintTail()))
+				bcp.log.Debug(fmt.Sprintf("insert new chain[%s][%s][%s],[%s][%s][%s]", c.ID(), c.SprintHead(), c.SprintTail(), newChain.ID(), newChain.SprintHead(), newChain.SprintTail()))
 			}
 			continue
 		}
@@ -541,6 +547,15 @@ func (bcp *BCPool) delSnippet(c *snippetChain) {
 	bcp.blockpool.delFromCompound(c.heightBlocks)
 }
 func (bcp *BCPool) info() map[string]interface{} {
+	bcp.blockpool.pendingMu.Lock()
+	defer bcp.blockpool.pendingMu.Unlock()
+
+	bcp.chainHeadMu.Lock()
+	defer bcp.chainHeadMu.Unlock()
+
+	bcp.chainTailMu.Lock()
+	defer bcp.chainTailMu.Unlock()
+
 	result := make(map[string]interface{})
 	bp := bcp.blockpool
 	cp := bcp.chainpool
@@ -567,9 +582,19 @@ func (bcp *BCPool) info() map[string]interface{} {
 	return result
 }
 
-func (bcp *BCPool) detailChain(id string) map[string]interface{} {
-	// todo
-	return nil
+func (bcp *BCPool) detailChain(id string, height uint64) map[string]interface{} {
+	result := tree.PrintTree(bcp.chainpool.tree)
+	if height != 0 {
+		for _, v := range bcp.chainpool.tree.Branches() {
+			if v.ID() == id {
+				knot := v.GetKnot(height, false)
+				if knot != nil {
+					result["block"] = knot
+				}
+			}
+		}
+	}
+	return result
 }
 func (bcp *BCPool) checkPool() {
 	bcp.chainHeadMu.Lock()

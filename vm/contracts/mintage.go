@@ -19,11 +19,14 @@ func (p *MethodMint) GetFee(block *ledger.AccountBlock) (*big.Int, error) {
 	}
 	return new(big.Int).Set(mintageFee), nil
 }
-func (p *MethodMint) GetRefundData() ([]byte, bool) {
-	return []byte{1}, false
+func (p *MethodMint) GetRefundData(sendBlock *ledger.AccountBlock) ([]byte, bool) {
+	return []byte{}, false
 }
-func (p *MethodMint) GetSendQuota(data []byte) (uint64, error) {
+func (p *MethodMint) GetSendQuota(data []byte, gasTable *util.GasTable) (uint64, error) {
 	return MintGas, nil
+}
+func (p *MethodMint) GetReceiveQuota() uint64 {
+	return 0
 }
 func (p *MethodMint) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
 	param := new(abi.ParamMintage)
@@ -77,15 +80,13 @@ func (p *MethodMint) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBl
 	abi.ABIMintage.UnpackMethod(param, abi.MethodNameMint, sendBlock.Data)
 	tokenId := abi.NewTokenId(sendBlock.AccountAddress, block.Height, sendBlock.Hash)
 	key := abi.GetMintageKey(tokenId)
-	v, err := db.GetValue(key)
-	util.DealWithErr(err)
+	v := util.GetValue(db, key)
 	if len(v) > 0 {
 		return nil, util.ErrIdCollision
 	}
 	nextIndex := uint16(0)
 	nextIndexKey := abi.GetNextIndexKey(param.TokenSymbol)
-	nextV, err := db.GetValue(nextIndexKey)
-	util.DealWithErr(err)
+	nextV := util.GetValue(db, nextIndexKey)
 	if len(nextV) > 0 {
 		nextIndexPtr := new(uint16)
 		abi.ABIMintage.UnpackVariable(nextIndexPtr, abi.VariableNameTokenNameIndex, nextV)
@@ -96,8 +97,7 @@ func (p *MethodMint) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBl
 	}
 
 	ownerTokenIdListKey := abi.GetOwnerTokenIdListKey(sendBlock.AccountAddress)
-	oldIdList, err := db.GetValue(ownerTokenIdListKey)
-	util.DealWithErr(err)
+	oldIdList := util.GetValue(db, ownerTokenIdListKey)
 
 	tokenInfo, _ := abi.ABIMintage.PackVariable(
 		abi.VariableNameTokenInfo,
@@ -110,10 +110,10 @@ func (p *MethodMint) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBl
 		param.MaxSupply,
 		param.OwnerBurnOnly,
 		nextIndex)
-	db.SetValue(key, tokenInfo)
-	db.SetValue(ownerTokenIdListKey, abi.AppendTokenId(oldIdList, tokenId))
+	util.SetValue(db, key, tokenInfo)
+	util.SetValue(db, ownerTokenIdListKey, abi.AppendTokenId(oldIdList, tokenId))
 	nextV, _ = abi.ABIMintage.PackVariable(abi.VariableNameTokenNameIndex, nextIndex+1)
-	db.SetValue(nextIndexKey, nextV)
+	util.SetValue(db, nextIndexKey, nextV)
 
 	db.AddLog(util.NewLog(abi.ABIMintage, abi.EventNameMint, tokenId))
 	return []*ledger.AccountBlock{
@@ -134,11 +134,14 @@ type MethodIssue struct{}
 func (p *MethodIssue) GetFee(block *ledger.AccountBlock) (*big.Int, error) {
 	return big.NewInt(0), nil
 }
-func (p *MethodIssue) GetRefundData() ([]byte, bool) {
-	return []byte{4}, false
+func (p *MethodIssue) GetRefundData(sendBlock *ledger.AccountBlock) ([]byte, bool) {
+	return []byte{}, false
 }
-func (p *MethodIssue) GetSendQuota(data []byte) (uint64, error) {
+func (p *MethodIssue) GetSendQuota(data []byte, gasTable *util.GasTable) (uint64, error) {
 	return IssueGas, nil
+}
+func (p *MethodIssue) GetReceiveQuota() uint64 {
+	return 0
 }
 func (p *MethodIssue) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
 	param := new(abi.ParamIssue)
@@ -172,7 +175,7 @@ func (p *MethodIssue) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendB
 		oldTokenInfo.MaxSupply,
 		oldTokenInfo.OwnerBurnOnly,
 		oldTokenInfo.Index)
-	db.SetValue(abi.GetMintageKey(param.TokenId), newTokenInfo)
+	util.SetValue(db, abi.GetMintageKey(param.TokenId), newTokenInfo)
 
 	db.AddLog(util.NewLog(abi.ABIMintage, abi.EventNameIssue, param.TokenId))
 	return []*ledger.AccountBlock{
@@ -192,11 +195,14 @@ type MethodBurn struct{}
 func (p *MethodBurn) GetFee(block *ledger.AccountBlock) (*big.Int, error) {
 	return big.NewInt(0), nil
 }
-func (p *MethodBurn) GetRefundData() ([]byte, bool) {
-	return []byte{5}, false
+func (p *MethodBurn) GetRefundData(sendBlock *ledger.AccountBlock) ([]byte, bool) {
+	return []byte{}, false
 }
-func (p *MethodBurn) GetSendQuota(data []byte) (uint64, error) {
+func (p *MethodBurn) GetSendQuota(data []byte, gasTable *util.GasTable) (uint64, error) {
 	return BurnGas, nil
+}
+func (p *MethodBurn) GetReceiveQuota() uint64 {
+	return 0
 }
 func (p *MethodBurn) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
 	if block.Amount.Sign() <= 0 {
@@ -224,7 +230,7 @@ func (p *MethodBurn) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBl
 		oldTokenInfo.OwnerBurnOnly,
 		oldTokenInfo.Index)
 	util.SubBalance(db, &sendBlock.TokenId, sendBlock.Amount)
-	db.SetValue(abi.GetMintageKey(sendBlock.TokenId), newTokenInfo)
+	util.SetValue(db, abi.GetMintageKey(sendBlock.TokenId), newTokenInfo)
 
 	db.AddLog(util.NewLog(abi.ABIMintage, abi.EventNameBurn, sendBlock.TokenId, sendBlock.AccountAddress, sendBlock.Amount))
 	return nil, nil
@@ -235,11 +241,14 @@ type MethodTransferOwner struct{}
 func (p *MethodTransferOwner) GetFee(block *ledger.AccountBlock) (*big.Int, error) {
 	return big.NewInt(0), nil
 }
-func (p *MethodTransferOwner) GetRefundData() ([]byte, bool) {
-	return []byte{6}, false
+func (p *MethodTransferOwner) GetRefundData(sendBlock *ledger.AccountBlock) ([]byte, bool) {
+	return []byte{}, false
 }
-func (p *MethodTransferOwner) GetSendQuota(data []byte) (uint64, error) {
+func (p *MethodTransferOwner) GetSendQuota(data []byte, gasTable *util.GasTable) (uint64, error) {
 	return TransferOwnerGas, nil
+}
+func (p *MethodTransferOwner) GetReceiveQuota() uint64 {
+	return 0
 }
 func (p *MethodTransferOwner) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
 	if block.Amount.Sign() > 0 {
@@ -275,16 +284,14 @@ func (p *MethodTransferOwner) DoReceive(db vm_db.VmDb, block *ledger.AccountBloc
 		oldTokenInfo.MaxSupply,
 		oldTokenInfo.OwnerBurnOnly,
 		oldTokenInfo.Index)
-	db.SetValue(abi.GetMintageKey(param.TokenId), newTokenInfo)
+	util.SetValue(db, abi.GetMintageKey(param.TokenId), newTokenInfo)
 
 	oldKey := abi.GetOwnerTokenIdListKey(sendBlock.AccountAddress)
-	oldIdList, err := db.GetValue(oldKey)
-	util.DealWithErr(err)
-	db.SetValue(oldKey, abi.DeleteTokenId(oldIdList, param.TokenId))
+	oldIdList := util.GetValue(db, oldKey)
+	util.SetValue(db, oldKey, abi.DeleteTokenId(oldIdList, param.TokenId))
 	newKey := abi.GetOwnerTokenIdListKey(param.NewOwner)
-	newIdList, err := db.GetValue(newKey)
-	util.DealWithErr(err)
-	db.SetValue(newKey, abi.AppendTokenId(newIdList, param.TokenId))
+	newIdList := util.GetValue(db, newKey)
+	util.SetValue(db, newKey, abi.AppendTokenId(newIdList, param.TokenId))
 
 	db.AddLog(util.NewLog(abi.ABIMintage, abi.EventNameTransferOwner, param.TokenId, param.NewOwner))
 	return nil, nil
@@ -295,11 +302,14 @@ type MethodChangeTokenType struct{}
 func (p *MethodChangeTokenType) GetFee(block *ledger.AccountBlock) (*big.Int, error) {
 	return big.NewInt(0), nil
 }
-func (p *MethodChangeTokenType) GetRefundData() ([]byte, bool) {
-	return []byte{7}, false
+func (p *MethodChangeTokenType) GetRefundData(sendBlock *ledger.AccountBlock) ([]byte, bool) {
+	return []byte{}, false
 }
-func (p *MethodChangeTokenType) GetSendQuota(data []byte) (uint64, error) {
+func (p *MethodChangeTokenType) GetSendQuota(data []byte, gasTable *util.GasTable) (uint64, error) {
 	return ChangeTokenTypeGas, nil
+}
+func (p *MethodChangeTokenType) GetReceiveQuota() uint64 {
+	return 0
 }
 func (p *MethodChangeTokenType) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
 	tokenId := new(types.TokenTypeId)
@@ -332,7 +342,7 @@ func (p *MethodChangeTokenType) DoReceive(db vm_db.VmDb, block *ledger.AccountBl
 		helper.Big0,
 		false,
 		oldTokenInfo.Index)
-	db.SetValue(abi.GetMintageKey(*tokenId), newTokenInfo)
+	util.SetValue(db, abi.GetMintageKey(*tokenId), newTokenInfo)
 
 	db.AddLog(util.NewLog(abi.ABIMintage, abi.EventNameChangeTokenType, *tokenId))
 	return nil, nil
@@ -343,36 +353,41 @@ type MethodGetTokenInfo struct{}
 func (p *MethodGetTokenInfo) GetFee(block *ledger.AccountBlock) (*big.Int, error) {
 	return big.NewInt(0), nil
 }
-func (p *MethodGetTokenInfo) GetRefundData() ([]byte, bool) {
-	callbackData, _ := abi.ABIMintage.PackCallback(abi.MethodNameGetTokenInfo, false, uint8(0), "", uint16(0))
+func (p *MethodGetTokenInfo) GetRefundData(sendBlock *ledger.AccountBlock) ([]byte, bool) {
+	param := new(abi.ParamGetTokenInfo)
+	abi.ABIMintage.UnpackMethod(param, abi.MethodNameGetTokenInfo, sendBlock.Data)
+	callbackData, _ := abi.ABIMintage.PackCallback(abi.MethodNameGetTokenInfo, param.TokenId, param.Bid, false, uint8(0), "", uint16(0), types.AddressMintage)
 	return callbackData, true
 }
-func (p *MethodGetTokenInfo) GetSendQuota(data []byte) (uint64, error) {
+func (p *MethodGetTokenInfo) GetSendQuota(data []byte, gasTable *util.GasTable) (uint64, error) {
 	return GetTokenInfoGas, nil
 }
+func (p *MethodGetTokenInfo) GetReceiveQuota() uint64 {
+	return 0
+}
 func (p *MethodGetTokenInfo) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
-	tokenId := new(types.TokenTypeId)
-	err := abi.ABIMintage.UnpackMethod(tokenId, abi.MethodNameGetTokenInfo, block.Data)
+	param := new(abi.ParamGetTokenInfo)
+	err := abi.ABIMintage.UnpackMethod(param, abi.MethodNameGetTokenInfo, block.Data)
 	if err != nil {
 		return err
 	}
-	if tokenId == nil || block.Amount.Sign() > 0 {
+	if param == nil || block.Amount.Sign() > 0 {
 		return util.ErrInvalidMethodParam
 	}
-	block.Data, _ = abi.ABIMintage.PackMethod(abi.MethodNameGetTokenInfo, &tokenId)
+	block.Data, _ = abi.ABIMintage.PackMethod(abi.MethodNameGetTokenInfo, param.TokenId, param.Bid)
 	return nil
 }
 
 func (p *MethodGetTokenInfo) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) ([]*ledger.AccountBlock, error) {
-	tokenId := new(types.TokenTypeId)
-	abi.ABIMintage.UnpackMethod(tokenId, abi.MethodNameGetTokenInfo, block.Data)
-	tokenInfo, err := abi.GetTokenById(db, *tokenId)
+	param := new(abi.ParamGetTokenInfo)
+	abi.ABIMintage.UnpackMethod(param, abi.MethodNameGetTokenInfo, sendBlock.Data)
+	tokenInfo, err := abi.GetTokenById(db, param.TokenId)
 	util.DealWithErr(err)
 	var callbackData []byte
 	if tokenInfo != nil {
-		callbackData, _ = abi.ABIMintage.PackCallback(abi.MethodNameGetTokenInfo, true, tokenInfo.Decimals, tokenInfo.TokenSymbol, tokenInfo.Index)
+		callbackData, _ = abi.ABIMintage.PackCallback(abi.MethodNameGetTokenInfo, param.TokenId, param.Bid, true, tokenInfo.Decimals, tokenInfo.TokenSymbol, tokenInfo.Index, tokenInfo.Owner)
 	} else {
-		callbackData, _ = abi.ABIMintage.PackCallback(abi.MethodNameGetTokenInfo, false, uint8(0), "", uint16(0))
+		callbackData, _ = abi.ABIMintage.PackCallback(abi.MethodNameGetTokenInfo, param.TokenId, param.Bid, false, uint8(0), "", uint16(0), types.AddressMintage)
 	}
 	return []*ledger.AccountBlock{
 		{

@@ -62,6 +62,7 @@ func (c *ContractApi) GetCreateContractParams(abiStr string, params []string) ([
 type CreateContractDataParam struct {
 	Gid         types.Gid `json:"gid"`
 	ConfirmTime uint8     `json:"confirmTime"`
+	SeedCount   uint8     `json:"seedCount"`
 	QuotaRatio  uint8     `json:"quotaRatio"`
 	HexCode     string    `json:"hexCode"`
 	Params      []byte    `json:"params"`
@@ -75,11 +76,26 @@ func (c *ContractApi) GetCreateContractData(param CreateContractDataParam) ([]by
 	if !util.IsValidQuotaRatio(param.QuotaRatio) {
 		return nil, util.ErrInvalidQuotaRatio
 	}
+	sb := c.chain.GetLatestSnapshotBlock()
 	if len(param.Params) > 0 {
-		data := util.GetCreateContractData(helper.JoinBytes(code, param.Params), util.SolidityPPContractType, param.ConfirmTime, param.QuotaRatio, param.Gid)
+		data := util.GetCreateContractData(
+			helper.JoinBytes(code, param.Params),
+			util.SolidityPPContractType,
+			param.ConfirmTime,
+			param.SeedCount,
+			param.QuotaRatio,
+			param.Gid,
+			sb.Height)
 		return data, nil
 	} else {
-		data := util.GetCreateContractData(code, util.SolidityPPContractType, param.ConfirmTime, param.QuotaRatio, param.Gid)
+		data := util.GetCreateContractData(
+			code,
+			util.SolidityPPContractType,
+			param.ConfirmTime,
+			param.SeedCount,
+			param.QuotaRatio,
+			param.Gid,
+			sb.Height)
 		return data, nil
 	}
 }
@@ -117,9 +133,10 @@ func (c *ContractApi) GetCallOffChainData(abiStr string, offChainName string, pa
 }
 
 type CallOffChainMethodParam struct {
-	SelfAddr     types.Address
-	OffChainCode string
-	Data         []byte
+	SelfAddr          types.Address `json:"selfAddr"`
+	OffChainCode      string        `json:"offchainCode"`
+	OffChainCodeBytes []byte        `json:"offchainCodeBytes"`
+	Data              []byte        `json:"data"`
 }
 
 func (c *ContractApi) CallOffChainMethod(param CallOffChainMethodParam) ([]byte, error) {
@@ -131,11 +148,16 @@ func (c *ContractApi) CallOffChainMethod(param CallOffChainMethodParam) ([]byte,
 	if err != nil {
 		return nil, err
 	}
-	coedBytes, err := hex.DecodeString(param.OffChainCode)
-	if err != nil {
-		return nil, err
+	var codeBytes []byte
+	if len(param.OffChainCode) > 0 {
+		codeBytes, err = hex.DecodeString(param.OffChainCode)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		codeBytes = param.OffChainCodeBytes
 	}
-	return vm.NewVM(nil).OffChainReader(db, coedBytes, param.Data)
+	return vm.NewVM(nil).OffChainReader(db, codeBytes, param.Data)
 }
 
 func (c *ContractApi) GetContractStorage(addr types.Address, prefix string) (map[string]string, error) {
@@ -151,9 +173,13 @@ func (c *ContractApi) GetContractStorage(addr types.Address, prefix string) (map
 	if err != nil {
 		return nil, err
 	}
+	defer iter.Release()
 	m := make(map[string]string)
 	for {
 		if !iter.Next() {
+			if iter.Error() != nil {
+				return nil, iter.Error()
+			}
 			return m, nil
 		}
 		if len(iter.Key()) > 0 && len(iter.Value()) > 0 {
@@ -166,6 +192,7 @@ type ContractInfo struct {
 	Code        []byte    `json:"code"`
 	Gid         types.Gid `json:"gid"`
 	ConfirmTime uint8     `json:"confirmTime"`
+	SeedCount   uint8     `json:"seedCount"`
 	QuotaRatio  uint8     `json:"quotaRatio"`
 }
 
@@ -178,5 +205,8 @@ func (c *ContractApi) GetContractInfo(addr types.Address) (*ContractInfo, error)
 	if err != nil {
 		return nil, err
 	}
-	return &ContractInfo{Code: code, Gid: meta.Gid, ConfirmTime: meta.SendConfirmedTimes, QuotaRatio: meta.QuotaRatio}, nil
+	if meta == nil {
+		return nil, nil
+	}
+	return &ContractInfo{Code: code, Gid: meta.Gid, ConfirmTime: meta.SendConfirmedTimes, SeedCount: meta.SeedConfirmedTimes, QuotaRatio: meta.QuotaRatio}, nil
 }

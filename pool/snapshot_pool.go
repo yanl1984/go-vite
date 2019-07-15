@@ -259,20 +259,16 @@ func (sp *snapshotPool) snapshotInsertItems(p batch.Batch, items []batch.Item, v
 			case verifier.FAIL:
 				sp.log.Warn("add snapshot block to blacklist.", "hash", block.Hash(), "height", block.Height())
 				sp.hashBlacklist.AddAddTimeout(block.Hash(), time.Second*10)
-				// todo
-				panic(stat.errMsg())
-				return nil, item, errors.New("fail verifier")
+				return nil, item, errors.New("fail verifier" + stat.errMsg())
 			case verifier.PENDING:
 				sp.log.Error("snapshot db.", "hash", block.Hash(), "height", block.Height())
-				// todo
-				panic(stat.errMsg())
-				return nil, item, errors.New("fail verifier db")
+				return nil, item, errors.New("fail verifier db" + stat.errMsg())
 			}
 			accBlocks, err := sp.snapshotWriteToChain(block)
 			if err != nil {
 				return nil, item, err
 			}
-			sp.log.Info(fmt.Sprintf("[%d]insert snapshot block[%d-%s]%d-%d success.", p.Id(), block.Height(), block.Hash(), i, len(items)))
+			sp.log.Info(fmt.Sprintf("[%d]insert snapshot block[%d-%s]%d-%d [latency:%s]success.", p.Id(), block.Height(), block.Hash(), i, len(items), block.Latency()))
 			if len(accBlocks) > 0 {
 				return accBlocks, item, err
 			}

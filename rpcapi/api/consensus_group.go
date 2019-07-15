@@ -6,7 +6,6 @@ import (
 	"github.com/vitelabs/go-vite/log15"
 	"github.com/vitelabs/go-vite/vite"
 	"github.com/vitelabs/go-vite/vm/contracts/abi"
-	"github.com/vitelabs/go-vite/vm_db"
 	"math/big"
 )
 
@@ -125,7 +124,7 @@ func newConsensusGroup(source *types.ConsensusGroupInfo) *ConsensusGroup {
 		RegisterConditionId: source.RegisterConditionId,
 		VoteConditionId:     source.VoteConditionId,
 		Owner:               source.Owner,
-		WithdrawHeight:      uint64ToString(source.WithdrawHeight),
+		WithdrawHeight:      Uint64ToString(source.WithdrawHeight),
 	}
 	if source.PledgeAmount != nil {
 		target.PledgeAmount = *bigIntToString(source.PledgeAmount)
@@ -133,18 +132,13 @@ func newConsensusGroup(source *types.ConsensusGroupInfo) *ConsensusGroup {
 	if param, err := abi.GetRegisterOfPledgeInfo(source.RegisterConditionParam); err == nil {
 		target.RegisterConditionParam = &RegisterConditionParam{PledgeAmount: *bigIntToString(param.PledgeAmount),
 			PledgeToken:  param.PledgeToken,
-			PledgeHeight: uint64ToString(param.PledgeHeight)}
+			PledgeHeight: Uint64ToString(param.PledgeHeight)}
 	}
 	return target
 }
 
 func (c *ConsensusGroupApi) GetConsensusGroupById(gid types.Gid) (*ConsensusGroup, error) {
-	snapshotBlock := c.chain.GetLatestSnapshotBlock()
-	prevHash, err := getPrevBlockHash(c.chain, types.AddressConsensusGroup)
-	if err != nil {
-		return nil, err
-	}
-	db, err := vm_db.NewVmDb(c.chain, &types.AddressConsensusGroup, &snapshotBlock.Hash, prevHash)
+	db, err := getVmDb(c.chain, types.AddressConsensusGroup)
 	if err != nil {
 		return nil, err
 	}
@@ -156,12 +150,7 @@ func (c *ConsensusGroupApi) GetConsensusGroupById(gid types.Gid) (*ConsensusGrou
 }
 
 func (c *ConsensusGroupApi) GetConsensusGroupList() ([]*ConsensusGroup, error) {
-	snapshotBlock := c.chain.GetLatestSnapshotBlock()
-	prevHash, err := getPrevBlockHash(c.chain, types.AddressConsensusGroup)
-	if err != nil {
-		return nil, err
-	}
-	db, err := vm_db.NewVmDb(c.chain, &types.AddressConsensusGroup, &snapshotBlock.Hash, prevHash)
+	db, err := getVmDb(c.chain, types.AddressConsensusGroup)
 	if err != nil {
 		return nil, err
 	}

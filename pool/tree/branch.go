@@ -5,10 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/vitelabs/go-vite/common/types"
-
-	"github.com/go-errors/errors"
-	"github.com/vitelabs/go-vite/monitor"
 )
 
 type branch struct {
@@ -26,6 +24,10 @@ func (self *branch) Size() uint64 {
 
 func (self *branch) GetKnotAndBranch(height uint64) (Knot, Branch) {
 	return self.getKnotAndBranch(height)
+}
+
+func (self *branch) GetHashAndBranch(height uint64) (*types.Hash, Branch) {
+	return self.getHashAndBranch(height)
 }
 
 func (self *branch) AddHead(k Knot) error {
@@ -57,6 +59,14 @@ func (self *branch) GetKnot(height uint64, flag bool) Knot {
 	}
 	return w
 }
+func (self *branch) GetHash(height uint64, flag bool) *types.Hash {
+	w := self.getKnot(height, flag)
+	if w == nil {
+		return nil
+	}
+	hash := w.Hash()
+	return &hash
+}
 
 func (self *branch) ID() string {
 	return self.branchId()
@@ -75,7 +85,7 @@ func (self *branch) prune(t *tree) {
 		selfB := self.getKnot(i, false)
 		block, b := self.root.GetKnotAndBranch(i)
 		if block != nil && block.Hash() == selfB.Hash() {
-			fmt.Printf("remove tail[%s][%s][%d-%s]\n", self.branchId(), self.root.ID(), block.Height(), block.Hash())
+			t.log.Info(fmt.Sprintf("remove tail[%s][%s][%d-%s]\n", self.branchId(), self.root.ID(), block.Height(), block.Hash()))
 			self.RemoveTail(block)
 			if b != nil && b.Type() == Disk {
 				// notify tree
@@ -170,7 +180,7 @@ func (self *branch) exchangeRoot(root *branch, t *tree) error {
 		root.updateRoot(root.root, self)
 		return nil
 	} else {
-		fmt.Printf("exchangeRoot fail, %s", PrintTreeJson(t))
+		t.log.Info(fmt.Sprintf("exchangeRoot fail, %s", PrintTreeJson(t)))
 		return errors.Errorf("err for exchangeRoot.root:%s, self:%s, rootTail:%s, rootHead:%s, selfTail:%s, selfHead:%s",
 			root.ID(), self.ID(), root.SprintTail(), root.SprintHead(), self.SprintTail(), self.SprintHead())
 
@@ -235,7 +245,38 @@ func (self *branch) getKnotAndBranch(height uint64) (Knot, Branch) {
 				return nil, nil
 			}
 			if _, ok := refers[refer.ID()]; ok {
-				monitor.LogEvent("pool", "GetKnotError")
+				return nil, nil
+			}
+			refers[refer.ID()] = refer
+			refer = refer.Root()
+		}
+	}
+	return nil, nil
+}
+
+func (self *branch) getHashAndBranch(height uint64) (*types.Hash, Branch) {
+	if height > self.headHeight {
+		return nil, nil
+	}
+	block := self.getHeightBlock(height)
+	if block != nil {
+		hash := block.Hash()
+		return &hash, self
+	}
+	refers := make(map[string]Branch)
+	refer := self.root
+	for {
+		if refer == nil {
+			return nil, nil
+		}
+		b := refer.GetHash(height, false)
+		if b != nil {
+			return b, refer
+		} else {
+			if refer.Type() == Disk {
+				return nil, nil
+			}
+			if _, ok := refers[refer.ID()]; ok {
 				return nil, nil
 			}
 			refers[refer.ID()] = refer

@@ -17,6 +17,8 @@ type Chain interface {
 
 	GetQuotaUsedList(address types.Address) []types.QuotaInfo
 
+	GetGlobalQuota() types.QuotaInfo
+
 	GetBalance(addr types.Address, tokenId types.TokenTypeId) (*big.Int, error)
 
 	GetContractCode(contractAddr types.Address) ([]byte, error)
@@ -25,11 +27,15 @@ type Chain interface {
 
 	GetConfirmSnapshotHeaderByAbHash(abHash types.Hash) (*ledger.SnapshotBlock, error)
 
+	GetConfirmedTimes(blockHash types.Hash) (uint64, error)
+
 	GetContractMetaInSnapshot(contractAddress types.Address, snapshotHeight uint64) (meta *ledger.ContractMeta, err error)
 
 	GetSnapshotHeaderByHash(hash types.Hash) (*ledger.SnapshotBlock, error)
 
 	GetAccountBlockByHash(blockHash types.Hash) (*ledger.AccountBlock, error)
+
+	GetLatestAccountBlock(addr types.Address) (*ledger.AccountBlock, error)
 
 	GetVmLogList(logHash *types.Hash) (ledger.VmLogList, error)
 
@@ -45,23 +51,32 @@ type Chain interface {
 
 	GetCallDepth(sendBlockHash types.Hash) (uint16, error)
 
-	GetSnapshotBlockByContractMeta(addr *types.Address, fromHash *types.Hash) (*ledger.SnapshotBlock, error)
+	GetSnapshotBlockByContractMeta(addr types.Address, fromHash types.Hash) (*ledger.SnapshotBlock, error)
+
+	GetSeedConfirmedSnapshotBlock(addr types.Address, fromHash types.Hash) (*ledger.SnapshotBlock, error)
+
 	GetSeed(limitSb *ledger.SnapshotBlock, fromHash types.Hash) (uint64, error)
 }
 
 type VmDb interface {
 	// ====== Context ======
+	CanWrite() bool
+
 	Address() *types.Address
 
 	LatestSnapshotBlock() (*ledger.SnapshotBlock, error)
 
 	PrevAccountBlock() (*ledger.AccountBlock, error)
 
+	GetLatestAccountBlock(addr types.Address) (*ledger.AccountBlock, error)
+
 	IsContractAccount() (bool, error)
 
 	GetCallDepth(sendBlockHash *types.Hash) (uint16, error)
 
 	GetQuotaUsedList(addr types.Address) []types.QuotaInfo
+
+	GetGlobalQuota() types.QuotaInfo
 
 	// ====== State ======
 	GetReceiptHash() *types.Hash
@@ -102,6 +117,8 @@ type VmDb interface {
 	GetGenesisSnapshotBlock() *ledger.SnapshotBlock
 
 	GetConfirmSnapshotHeader(blockHash types.Hash) (*ledger.SnapshotBlock, error)
+
+	GetConfirmedTimes(blockHash types.Hash) (uint64, error)
 
 	// ====== Meta & Code ======
 	SetContractMeta(toAddr types.Address, meta *ledger.ContractMeta)

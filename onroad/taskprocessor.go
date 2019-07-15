@@ -9,6 +9,7 @@ import (
 	"time"
 )
 
+// ContractTaskProcessor is to handle onroad and generate new contract receive block.
 type ContractTaskProcessor struct {
 	taskID int
 	worker *ContractWorker
@@ -16,6 +17,7 @@ type ContractTaskProcessor struct {
 	log log15.Logger
 }
 
+// NewContractTaskProcessor creates a ContractTaskProcessor.
 func NewContractTaskProcessor(worker *ContractWorker, index int) *ContractTaskProcessor {
 	return &ContractTaskProcessor{
 		taskID: index,
@@ -67,14 +69,19 @@ func (tp *ContractTaskProcessor) processOneAddress(task *contractTask) (canConti
 	if sBlock == nil {
 		return false
 	}
-	blog := tp.log.New("l", sBlock.Hash, "caller", sBlock.AccountAddress, "contract", task.Addr)
+	blog := tp.log.New("s", sBlock.Hash, "caller", sBlock.AccountAddress, "contract", task.Addr)
 
-	// fixme checkReceivedSuccess
-	// fixme: check confirmedTimes, consider sb trigger
-	if err := tp.worker.verifyConfirmedTimes(&task.Addr, &sBlock.Hash); err != nil {
-		blog.Info(fmt.Sprintf("verifyConfirmedTimes failed, err:%v", err))
-		// tp.worker.addContractCallerToInferiorList(&task.Addr, &sBlock.AccountAddress, RETRY)
-		return true
+	// 1. verify whether the send is legal;
+	var completeBlockHash *types.Hash
+	var completeBlockHeight = sBlock.Height
+	if types.IsContractAddr(sBlock.AccountAddress) {
+		completeBlock, cErr := tp.worker.manager.Chain().GetCompleteBlockByHash(sBlock.Hash)
+		if cErr != nil || completeBlock == nil {
+			blog.Error(fmt.Sprintf("GetCompleteBlockByHash failed, err:%v", cErr))
+			return true
+		}
+		completeBlockHash = &completeBlock.Hash
+		completeBlockHeight = completeBlock.Height
 	}
 
 	addrState, err := generator.GetAddressStateForGenerator(tp.worker.manager.Chain(), &task.Addr)
@@ -82,8 +89,16 @@ func (tp *ContractTaskProcessor) processOneAddress(task *contractTask) (canConti
 		blog.Error(fmt.Sprintf("failed to get contract state for generator, err:%v", err))
 		return true
 	}
+
+	if err := tp.worker.verifyConfirmedTimes(&task.Addr, &sBlock.Hash, addrState.LatestSnapshotHeight); err != nil {
+		blog.Info(fmt.Sprintf("verifyConfirmedTimes failed, err:%v", err))
+		tp.worker.addContractCallerToInferiorList(task.Addr, sBlock.AccountAddress, RETRY)
+		return true
+	}
+
 	tp.log.Info(fmt.Sprintf("contract-prev: addr=%v hash=%v height=%v", task.Addr, addrState.LatestAccountHash, addrState.LatestAccountHeight))
 
+	// 2.Generator(vm)
 	gen, err := generator.NewGenerator(tp.worker.manager.Chain(), tp.worker.manager.Consensus(), task.Addr, addrState.LatestSnapshotHash, addrState.LatestAccountHash)
 	if err != nil {
 		blog.Error(fmt.Sprintf("NewGenerator failed, err:%v", err))
@@ -97,6 +112,7 @@ func (tp *ContractTaskProcessor) processOneAddress(task *contractTask) (canConti
 			}
 			return key.SignData(data)
 		}, nil)
+	// judge generator result
 	if err != nil {
 		blog.Error(fmt.Sprintf("GenerateWithOnRoad failed, err:%v", err))
 		return true
@@ -105,10 +121,14 @@ func (tp *ContractTaskProcessor) processOneAddress(task *contractTask) (canConti
 		blog.Info("result of generator is nil")
 		return true
 	}
+	// judge vm result
 	if genResult.Err != nil {
 		blog.Info(fmt.Sprintf("vm.Run error, can ignore, err:%v", genResult.Err))
 	}
 	if genResult.VMBlock != nil {
+
+		blog.Info(fmt.Sprintf("insertBlockToPool %v, s[%v, p(%v,%v)]", genResult.VMBlock.AccountBlock.Hash, sBlock.Hash, completeBlockHeight, completeBlockHash))
+
 		if err := tp.worker.manager.insertBlockToPool(genResult.VMBlock); err != nil {
 			blog.Error(fmt.Sprintf("insertContractBlocksToPool failed, err:%v", err))
 			tp.worker.addContractCallerToInferiorList(task.Addr, sBlock.AccountAddress, OUT)

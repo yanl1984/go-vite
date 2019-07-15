@@ -27,6 +27,7 @@ func (c *chain) DeleteSnapshotBlocks(toHash types.Hash) ([]*ledger.SnapshotChunk
 // delete and recover unconfirmed cache
 func (c *chain) DeleteSnapshotBlocksToHeight(toHeight uint64) ([]*ledger.SnapshotChunk, error) {
 	latestHeight := c.GetLatestSnapshotBlock().Height
+
 	if toHeight > latestHeight || toHeight <= 1 {
 		cErr := errors.New(fmt.Sprintf("toHeight is %d, GetLatestHeight is %d", toHeight, latestHeight))
 		c.log.Error(cErr.Error(), "method", "DeleteSnapshotBlocksToHeight")
@@ -80,10 +81,9 @@ func (c *chain) deleteSnapshotBlocksToHeight(toHeight uint64) (chunks []*ledger.
 		}
 
 		c.flushMu.RUnlock()
-		if returnErr != nil {
+		if returnErr == nil {
 			c.flusher.Flush()
 		}
-
 	}()
 
 	tmpLocation, err := c.indexDB.GetSnapshotBlockLocation(toHeight - 1)
@@ -151,24 +151,24 @@ func (c *chain) deleteSnapshotBlocksToHeight(toHeight uint64) (chunks []*ledger.
 		realChunksToDelete[0] = &firstChunk
 	}
 
-	//FOR DEBUG
+	// FOR DEBUG
 	for _, chunk := range snapshotChunks {
 		if chunk.SnapshotBlock != nil {
 			c.log.Info(fmt.Sprintf("delete snapshot block %d\n", chunk.SnapshotBlock.Height))
-			for addr, sc := range chunk.SnapshotBlock.SnapshotContent {
-				c.log.Info(fmt.Sprintf("delete %d SC: %s %d %s\n", chunk.SnapshotBlock.Height, addr, sc.Height, sc.Hash))
-			}
+			//		for addr, sc := range chunk.SnapshotBlock.SnapshotContent {
+			//			c.log.Info(fmt.Sprintf("delete %d SC: %s %d %s\n", chunk.SnapshotBlock.Height, addr, sc.Height, sc.Hash))
+			//		}
 		}
-
-		for _, ab := range chunk.AccountBlocks {
-			c.log.Info(fmt.Sprintf("delete by sb %s %d %s\n", ab.AccountAddress, ab.Height, ab.Hash))
-		}
+		//
+		//	for _, ab := range chunk.AccountBlocks {
+		//		c.log.Info(fmt.Sprintf("delete by sb %s %d %s\n", ab.AccountAddress, ab.Height, ab.Hash))
+		//	}
 	}
 
-	//FOR DEBUG
-	for _, block := range newUnconfirmedBlocks {
-		c.log.Info(fmt.Sprintf("recover after delete sb %s %d %s\n", block.AccountAddress, block.Height, block.Hash))
-	}
+	// FOR DEBUG
+	//for _, block := range newUnconfirmedBlocks {
+	//	c.log.Debug(fmt.Sprintf("recover after delete sb %s %d %s\n", block.AccountAddress, block.Height, block.Hash))
+	//}
 
 	if err := c.em.TriggerDeleteSbs(prepareDeleteSbsEvent, realChunksToDelete); err != nil {
 		cErr := errors.New(fmt.Sprintf("c.em.Trigger(prepareDeleteSbsEvent) failed, error is %s", err.Error()))
@@ -266,10 +266,15 @@ func (c *chain) deleteAccountBlocks(blocks []*ledger.AccountBlock) error {
 	c.flushMu.RLock()
 	defer c.flushMu.RUnlock()
 
-	//FOR DEBUG
+	// FOR DEBUG
+	debugStr := "delete by ab "
 	for _, ab := range blocks {
-		c.log.Info(fmt.Sprintf("delete by ab %s %d %s\n", ab.AccountAddress, ab.Height, ab.Hash))
+		debugStr += fmt.Sprintf("%s %d %s %s, ", ab.AccountAddress, ab.Height, ab.Hash, ab.FromBlockHash)
+		for _, sendBlock := range ab.SendBlockList {
+			debugStr += fmt.Sprintf("RS %s %s, ", sendBlock.Hash, sendBlock.FromBlockHash)
+		}
 	}
+	c.log.Info(debugStr)
 
 	if err := c.em.TriggerDeleteAbs(prepareDeleteAbsEvent, blocks); err != nil {
 		return err

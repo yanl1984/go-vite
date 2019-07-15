@@ -16,16 +16,19 @@ func (p *MethodVote) GetFee(block *ledger.AccountBlock) (*big.Int, error) {
 	return big.NewInt(0), nil
 }
 
-func (p *MethodVote) GetRefundData() ([]byte, bool) {
-	return []byte{5}, false
+func (p *MethodVote) GetRefundData(sendBlock *ledger.AccountBlock) ([]byte, bool) {
+	return []byte{}, false
 }
-func (p *MethodVote) GetSendQuota(data []byte) (uint64, error) {
+func (p *MethodVote) GetSendQuota(data []byte, gasTable *util.GasTable) (uint64, error) {
 	return VoteGas, nil
+}
+func (p *MethodVote) GetReceiveQuota() uint64 {
+	return 0
 }
 
 // vote for a super node of a consensus group
 func (p *MethodVote) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
-	if block.Amount.Sign() != 0 || !util.IsUserAccount(db) {
+	if block.Amount.Sign() != 0 || !util.IsUserAccount(block.AccountAddress) {
 		return util.ErrInvalidMethodParam
 	}
 	param := new(abi.ParamVote)
@@ -47,12 +50,14 @@ func (p *MethodVote) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBl
 	if consensusGroupInfo == nil {
 		return nil, util.ErrInvalidMethodParam
 	}
-	if active, err := abi.IsActiveRegistration(db, param.NodeName, param.Gid); err != nil || !active {
+	active, err := abi.IsActiveRegistration(db, param.NodeName, param.Gid)
+	util.DealWithErr(err)
+	if !active {
 		return nil, util.ErrInvalidMethodParam
 	}
 	voteKey := abi.GetVoteKey(sendBlock.AccountAddress, param.Gid)
 	voteStatus, _ := abi.ABIConsensusGroup.PackVariable(abi.VariableNameVoteStatus, param.NodeName)
-	db.SetValue(voteKey, voteStatus)
+	util.SetValue(db, voteKey, voteStatus)
 	return nil, nil
 }
 
@@ -63,22 +68,25 @@ func (p *MethodCancelVote) GetFee(block *ledger.AccountBlock) (*big.Int, error) 
 	return big.NewInt(0), nil
 }
 
-func (p *MethodCancelVote) GetRefundData() ([]byte, bool) {
-	return []byte{6}, false
+func (p *MethodCancelVote) GetRefundData(sendBlock *ledger.AccountBlock) ([]byte, bool) {
+	return []byte{}, false
 }
-func (p *MethodCancelVote) GetSendQuota(data []byte) (uint64, error) {
+func (p *MethodCancelVote) GetSendQuota(data []byte, gasTable *util.GasTable) (uint64, error) {
 	return CancelVoteGas, nil
+}
+func (p *MethodCancelVote) GetReceiveQuota() uint64 {
+	return 0
 }
 
 // cancel vote for a super node of a consensus group
 func (p *MethodCancelVote) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
 	if block.Amount.Sign() != 0 ||
-		!util.IsUserAccount(db) {
+		!util.IsUserAccount(block.AccountAddress) {
 		return util.ErrInvalidMethodParam
 	}
 	gid := new(types.Gid)
 	err := abi.ABIConsensusGroup.UnpackMethod(gid, abi.MethodNameCancelVote, block.Data)
-	if err != nil || *gid == types.DELEGATE_GID {
+	if err != nil || util.IsDelegateGid(*gid) {
 		return util.ErrInvalidMethodParam
 	}
 	block.Data, _ = abi.ABIConsensusGroup.PackMethod(abi.MethodNameCancelVote, *gid)
@@ -88,6 +96,6 @@ func (p *MethodCancelVote) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) err
 func (p *MethodCancelVote) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) ([]*ledger.AccountBlock, error) {
 	gid := new(types.Gid)
 	abi.ABIConsensusGroup.UnpackMethod(gid, abi.MethodNameCancelVote, sendBlock.Data)
-	db.SetValue(abi.GetVoteKey(sendBlock.AccountAddress, *gid), nil)
+	util.SetValue(db, abi.GetVoteKey(sendBlock.AccountAddress, *gid), nil)
 	return nil, nil
 }

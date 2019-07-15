@@ -38,6 +38,21 @@ func (m *MockChain) EXPECT() *MockChainMockRecorder {
 	return m.recorder
 }
 
+// GetAllRegisterList mocks base method
+func (m *MockChain) GetAllRegisterList(arg0 types.Hash, arg1 types.Gid) ([]*types.Registration, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAllRegisterList", arg0, arg1)
+	ret0, _ := ret[0].([]*types.Registration)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAllRegisterList indicates an expected call of GetAllRegisterList
+func (mr *MockChainMockRecorder) GetAllRegisterList(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllRegisterList", reflect.TypeOf((*MockChain)(nil).GetAllRegisterList), arg0, arg1)
+}
+
 // GetConfirmedBalanceList mocks base method
 func (m *MockChain) GetConfirmedBalanceList(arg0 []types.Address, arg1 types.TokenTypeId, arg2 types.Hash) (map[types.Address]*big.Int, error) {
 	m.ctrl.T.Helper()
@@ -95,6 +110,21 @@ func (m *MockChain) GetGenesisSnapshotBlock() *ledger.SnapshotBlock {
 func (mr *MockChainMockRecorder) GetGenesisSnapshotBlock() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetGenesisSnapshotBlock", reflect.TypeOf((*MockChain)(nil).GetGenesisSnapshotBlock))
+}
+
+// GetLastUnpublishedSeedSnapshotHeader mocks base method
+func (m *MockChain) GetLastUnpublishedSeedSnapshotHeader(arg0 types.Address, arg1 time.Time) (*ledger.SnapshotBlock, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetLastUnpublishedSeedSnapshotHeader", arg0, arg1)
+	ret0, _ := ret[0].(*ledger.SnapshotBlock)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetLastUnpublishedSeedSnapshotHeader indicates an expected call of GetLastUnpublishedSeedSnapshotHeader
+func (mr *MockChainMockRecorder) GetLastUnpublishedSeedSnapshotHeader(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLastUnpublishedSeedSnapshotHeader", reflect.TypeOf((*MockChain)(nil).GetLastUnpublishedSeedSnapshotHeader), arg0, arg1)
 }
 
 // GetLatestSnapshotBlock mocks base method
