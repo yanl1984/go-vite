@@ -134,6 +134,40 @@ func makeCancelPledgeSendBlock(addr types.Address) *ledger.AccountBlock {
 	return makeSendBlock(addr, types.AddressPledge, data, big0, big0)
 }
 
+func BenchmarkVMAgentPledgeSend(b *testing.B) {
+	sendBlock := makeAgentPledgeSendBlock(testAddr)
+	benchmarkSend(b, sendBlock)
+}
+func BenchmarkVMAgentPledgeReceive(b *testing.B) {
+	sendBlock := makeAgentPledgeSendBlock(testAddr)
+	receiveBlock := makeReceiveBlock(types.AddressPledge)
+	benchmarkReceive(b, sendBlock, receiveBlock)
+}
+func makeAgentPledgeSendBlock(addr types.Address) *ledger.AccountBlock {
+	data, err := abi.ABIPledge.PackMethod(abi.MethodNameAgentPledge, addr, addr, uint8(1), uint64(3600*24*3))
+	if err != nil {
+		panic(err)
+	}
+	return makeSendBlock(addr, types.AddressPledge, data, pledgeAmount, big0)
+}
+
+func BenchmarkVMAgentCancelPledgeSend(b *testing.B) {
+	sendBlock := makeAgentCancelPledgeSendBlock(testAddr)
+	benchmarkSend(b, sendBlock)
+}
+func BenchmarkVMAgentCancelPledgeReceive(b *testing.B) {
+	sendBlock := makeAgentCancelPledgeSendBlock(testAddr)
+	receiveBlock := makeReceiveBlock(types.AddressPledge)
+	benchmarkReceive(b, sendBlock, receiveBlock)
+}
+func makeAgentCancelPledgeSendBlock(addr types.Address) *ledger.AccountBlock {
+	data, err := abi.ABIPledge.PackMethod(abi.MethodNameAgentCancelPledge, addr, addr, pledgeAmount, uint8(1))
+	if err != nil {
+		panic(err)
+	}
+	return makeSendBlock(addr, types.AddressPledge, data, big0, big0)
+}
+
 func BenchmarkVMRegisterSend(b *testing.B) {
 	sendBlock := makeRegisterSendBlock(testAddr)
 	benchmarkSend(b, sendBlock)
@@ -329,9 +363,26 @@ func makeChangeTokenTypeBlock(addr types.Address) *ledger.AccountBlock {
 	return makeSendBlock(addr, types.AddressMintage, data, big0, big0)
 }
 
+func BenchmarkVMGetTokenInfoSend(b *testing.B) {
+	sendBlock := makeGetTokenInfoBlock(testAddr)
+	benchmarkSend(b, sendBlock)
+}
+func BenchmarkVMGetTokenInfoReceive(b *testing.B) {
+	sendBlock := makeGetTokenInfoBlock(testAddr)
+	receiveBlock := makeReceiveBlock(types.AddressMintage)
+	benchmarkReceive(b, sendBlock, receiveBlock)
+}
+func makeGetTokenInfoBlock(addr types.Address) *ledger.AccountBlock {
+	data, err := abi.ABIMintage.PackMethod(abi.MethodNameGetTokenInfo, testTokenId, uint8(1))
+	if err != nil {
+		panic(err)
+	}
+	return makeSendBlock(addr, types.AddressMintage, data, big0, big0)
+}
+
 func benchmarkSend(b *testing.B, sendBlock *ledger.AccountBlock) {
 	initVMEnvironment()
-	chainInstance, _, _ := SetUp(0, 0, 0)
+	chainInstance, _, _ := SetUp(3, 1, 1)
 	defer TearDown(chainInstance)
 	prevBlock, err := chainInstance.GetLatestAccountBlock(sendBlock.AccountAddress)
 	if err != nil {
@@ -642,6 +693,12 @@ func TestPrintBlockSize(t *testing.T) {
 	printBlockSize("cancelPledge",
 		makeCancelPledgeSendBlock(testAddr),
 		makeReceiveBlock(types.AddressPledge))
+	printBlockSize("agentPledge",
+		makeAgentPledgeSendBlock(testAddr),
+		makeReceiveBlock(types.AddressPledge))
+	printBlockSize("agentCancelPledge",
+		makeAgentCancelPledgeSendBlock(testAddr),
+		makeReceiveBlock(types.AddressPledge))
 
 	printBlockSize("register",
 		makeRegisterSendBlock(testAddr),
@@ -678,6 +735,9 @@ func TestPrintBlockSize(t *testing.T) {
 	printBlockSize("changeTokenType",
 		makeChangeTokenTypeBlock(testAddr),
 		makeReceiveBlock(types.AddressMintage))
+	printBlockSize("getTokenInfo",
+		makeGetTokenInfoBlock(testAddr),
+		makeReceiveBlock(types.AddressMintage))
 }
 
 func TestPrintCreateContractBlockSize(t *testing.T) {
@@ -711,7 +771,6 @@ func printBlockSize(name string, sendBlock, receiveBlock *ledger.AccountBlock) {
 	if err != nil {
 		panic(err)
 	}
-
 	prevBlock, err := chainInstance.GetLatestAccountBlock(receiveBlock.AccountAddress)
 	if err != nil {
 		panic(err)

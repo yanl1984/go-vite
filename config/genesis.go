@@ -108,4 +108,7 @@ type PledgeInfo struct {
 	Amount         *big.Int
 	WithdrawHeight uint64
 	BeneficialAddr types.Address
+	AgentAddr      types.Address
+	Bid            uint8
+	Agent          bool
 }

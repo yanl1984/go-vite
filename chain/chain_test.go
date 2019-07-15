@@ -31,6 +31,10 @@ var GenesisJson = `{
 	"SeedFork":{
       "Height":1,
       "Version":1
+    },
+	"DexFork":{
+      "Height":2,
+      "Version":2
     }
   },
   "ConsensusGroupInfo": {
@@ -148,6 +152,14 @@ var GenesisJson = `{
           "Amount": 1000000000000000000000,
           "WithdrawHeight": 1,
           "BeneficialAddr": "vite_56fd05b23ff26cd7b0a40957fb77bde60c9fd6ebc35f809c23"
+        },
+		{
+          "Amount": 1000000000000000000000,
+          "WithdrawHeight": 1,
+          "BeneficialAddr": "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+		  "Agent": true,
+		  "Bid":1,
+		  "AgentAddr":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a"
         }
       ]
     },
