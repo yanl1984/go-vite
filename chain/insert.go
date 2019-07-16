@@ -55,7 +55,7 @@ func (c *chain) InsertSnapshotBlock(snapshotBlock *ledger.SnapshotBlock) ([]*led
 		return nil, err
 	}
 
-	c.log.Info(fmt.Sprintf("filterUnconfirmedBlocks, insert snapshot block %s %d\n", snapshotBlock.Hash, snapshotBlock.Height))
+	c.log.Info(fmt.Sprintf("filterUnconfirmedBlocks, insert snapshot block %s %d. unconfirmed blocks: %d\n", snapshotBlock.Hash, snapshotBlock.Height, len(c.cache.GetUnconfirmedBlocks())))
 	// delete invalidBlocks
 	invalidBlocks := c.filterUnconfirmedBlocks(snapshotBlock, true)
 
@@ -67,7 +67,7 @@ func (c *chain) InsertSnapshotBlock(snapshotBlock *ledger.SnapshotBlock) ([]*led
 
 	c.cache.ResetUnconfirmedQuotas(c.GetAllUnconfirmedBlocks())
 
-	c.log.Info(fmt.Sprintf("Finish, %s\n", logInfo))
+	c.log.Info(fmt.Sprintf("Finish, %s\n. invalid blocks: %d, new unconfirmed blocks: %d", logInfo, len(invalidBlocks), len(c.cache.GetUnconfirmedBlocks())))
 
 	// only trigger
 	return invalidBlocks, nil
