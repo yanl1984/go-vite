@@ -206,6 +206,9 @@ func (flusher *Flusher) flush() {
 	defer flusher.flushingMu.Unlock()
 
 	// prepare, lock write
+	flusher.log.Info("start flush.")
+	defer flusher.log.Info("flush finish.")
+
 	//flusher.log.Info("start prepare")
 	if err := flusher.prepare(); err != nil {
 		flusher.log.Warn(fmt.Sprintf("flusher.prepare failed, error is %s", err), "method", "flush")
