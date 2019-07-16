@@ -115,6 +115,8 @@ func (accP *accountPool) Init(
 2. fetch block for snippet chain.
 */
 func (accP *accountPool) Compact() int {
+	accP.pool.RLockInsert()
+	defer accP.pool.RUnLockInsert()
 	accP.chainHeadMu.Lock()
 	defer accP.chainHeadMu.Unlock()
 	//	this is a rate limiter
