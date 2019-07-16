@@ -14,6 +14,7 @@ type Genesis struct {
 	PledgeInfo            *PledgeContractInfo
 	AccountBalanceMap     map[string]map[string]*big.Int // address - tokenId - balanceAmount
 	DexFundInfo           *DexFundContractInfo
+	DexTradeInfo          *DexTradeContractInfo
 }
 
 func IsCompleteGenesisConfig(genesisConfig *Genesis) bool {
@@ -111,18 +112,21 @@ type PledgeInfo struct {
 }
 
 type DexFundContractInfo struct {
-	Owner             types.Address
-	Timer             types.Address
-	Trigger           types.Address
-	Maintainer        types.Address
-	MakerMineProxy    types.Address
-	NotifiedTimestamp int64
-	EndorseVxAmount   *big.Int
-	Tokens            []DexTokenInfo
-	Markets           []DexMarketInfo
-	UserFunds         []DexUserFund
-	PledgeVxs         map[types.Address]*big.Int
-	PledgeVips        []types.Address
+	Owner                 types.Address
+	Timer                 types.Address
+	Trigger               types.Address
+	Maintainer            types.Address
+	MakerMineProxy        types.Address
+	NotifiedTimestamp     int64
+	EndorseVxAmount       *big.Int
+	Tokens                []DexTokenInfo
+	PendingTransferTokens []DexPendingTransferToken
+	Markets               []DexMarketInfo
+	UserFunds             []DexUserFund
+	PledgeVxs             map[types.Address]*big.Int
+	PledgeVips            []types.Address
+	MakerMinedVxs         map[string]*big.Int
+	Inviters              map[types.Address]uint32
 }
 type DexTokenInfo struct {
 	TokenId        types.TokenTypeId
@@ -131,6 +135,11 @@ type DexTokenInfo struct {
 	Index          int32
 	Owner          types.Address
 	QuoteTokenType int32
+}
+type DexPendingTransferToken struct {
+	TokenId types.TokenTypeId
+	Origin  types.Address
+	New     types.Address
 }
 type DexMarketInfo struct {
 	MarketId           int32
@@ -153,9 +162,35 @@ type DexUserFund struct {
 	Address  types.Address
 	Accounts []DexFundUserAcc
 }
-
 type DexFundUserAcc struct {
 	Token     types.TokenTypeId
 	Available *big.Int
 	Locked    *big.Int
+}
+
+type DexTradeContractInfo struct {
+	Markets   []DexMarketInfo
+	Orders    []DexTradeOrder
+	Timestamp int64
+}
+type DexTradeOrder struct {
+	Id                 string
+	Address            types.Address
+	MarketId           int32
+	Side               bool
+	Type               int32
+	Price              string
+	TakerFeeRate       int32
+	MakerFeeRate       int32
+	TakerBrokerFeeRate int32
+	MakerBrokerFeeRate int32
+	Quantity           *big.Int
+	Amount             *big.Int
+	LockedBuyFee       *big.Int
+	Status             int32
+	ExecutedQuantity   *big.Int
+	ExecutedAmount     *big.Int
+	ExecutedBaseFee    *big.Int
+	ExecutedBrokerFee  *big.Int
+	Timestamp          int64
 }
