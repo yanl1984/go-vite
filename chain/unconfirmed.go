@@ -45,6 +45,7 @@ func (c *chain) GetContentNeedSnapshot() ledger.SnapshotContent {
 func (c *chain) filterUnconfirmedBlocks(snapshotBlock *ledger.SnapshotBlock, checkConsensus bool) []*ledger.AccountBlock {
 	// get unconfirmed blocks
 	blocks := c.cache.GetUnconfirmedBlocks()
+
 	if len(blocks) <= 0 {
 		return nil
 	}
