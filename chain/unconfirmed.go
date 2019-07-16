@@ -18,7 +18,7 @@ func (c *chain) GetUnconfirmedBlocks(addr types.Address) []*ledger.AccountBlock 
 	return c.cache.GetUnconfirmedBlocksByAddress(&addr)
 }
 
-const maxSnapshotLength = 80
+const maxSnapshotLength = 100
 
 func (c *chain) GetContentNeedSnapshot() ledger.SnapshotContent {
 	unconfirmedBlocks := c.cache.GetUnconfirmedBlocks()
