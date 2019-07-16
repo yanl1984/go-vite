@@ -160,10 +160,12 @@ var GenesisJson = `{
   },
   "AccountBalanceMap": {
     "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a": {
-      "tti_5649544520544f4b454e6e40":99996000000000000000000000
+      "tti_5649544520544f4b454e6e40":99996000000000000000000000,
+      "tti_045e6ca837c143cd477b32f3":1000000000000000000000000
     },
     "vite_56fd05b23ff26cd7b0a40957fb77bde60c9fd6ebc35f809c23": {
-      "tti_5649544520544f4b454e6e40":100000000000000000000000000
+      "tti_5649544520544f4b454e6e40":100000000000000000000000000,
+      "tti_045e6ca837c143cd477b32f3":1000000000000000000000000
     },
     "vite_360232b0378111b122685a15e612143dc9a89cfa7e803f4b5a": {
       "tti_5649544520544f4b454e6e40":600000000000000000000000000
@@ -179,7 +181,96 @@ var GenesisJson = `{
     },
 	"vite_0000000000000000000000000000000000000004d28108e76b": {
       "tti_5649544520544f4b454e6e40":500000000000000000000000
+    },
+	"vite_0000000000000000000000000000000000000006e82b8ba657": {
+      "tti_5649544520544f4b454e6e40":5000000000000000000000000,
+      "tti_045e6ca837c143cd477b32f3":5000000000000000000000000
     }
+  },
+  "DexFundInfo": {
+      "Owner":"vite_56fd05b23ff26cd7b0a40957fb77bde60c9fd6ebc35f809c23",
+      "Timer":"vite_56fd05b23ff26cd7b0a40957fb77bde60c9fd6ebc35f809c23",
+      "Trigger":"vite_56fd05b23ff26cd7b0a40957fb77bde60c9fd6ebc35f809c23",
+      "Maintainer":"vite_56fd05b23ff26cd7b0a40957fb77bde60c9fd6ebc35f809c23",
+      "MakerMineProxy":"vite_56fd05b23ff26cd7b0a40957fb77bde60c9fd6ebc35f809c23",
+      "NotifiedTimestamp":1563187466,
+      "EndorseVxAmount":100000000000000000000000000,
+	  "Tokens": [
+	    {
+	      "TokenId":"tti_045e6ca837c143cd477b32f3",
+	      "Decimals":18,
+	      "Symbol":"TEST",
+	      "Index":1,
+	      "Owner":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+	      "QuoteTokenType":0
+	  	},
+	    {
+	      "TokenId":"tti_5649544520544f4b454e6e40",
+	      "Decimals":18,
+	      "Symbol":"VITE",
+	      "Index":1,
+	      "Owner":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+	      "QuoteTokenType":1
+	  	}
+	  ],
+	  "Markets": [
+	    {
+	      "MarketId":1,
+	      "MarketSymbol":"TEST_001-VITE",
+	      "TradeToken":"tti_045e6ca837c143cd477b32f3",
+	      "QuoteToken":"tti_5649544520544f4b454e6e40",
+	      "QuoteTokenType":1,
+	      "TradeTokenDecimals":18,
+	      "QuoteTokenDecimals":18,
+	      "TakerBrokerFeeRate":100,
+	      "MakerBrokerFeeRate":150,
+	      "AllowMine":true,
+	      "Valid":true,
+	      "Owner":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+	      "Creator":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+	      "Stopped":false,
+	      "Timestamp":1563187466
+	  	}
+	  ],
+      "UserFunds": [
+		{
+			"Address":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+			"Accounts": [
+				{
+					"Token":"tti_045e6ca837c143cd477b32f3",
+					"Available":1000000000000000000000000,
+					"Locked":1000000000000000000000000
+				},
+				{
+					"Token":"tti_5649544520544f4b454e6e40",
+					"Available":1000000000000000000000000,
+					"Locked":1000000000000000000000000
+				}
+			]
+		},
+		{
+			"Address":"vite_56fd05b23ff26cd7b0a40957fb77bde60c9fd6ebc35f809c23",
+			"Accounts": [
+				{
+					"Token":"tti_045e6ca837c143cd477b32f3",
+					"Available":1000000000000000000000000,
+					"Locked":1000000000000000000000000
+				},
+				{
+					"Token":"tti_5649544520544f4b454e6e40",
+					"Available":1000000000000000000000000,
+					"Locked":1000000000000000000000000
+				}
+			]
+		}
+	  ],
+      "PledgeVxs": {
+			"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a":10000000000000000000000,
+			"vite_56fd05b23ff26cd7b0a40957fb77bde60c9fd6ebc35f809c23":10000000000000000000000
+      },
+      "PledgeVips": [
+		"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a"
+	  ]
   }
 }
 `

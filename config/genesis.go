@@ -13,6 +13,7 @@ type Genesis struct {
 	MintageInfo           *MintageContractInfo
 	PledgeInfo            *PledgeContractInfo
 	AccountBalanceMap     map[string]map[string]*big.Int // address - tokenId - balanceAmount
+	DexFundInfo           *DexFundContractInfo
 }
 
 func IsCompleteGenesisConfig(genesisConfig *Genesis) bool {
@@ -107,4 +108,54 @@ type PledgeInfo struct {
 	Amount         *big.Int
 	WithdrawHeight uint64
 	BeneficialAddr types.Address
+}
+
+type DexFundContractInfo struct {
+	Owner             types.Address
+	Timer             types.Address
+	Trigger           types.Address
+	Maintainer        types.Address
+	MakerMineProxy    types.Address
+	NotifiedTimestamp int64
+	EndorseVxAmount   *big.Int
+	Tokens            []DexTokenInfo
+	Markets           []DexMarketInfo
+	UserFunds         []DexUserFund
+	PledgeVxs         map[types.Address]*big.Int
+	PledgeVips        []types.Address
+}
+type DexTokenInfo struct {
+	TokenId        types.TokenTypeId
+	Decimals       int32
+	Symbol         string
+	Index          int32
+	Owner          types.Address
+	QuoteTokenType int32
+}
+type DexMarketInfo struct {
+	MarketId           int32
+	MarketSymbol       string
+	TradeToken         types.TokenTypeId
+	QuoteToken         types.TokenTypeId
+	QuoteTokenType     int32
+	TradeTokenDecimals int32
+	QuoteTokenDecimals int32
+	TakerBrokerFeeRate int32
+	MakerBrokerFeeRate int32
+	AllowMine          bool
+	Valid              bool
+	Owner              types.Address
+	Creator            types.Address
+	Stopped            bool
+	Timestamp          int64
+}
+type DexUserFund struct {
+	Address  types.Address
+	Accounts []DexFundUserAcc
+}
+
+type DexFundUserAcc struct {
+	Token     types.TokenTypeId
+	Available *big.Int
+	Locked    *big.Int
 }
