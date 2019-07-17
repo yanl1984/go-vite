@@ -3,6 +3,7 @@ package chain_genesis
 import (
 	"encoding/base64"
 	"encoding/hex"
+	"fmt"
 	"github.com/vitelabs/go-vite/vm/contracts/abi"
 	"github.com/vitelabs/go-vite/vm/contracts/dex"
 	dexproto "github.com/vitelabs/go-vite/vm/contracts/dex/proto"
@@ -372,6 +373,7 @@ func newDexFundContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock,
 			dex.SaveCodeByInviter(vmdb, addr, code)
 		}
 		block.Hash = block.ComputeHash()
+		fmt.Printf("fund block.hash %s\n", block.Hash.String())
 		list = append(list, &vm_db.VmAccountBlock{&block, vmdb})
 		addrSet[contractAddr] = struct{}{}
 	}
@@ -390,26 +392,24 @@ func newDexTradeContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock
 		}
 		vmdb := vm_db.NewGenesisVmDB(&contractAddr)
 		dex.SetTradeTimestamp(vmdb, cfg.DexTradeInfo.Timestamp)
-		if len(cfg.DexTradeInfo.Markets) > 0 {
-			for _, mkif := range cfg.DexTradeInfo.Markets {
-				mkInfo := &dex.MarketInfo{}
-				mkInfo.MarketId = mkif.MarketId
-				mkInfo.MarketSymbol = mkif.MarketSymbol
-				mkInfo.TradeToken = mkif.TradeToken.Bytes()
-				mkInfo.QuoteToken = mkif.QuoteToken.Bytes()
-				mkInfo.QuoteTokenType = mkif.QuoteTokenType
-				mkInfo.TradeTokenDecimals = mkif.TradeTokenDecimals
-				mkInfo.QuoteTokenDecimals = mkif.QuoteTokenDecimals
-				mkInfo.TakerBrokerFeeRate = mkif.TakerBrokerFeeRate
-				mkInfo.MakerBrokerFeeRate = mkif.MakerBrokerFeeRate
-				mkInfo.AllowMine = mkif.AllowMine
-				mkInfo.Valid = mkif.Valid
-				mkInfo.Owner = mkif.Owner.Bytes()
-				mkInfo.Creator = mkif.Creator.Bytes()
-				mkInfo.Stopped = mkif.Stopped
-				mkInfo.Timestamp = mkif.Timestamp
-				dex.SaveMarketInfo(vmdb, mkInfo, mkif.TradeToken, mkif.QuoteToken)
-			}
+		for _, mkif := range cfg.DexTradeInfo.Markets {
+			mkInfo := &dex.MarketInfo{}
+			mkInfo.MarketId = mkif.MarketId
+			mkInfo.MarketSymbol = mkif.MarketSymbol
+			mkInfo.TradeToken = mkif.TradeToken.Bytes()
+			mkInfo.QuoteToken = mkif.QuoteToken.Bytes()
+			mkInfo.QuoteTokenType = mkif.QuoteTokenType
+			mkInfo.TradeTokenDecimals = mkif.TradeTokenDecimals
+			mkInfo.QuoteTokenDecimals = mkif.QuoteTokenDecimals
+			mkInfo.TakerBrokerFeeRate = mkif.TakerBrokerFeeRate
+			mkInfo.MakerBrokerFeeRate = mkif.MakerBrokerFeeRate
+			mkInfo.AllowMine = mkif.AllowMine
+			mkInfo.Valid = mkif.Valid
+			mkInfo.Owner = mkif.Owner.Bytes()
+			mkInfo.Creator = mkif.Creator.Bytes()
+			mkInfo.Stopped = mkif.Stopped
+			mkInfo.Timestamp = mkif.Timestamp
+			dex.SaveMarketInfo(vmdb, mkInfo, mkif.TradeToken, mkif.QuoteToken)
 		}
 		for _, od := range cfg.DexTradeInfo.Orders {
 			order := &dex.Order{}
@@ -432,13 +432,15 @@ func newDexTradeContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock
 			order.ExecutedBaseFee = od.ExecutedBaseFee.Bytes()
 			order.ExecutedBrokerFee = od.ExecutedBrokerFee.Bytes()
 			order.Timestamp = cfg.DexTradeInfo.Timestamp
+			orderId := order.Id
 			if data, err := order.SerializeCompact(); err != nil {
 				panic(err)
 			} else {
-				vmdb.SetValue(order.Id, data)
+				vmdb.SetValue(orderId, data)
 			}
 		}
 		block.Hash = block.ComputeHash()
+		fmt.Printf("trade block.hash %s\n", block.Hash.String())
 		list = append(list, &vm_db.VmAccountBlock{&block, vmdb})
 		addrSet[contractAddr] = struct{}{}
 	}
