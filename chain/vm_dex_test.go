@@ -53,10 +53,12 @@ func makeDexWithdrawBlock(addr types.Address) *ledger.AccountBlock {
 	return makeSendBlock(addr, types.AddressDexFund, data, big0, big0)
 }
 
+//part of NewMarket
 func BenchmarkVMDexNewMarketSend(b *testing.B) {
 	sendBlock := makeDexNewMarketBlock(testAddr)
 	benchmarkSend(b, sendBlock)
 }
+//part of NewMarket
 func BenchmarkVMDexNewMarketReceive(b *testing.B) {
 	sendBlock := makeDexNewMarketBlock(testAddr)
 	receiveBlock := makeReceiveBlock(types.AddressDexFund)
@@ -69,11 +71,12 @@ func makeDexNewMarketBlock(addr types.Address) *ledger.AccountBlock {
 	}
 	return makeSendBlock(addr, types.AddressDexFund, data, big0, big0)
 }
-
+// part of NewOrder
 func BenchmarkVMDexNewOrderSend(b *testing.B) {
 	sendBlock := makeDexNewOrderBlock(testAddr)
 	benchmarkSend(b, sendBlock)
 }
+// part of NewOrder
 func BenchmarkVMDexNewOrderReceive(b *testing.B) {
 	sendBlock := makeDexNewOrderBlock(testAddr)
 	receiveBlock := makeReceiveBlock(types.AddressDexFund)
@@ -86,11 +89,14 @@ func makeDexNewOrderBlock(addr types.Address) *ledger.AccountBlock {
 	}
 	return makeSendBlock(addr, types.AddressDexFund, data, big1e18, big0)
 }
-
+// part of NewOrder
+// part of CancelOrder
 func BenchmarkVMDexSettleOrdersSend(b *testing.B) {
 	sendBlock := makeDexSettleOrdersBlock(testAddr)
 	benchmarkSend(b, sendBlock)
 }
+// part of NewOrder
+// part of CancelOrder
 func BenchmarkVMDexSettleOrdersReceive(b *testing.B) {
 	sendBlock := makeDexSettleOrdersBlock(testAddr)
 	receiveBlock := makeReceiveBlock(types.AddressDexFund)
@@ -140,26 +146,27 @@ func makeDexSettleOrdersBlock(addr types.Address) *ledger.AccountBlock {
 }
 
 func BenchmarkVmDexPeriodJobSend(b *testing.B) {
-	sendBlock := makeDexDexPeriodJobBlock(dexAddr)
+	sendBlock := makeDexPeriodJobBlock(dexAddr)
 	benchmarkSend(b, sendBlock)
 }
 func BenchmarkVMDexPeriodJobReceive(b *testing.B) {
-	sendBlock := makeDexDexPeriodJobBlock(dexAddr)
+	sendBlock := makeDexPeriodJobBlock(dexAddr)
 	receiveBlock := makeReceiveBlock(types.AddressDexFund)
 	benchmarkReceive(b, sendBlock, receiveBlock)
 }
-func makeDexDexPeriodJobBlock(addr types.Address) *ledger.AccountBlock {
+func makeDexPeriodJobBlock(addr types.Address) *ledger.AccountBlock {
 	data, err := abi.ABIDexFund.PackMethod(abi.MethodNameDexFundPeriodJob, uint64(0), uint8(0))
 	if err != nil {
 		panic(err)
 	}
 	return makeSendBlock(addr, types.AddressDexFund, data, big0, big0)
 }
-
+//part of PledgeForVx
 func BenchmarkVMDexPledgeForVxSend(b *testing.B) {
 	sendBlock := makeDexPledgeForVxBlock(testAddr)
 	benchmarkSend(b, sendBlock)
 }
+//part of PledgeForVx
 func BenchmarkVMDexPledgeForVxReceive(b *testing.B) {
 	sendBlock := makeDexPledgeForVxBlock(testAddr)
 	receiveBlock := makeReceiveBlock(types.AddressDexFund)
@@ -174,10 +181,12 @@ func makeDexPledgeForVxBlock(addr types.Address) *ledger.AccountBlock {
 	return makeSendBlock(addr, types.AddressDexFund, data, big0, big0)
 }
 
+//part of PledgeForVip
 func BenchmarkVMDexPledgeForVipSend(b *testing.B) {
 	sendBlock := makeDexPledgeForVipBlock(dexAddr)
 	benchmarkSend(b, sendBlock)
 }
+//part of PledgeForVip
 func BenchmarkVMDexPledgeForVipReceive(b *testing.B) {
 	sendBlock := makeDexPledgeForVipBlock(dexAddr)
 	receiveBlock := makeReceiveBlock(types.AddressDexFund)
@@ -192,16 +201,20 @@ func makeDexPledgeForVipBlock(addr types.Address) *ledger.AccountBlock {
 	return makeSendBlock(addr, types.AddressDexFund, data, amount, big0)
 }
 
-func BenchmarkVMDexPledgeCallBackSend(b *testing.B) {
-	sendBlock := makeDexPledgePledgeCallBackBlock(dexAddr)
+//part of PledgeForVx
+//part of PledgeForVip
+func BenchmarkVMDexPledgeCallbackSend(b *testing.B) {
+	sendBlock := makeDexPledgeCallbackBlock(dexAddr)
 	benchmarkSend(b, sendBlock)
 }
-func BenchmarkVMDexPledgeCallBackReceive(b *testing.B) {
-	sendBlock := makeDexPledgePledgeCallBackBlock(dexAddr)
+//part of PledgeForVx
+//part of PledgeForVip
+func BenchmarkVMDexPledgeCallbackReceive(b *testing.B) {
+	sendBlock := makeDexPledgeCallbackBlock(dexAddr)
 	receiveBlock := makeReceiveBlock(types.AddressDexFund)
 	benchmarkReceive(b, sendBlock, receiveBlock)
 }
-func makeDexPledgePledgeCallBackBlock(addr types.Address) *ledger.AccountBlock {
+func makeDexPledgeCallbackBlock(addr types.Address) *ledger.AccountBlock {
 	amount := new(big.Int).Mul(big.NewInt(500), big1e18)
 	data, err := abi.ABIPledge.PackCallback(abi.MethodNameAgentPledge, addr, types.AddressDexFund, amount, uint8(dex.PledgeForVx), true)
 	if err != nil {
@@ -210,16 +223,20 @@ func makeDexPledgePledgeCallBackBlock(addr types.Address) *ledger.AccountBlock {
 	return makeSendBlock(types.AddressPledge, types.AddressDexFund, data, big0, big0)
 }
 
-func BenchmarkVMDexCancelPledgeCallBackSend(b *testing.B) {
-	sendBlock := makeDexCancelPledgePledgeCallBackBlock(testAddr)
+//part of PledgeForVx
+//part of PledgeForVip
+func BenchmarkVMDexCancelPledgeCallbackSend(b *testing.B) {
+	sendBlock := makeDexCancelPledgeCallbackBlock(testAddr)
 	benchmarkSend(b, sendBlock)
 }
+//part of PledgeForVx
+//part of PledgeForVip
 func BenchmarkVMDexCancelPledgeCallBackReceive(b *testing.B) {
-	sendBlock := makeDexCancelPledgePledgeCallBackBlock(testAddr)
+	sendBlock := makeDexCancelPledgeCallbackBlock(testAddr)
 	receiveBlock := makeReceiveBlock(types.AddressDexFund)
 	benchmarkReceive(b, sendBlock, receiveBlock)
 }
-func makeDexCancelPledgePledgeCallBackBlock(addr types.Address) *ledger.AccountBlock {
+func makeDexCancelPledgeCallbackBlock(addr types.Address) *ledger.AccountBlock {
 	amount := new(big.Int).Mul(big.NewInt(500), big1e18)
 	data, err := abi.ABIPledge.PackCallback(abi.MethodNameAgentCancelPledge, addr, types.AddressDexFund, amount, uint8(dex.PledgeForVx), true)
 	if err != nil {
@@ -228,17 +245,87 @@ func makeDexCancelPledgePledgeCallBackBlock(addr types.Address) *ledger.AccountB
 	return makeSendBlock(types.AddressPledge, types.AddressDexFund, data, amount, big0)
 }
 
+//part of NewMarket
 func BenchmarkVMDexGetTokenInfoCallbackSend(b *testing.B) {
-	sendBlock := makeDexGetTokenInfoCallBackBlock(types.AddressMintage)
+	sendBlock := makeDexGetTokenInfoCallbackBlock(types.AddressMintage)
 	benchmarkSend(b, sendBlock)
 }
+//part of NewMarket
 func BenchmarkVMDexGetTokenInfoCallBackReceive(b *testing.B) {
-	sendBlock := makeDexGetTokenInfoCallBackBlock(types.AddressMintage)
+	sendBlock := makeDexGetTokenInfoCallbackBlock(types.AddressMintage)
 	receiveBlock := makeReceiveBlock(types.AddressDexFund)
 	benchmarkReceive(b, sendBlock, receiveBlock)
 }
-func makeDexGetTokenInfoCallBackBlock(addr types.Address) *ledger.AccountBlock {
+func makeDexGetTokenInfoCallbackBlock(addr types.Address) *ledger.AccountBlock {
 	data, err := abi.ABIMintage.PackCallback(abi.MethodNameGetTokenInfo, notExistsNewTradeToken, uint8(dex.GetTokenForTransferOwner), true, uint8(18), "VCC", uint16(1), testAddr)
+	if err != nil {
+		panic(err)
+	}
+	return makeSendBlock(addr, types.AddressDexFund, data, big0, big0)
+}
+
+func BenchmarkVMDexOwnerConfigSend(b *testing.B) {
+	sendBlock := makeDexOwnerConfigBlock(dexAddr)
+	benchmarkSend(b, sendBlock)
+}
+func BenchmarkVMDexOwnerConfigReceive(b *testing.B) {
+	sendBlock := makeDexOwnerConfigBlock(dexAddr)
+	receiveBlock := makeReceiveBlock(types.AddressDexFund)
+	benchmarkReceive(b, sendBlock, receiveBlock)
+}
+func makeDexOwnerConfigBlock(addr types.Address) *ledger.AccountBlock {
+	data, err := abi.ABIDexFund.PackMethod(abi.MethodNameDexFundOwnerConfig, uint8(dex.OwnerConfigOwner+dex.OwnerConfigTimer+dex.OwnerConfigTrigger+dex.OwnerConfigMakerMineProxy+dex.OwnerConfigMaintainer), dexAddr, dexAddr, dexAddr, false, dexAddr, dexAddr)
+	if err != nil {
+		panic(err)
+	}
+	return makeSendBlock(addr, types.AddressDexFund, data, big0, big0)
+}
+
+func BenchmarkVMDexOwnerConfigTradeSend(b *testing.B) {
+	sendBlock := makeDexOwnerConfigTradeBlock(dexAddr)
+	benchmarkSend(b, sendBlock)
+}
+func BenchmarkVMDexOwnerConfigTradeReceive(b *testing.B) {
+	sendBlock := makeDexOwnerConfigTradeBlock(dexAddr)
+	receiveBlock := makeReceiveBlock(types.AddressDexFund)
+	benchmarkReceive(b, sendBlock, receiveBlock)
+}
+func makeDexOwnerConfigTradeBlock(addr types.Address) *ledger.AccountBlock {
+	data, err := abi.ABIDexFund.PackMethod(abi.MethodNameDexFundOwnerConfigTrade, uint8(dex.OwnerConfigMineMarket), tradeToken, ledger.ViteTokenId, false, ledger.ViteTokenId, uint8(1), uint8(1), big.NewInt(0), uint8(1), big.NewInt(0))
+	if err != nil {
+		panic(err)
+	}
+	return makeSendBlock(addr, types.AddressDexFund, data, big0, big0)
+}
+
+func BenchmarkVMDexMarketOwnerConfigSend(b *testing.B) {
+	sendBlock := makeDexMarketOwnerConfigBlock(testAddr)
+	benchmarkSend(b, sendBlock)
+}
+func BenchmarkVMDexMarketOwnerConfigReceive(b *testing.B) {
+	sendBlock := makeDexMarketOwnerConfigBlock(testAddr)
+	receiveBlock := makeReceiveBlock(types.AddressDexFund)
+	benchmarkReceive(b, sendBlock, receiveBlock)
+}
+func makeDexMarketOwnerConfigBlock(addr types.Address) *ledger.AccountBlock {
+	data, err := abi.ABIDexFund.PackMethod(abi.MethodNameDexFundMarketOwnerConfig, uint8(dex.MarketOwnerTransferOwner), tradeToken, ledger.ViteTokenId, dexAddr, int32(0), int32(0), false)
+	if err != nil {
+		panic(err)
+	}
+	return makeSendBlock(addr, types.AddressDexFund, data, big0, big0)
+}
+
+func BenchmarkVMDexTransferTokenOwnerSend(b *testing.B) {
+	sendBlock := makeDexTransferTokenOwnerBlock(testAddr)
+	benchmarkSend(b, sendBlock)
+}
+func BenchmarkVMDexTransferTokenOwnerReceive(b *testing.B) {
+	sendBlock := makeDexTransferTokenOwnerBlock(testAddr)
+	receiveBlock := makeReceiveBlock(types.AddressDexFund)
+	benchmarkReceive(b, sendBlock, receiveBlock)
+}
+func makeDexTransferTokenOwnerBlock(addr types.Address) *ledger.AccountBlock {
+	data, err := abi.ABIDexFund.PackMethod(abi.MethodNameDexFundTransferTokenOwner, tradeToken, dexAddr)
 	if err != nil {
 		panic(err)
 	}
@@ -346,10 +433,12 @@ func makeDexSettleMakerMinedVxBlock(addr types.Address) *ledger.AccountBlock {
 	return makeSendBlock(addr, types.AddressDexFund, data, amount, big0)
 }
 
+//part of NewOrder
 func BenchmarkVMDexTradeNewOrderSend(b *testing.B) {
 	sendBlock := makeDexTradeNewOrderBlock(types.AddressDexFund)
 	benchmarkSend(b, sendBlock)
 }
+//part of NewOrder
 func BenchmarkVMDexTradeNewOrderReceive(b *testing.B) {
 	sendBlock := makeDexTradeNewOrderBlock(types.AddressDexFund)
 	receiveBlock := makeReceiveBlock(types.AddressDexTrade)
@@ -383,10 +472,12 @@ func makeDexTradeNewOrderBlock(addr types.Address) *ledger.AccountBlock {
 	}
 }
 
+//part of CancelOrder
 func BenchmarkVMDexTradeCancelOrderSend(b *testing.B) {
 	sendBlock := makeDexTradeCancelOrderBlock(testAddr)
 	benchmarkSend(b, sendBlock)
 }
+//part of CancelOrder
 func BenchmarkVMDexTradeCancelOrderReceive(b *testing.B) {
 	sendBlock := makeDexTradeCancelOrderBlock(testAddr)
 	receiveBlock := makeReceiveBlock(types.AddressDexTrade)
@@ -401,10 +492,12 @@ func makeDexTradeCancelOrderBlock(addr types.Address) *ledger.AccountBlock {
 	return makeSendBlock(addr, types.AddressDexTrade, data, big0, big0)
 }
 
+//part of NewMarket
 func BenchmarkVMDexTradeNotifyNewMarketSend(b *testing.B) {
 	sendBlock := makeDexTradeNotifyNewMarketBlock(types.AddressDexFund)
 	benchmarkSend(b, sendBlock)
 }
+//part of NewMarket
 func BenchmarkVMDexTradeNotifyNewMarketReceive(b *testing.B) {
 	sendBlock := makeDexTradeNotifyNewMarketBlock(types.AddressDexFund)
 	receiveBlock := makeReceiveBlock(types.AddressDexTrade)
@@ -453,9 +546,90 @@ func makeDexTradeCleanExpireOrdersBlock(addr types.Address) *ledger.AccountBlock
 	idsData = append(idsData, orderId...)
 	idsData = append(idsData, orderId...)
 	idsData = append(idsData, orderId...)
+	idsData = append(idsData, orderId...)
+	idsData = append(idsData, orderId...)
+	idsData = append(idsData, orderId...)
+	idsData = append(idsData, orderId...)
+	idsData = append(idsData, orderId...)
 	if syncData, err := abi.ABIDexTrade.PackMethod(abi.MethodNameDexTradeCleanExpireOrders, idsData); err != nil {
 		panic(err)
 	} else {
 		return makeSendBlock(addr, types.AddressDexTrade, syncData, big0, big0)
 	}
+}
+
+func TestPrintDexBlockSize(t *testing.T) {
+	printBlockSize("dexFundDeposit",
+		makeDexDepositBlock(testAddr),
+		makeReceiveBlock(types.AddressDexFund))
+	printBlockSize("dexFundWithdraw",
+		makeDexWithdrawBlock(testAddr),
+		makeReceiveBlock(types.AddressDexFund))
+	printBlockSize("dexFundNewMarket",
+		makeDexNewMarketBlock(testAddr),
+		makeReceiveBlock(types.AddressDexFund))
+	printBlockSize("dexFundNewOrder",
+		makeDexNewOrderBlock(testAddr),
+		makeReceiveBlock(types.AddressDexFund))
+	printBlockSize("dexFundSettleOrders",
+		makeDexSettleOrdersBlock(testAddr),
+		makeReceiveBlock(types.AddressDexFund))
+	printBlockSize("dexFundPeriodJob",
+		makeDexPeriodJobBlock(dexAddr),
+		makeReceiveBlock(types.AddressDexFund))
+	printBlockSize("dexFundPledgeForVx",
+		makeDexPledgeForVxBlock(testAddr),
+		makeReceiveBlock(types.AddressDexFund))
+	printBlockSize("dexFundPledgeForVip",
+		makeDexPledgeForVipBlock(dexAddr),
+		makeReceiveBlock(types.AddressDexFund))
+	printBlockSize("dexFundPledgeCallback",
+		makeDexPledgeCallbackBlock(testAddr),
+		makeReceiveBlock(types.AddressDexFund))
+	printBlockSize("dexFundCancelPledgeCallBack",
+		makeDexCancelPledgeCallbackBlock(testAddr),
+		makeReceiveBlock(types.AddressDexFund))
+	printBlockSize("dexFundGetTokenInfoCallback",
+		makeDexGetTokenInfoCallbackBlock(types.AddressMintage),
+		makeReceiveBlock(types.AddressDexFund))
+	printBlockSize("dexFundOwnerConfig",
+		makeDexOwnerConfigBlock(dexAddr),
+		makeReceiveBlock(types.AddressDexFund))
+	printBlockSize("dexFundOwnerConfigTrade",
+		makeDexOwnerConfigTradeBlock(dexAddr),
+		makeReceiveBlock(types.AddressDexFund))
+	printBlockSize("dexFundMarketOwnerConfig",
+		makeDexMarketOwnerConfigBlock(testAddr),
+		makeReceiveBlock(types.AddressDexFund))
+	printBlockSize("dexFundTransferTokenOwner",
+		makeDexTransferTokenOwnerBlock(testAddr),
+		makeReceiveBlock(types.AddressDexFund))
+	printBlockSize("dexFundNotifyTime",
+		makeDexNotifyTimeBlock(dexAddr),
+		makeReceiveBlock(types.AddressDexFund))
+	printBlockSize("dexFundNewInviter",
+		makeDexNewInviterBlock(dexAddr),
+		makeReceiveBlock(types.AddressDexFund))
+	printBlockSize("dexFundBindInviteCode",
+		makeDexBindInviteCodeBlock(testAddr),
+		makeReceiveBlock(types.AddressDexFund))
+	printBlockSize("dexFundEndorseVx",
+		makeDexEndorseVxBlock(testAddr),
+		makeReceiveBlock(types.AddressDexFund))
+	printBlockSize("dexFundSettleMakerMinedVx",
+		makeDexSettleMakerMinedVxBlock(dexAddr),
+		makeReceiveBlock(types.AddressDexFund))
+
+	printBlockSize("dexTradeNewOrder",
+		makeDexTradeNewOrderBlock(testAddr),
+		makeReceiveBlock(types.AddressDexTrade))
+	printBlockSize("dexTradeCancelOrder",
+		makeDexTradeCancelOrderBlock(testAddr),
+		makeReceiveBlock(types.AddressDexTrade))
+	printBlockSize("dexTradeNotifyNewMarket",
+		makeDexTradeNotifyNewMarketBlock(dexAddr),
+		makeReceiveBlock(types.AddressDexTrade))
+	printBlockSize("dexTradeCleanExpireOrders",
+		makeDexTradeCleanExpireOrdersBlock(dexAddr),
+		makeReceiveBlock(types.AddressDexTrade))
 }

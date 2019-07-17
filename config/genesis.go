@@ -119,6 +119,7 @@ type DexFundContractInfo struct {
 	MakerMineProxy        types.Address
 	NotifiedTimestamp     int64
 	EndorseVxAmount       *big.Int
+	AccountBalanceMap     map[types.TokenTypeId]*big.Int
 	Tokens                []DexTokenInfo
 	PendingTransferTokens []DexPendingTransferToken
 	Markets               []DexMarketInfo

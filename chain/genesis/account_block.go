@@ -302,6 +302,9 @@ func newDexFundContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock,
 		dex.SaveMakerMineProxy(vmdb, cfg.DexFundInfo.MakerMineProxy)
 		dex.GenesisSetTimestamp(vmdb, cfg.DexFundInfo.NotifiedTimestamp)
 		dex.SaveVxMinePool(vmdb, cfg.DexFundInfo.EndorseVxAmount)
+		for tk, amt := range cfg.DexFundInfo.AccountBalanceMap {
+			vmdb.SetBalance(&tk, amt)
+		}
 		for _, tk := range cfg.DexFundInfo.Tokens {
 			tokenInfo := &dex.TokenInfo{}
 			tokenInfo.TokenId = tk.TokenId.Bytes()
@@ -409,7 +412,7 @@ func newDexTradeContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock
 			mkInfo.Creator = mkif.Creator.Bytes()
 			mkInfo.Stopped = mkif.Stopped
 			mkInfo.Timestamp = mkif.Timestamp
-			dex.SaveMarketInfo(vmdb, mkInfo, mkif.TradeToken, mkif.QuoteToken)
+			dex.SaveMarketInfoById(vmdb, mkInfo)
 		}
 		for _, od := range cfg.DexTradeInfo.Orders {
 			order := &dex.Order{}
