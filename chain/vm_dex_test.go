@@ -58,6 +58,7 @@ func BenchmarkVMDexNewMarketSend(b *testing.B) {
 	sendBlock := makeDexNewMarketBlock(testAddr)
 	benchmarkSend(b, sendBlock)
 }
+
 //part of NewMarket
 func BenchmarkVMDexNewMarketReceive(b *testing.B) {
 	sendBlock := makeDexNewMarketBlock(testAddr)
@@ -71,11 +72,13 @@ func makeDexNewMarketBlock(addr types.Address) *ledger.AccountBlock {
 	}
 	return makeSendBlock(addr, types.AddressDexFund, data, big0, big0)
 }
+
 // part of NewOrder
 func BenchmarkVMDexNewOrderSend(b *testing.B) {
 	sendBlock := makeDexNewOrderBlock(testAddr)
 	benchmarkSend(b, sendBlock)
 }
+
 // part of NewOrder
 func BenchmarkVMDexNewOrderReceive(b *testing.B) {
 	sendBlock := makeDexNewOrderBlock(testAddr)
@@ -89,12 +92,14 @@ func makeDexNewOrderBlock(addr types.Address) *ledger.AccountBlock {
 	}
 	return makeSendBlock(addr, types.AddressDexFund, data, big1e18, big0)
 }
+
 // part of NewOrder
 // part of CancelOrder
 func BenchmarkVMDexSettleOrdersSend(b *testing.B) {
 	sendBlock := makeDexSettleOrdersBlock(testAddr)
 	benchmarkSend(b, sendBlock)
 }
+
 // part of NewOrder
 // part of CancelOrder
 func BenchmarkVMDexSettleOrdersReceive(b *testing.B) {
@@ -161,11 +166,13 @@ func makeDexPeriodJobBlock(addr types.Address) *ledger.AccountBlock {
 	}
 	return makeSendBlock(addr, types.AddressDexFund, data, big0, big0)
 }
+
 //part of PledgeForVx[entry]
 func BenchmarkVMDexPledgeForVxSend(b *testing.B) {
 	sendBlock := makeDexPledgeForVxBlock(testAddr)
 	benchmarkSend(b, sendBlock)
 }
+
 //part of PledgeForVx
 func BenchmarkVMDexPledgeForVxReceive(b *testing.B) {
 	sendBlock := makeDexPledgeForVxBlock(testAddr)
@@ -186,6 +193,7 @@ func BenchmarkVMDexPledgeForVipSend(b *testing.B) {
 	sendBlock := makeDexPledgeForVipBlock(dexAddr)
 	benchmarkSend(b, sendBlock)
 }
+
 //part of PledgeForVip
 func BenchmarkVMDexPledgeForVipReceive(b *testing.B) {
 	sendBlock := makeDexPledgeForVipBlock(dexAddr)
@@ -207,6 +215,7 @@ func BenchmarkVMDexPledgeCallbackSend(b *testing.B) {
 	sendBlock := makeDexPledgeCallbackBlock(dexAddr)
 	benchmarkSend(b, sendBlock)
 }
+
 //part of PledgeForVx
 //part of PledgeForVip
 func BenchmarkVMDexPledgeCallbackReceive(b *testing.B) {
@@ -229,6 +238,7 @@ func BenchmarkVMDexCancelPledgeCallbackSend(b *testing.B) {
 	sendBlock := makeDexCancelPledgeCallbackBlock(testAddr)
 	benchmarkSend(b, sendBlock)
 }
+
 //part of PledgeForVx
 //part of PledgeForVip
 func BenchmarkVMDexCancelPledgeCallBackReceive(b *testing.B) {
@@ -250,6 +260,7 @@ func BenchmarkVMDexGetTokenInfoCallbackSend(b *testing.B) {
 	sendBlock := makeDexGetTokenInfoCallbackBlock(types.AddressMintage)
 	benchmarkSend(b, sendBlock)
 }
+
 //part of NewMarket
 func BenchmarkVMDexGetTokenInfoCallBackReceive(b *testing.B) {
 	sendBlock := makeDexGetTokenInfoCallbackBlock(types.AddressMintage)
@@ -388,7 +399,7 @@ func BenchmarkVMDexEndorseVxSend(b *testing.B) {
 	sendBlock := makeDexEndorseVxBlock(testAddr)
 	benchmarkSend(b, sendBlock)
 }
-func BenchmarkVMEndorseVxReceive(b *testing.B) {
+func BenchmarkVMDexEndorseVxReceive(b *testing.B) {
 	sendBlock := makeDexEndorseVxBlock(testAddr)
 	receiveBlock := makeReceiveBlock(types.AddressDexFund)
 	benchmarkReceive(b, sendBlock, receiveBlock)
@@ -408,7 +419,7 @@ func BenchmarkVMDexSettleMakerMinedVxSend(b *testing.B) {
 	sendBlock := makeDexSettleMakerMinedVxBlock(dexAddr)
 	benchmarkSend(b, sendBlock)
 }
-func BenchmarkVMSettleMakerMinedVxReceive(b *testing.B) {
+func BenchmarkVMDexSettleMakerMinedVxReceive(b *testing.B) {
 	sendBlock := makeDexSettleMakerMinedVxBlock(dexAddr)
 	receiveBlock := makeReceiveBlock(types.AddressDexFund)
 	benchmarkReceive(b, sendBlock, receiveBlock)
@@ -438,6 +449,7 @@ func BenchmarkVMDexTradeNewOrderSend(b *testing.B) {
 	sendBlock := makeDexTradeNewOrderBlock(types.AddressDexFund)
 	benchmarkSend(b, sendBlock)
 }
+
 //part of NewOrder
 func BenchmarkVMDexTradeNewOrderReceive(b *testing.B) {
 	sendBlock := makeDexTradeNewOrderBlock(types.AddressDexFund)
@@ -477,6 +489,7 @@ func BenchmarkVMDexTradeCancelOrderSend(b *testing.B) {
 	sendBlock := makeDexTradeCancelOrderBlock(testAddr)
 	benchmarkSend(b, sendBlock)
 }
+
 //part of CancelOrder
 func BenchmarkVMDexTradeCancelOrderReceive(b *testing.B) {
 	sendBlock := makeDexTradeCancelOrderBlock(testAddr)
@@ -497,6 +510,7 @@ func BenchmarkVMDexTradeNotifyNewMarketSend(b *testing.B) {
 	sendBlock := makeDexTradeNotifyNewMarketBlock(types.AddressDexFund)
 	benchmarkSend(b, sendBlock)
 }
+
 //part of NewMarket
 func BenchmarkVMDexTradeNotifyNewMarketReceive(b *testing.B) {
 	sendBlock := makeDexTradeNotifyNewMarketBlock(types.AddressDexFund)
