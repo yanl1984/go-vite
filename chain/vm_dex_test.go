@@ -350,11 +350,11 @@ func makeDexNotifyTimeBlock(addr types.Address) *ledger.AccountBlock {
 }
 
 func BenchmarkVMDexNewInviterSend(b *testing.B) {
-	sendBlock := makeDexNewInviterBlock(testAddr)
+	sendBlock := makeDexNewInviterBlock(dexAddr)
 	benchmarkSend(b, sendBlock)
 }
 func BenchmarkVMDexNewInviterReceive(b *testing.B) {
-	sendBlock := makeDexNewInviterBlock(testAddr)
+	sendBlock := makeDexNewInviterBlock(dexAddr)
 	receiveBlock := makeReceiveBlock(types.AddressDexFund)
 	benchmarkReceive(b, sendBlock, receiveBlock)
 }
