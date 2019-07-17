@@ -71,7 +71,7 @@ func makeDexNewMarketBlock(addr types.Address) *ledger.AccountBlock {
 	}
 	return makeSendBlock(addr, types.AddressDexFund, data, big0, big0)
 }
-// part of NewOrder
+// part of NewOrder[entry]
 func BenchmarkVMDexNewOrderSend(b *testing.B) {
 	sendBlock := makeDexNewOrderBlock(testAddr)
 	benchmarkSend(b, sendBlock)
