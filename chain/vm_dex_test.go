@@ -53,7 +53,7 @@ func makeDexWithdrawBlock(addr types.Address) *ledger.AccountBlock {
 	return makeSendBlock(addr, types.AddressDexFund, data, big0, big0)
 }
 
-//part of NewMarket
+//part of NewMarket[entry]
 func BenchmarkVMDexNewMarketSend(b *testing.B) {
 	sendBlock := makeDexNewMarketBlock(testAddr)
 	benchmarkSend(b, sendBlock)
@@ -161,7 +161,7 @@ func makeDexPeriodJobBlock(addr types.Address) *ledger.AccountBlock {
 	}
 	return makeSendBlock(addr, types.AddressDexFund, data, big0, big0)
 }
-//part of PledgeForVx
+//part of PledgeForVx[entry]
 func BenchmarkVMDexPledgeForVxSend(b *testing.B) {
 	sendBlock := makeDexPledgeForVxBlock(testAddr)
 	benchmarkSend(b, sendBlock)
@@ -181,7 +181,7 @@ func makeDexPledgeForVxBlock(addr types.Address) *ledger.AccountBlock {
 	return makeSendBlock(addr, types.AddressDexFund, data, big0, big0)
 }
 
-//part of PledgeForVip
+//part of PledgeForVip[entry]
 func BenchmarkVMDexPledgeForVipSend(b *testing.B) {
 	sendBlock := makeDexPledgeForVipBlock(dexAddr)
 	benchmarkSend(b, sendBlock)
@@ -472,7 +472,7 @@ func makeDexTradeNewOrderBlock(addr types.Address) *ledger.AccountBlock {
 	}
 }
 
-//part of CancelOrder
+//part of CancelOrder[entry]
 func BenchmarkVMDexTradeCancelOrderSend(b *testing.B) {
 	sendBlock := makeDexTradeCancelOrderBlock(testAddr)
 	benchmarkSend(b, sendBlock)
