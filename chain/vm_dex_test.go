@@ -73,7 +73,7 @@ func makeDexNewMarketBlock(addr types.Address) *ledger.AccountBlock {
 	return makeSendBlock(addr, types.AddressDexFund, data, big0, big0)
 }
 
-// part of NewOrder
+// part of NewOrder[entry]
 func BenchmarkVMDexNewOrderSend(b *testing.B) {
 	sendBlock := makeDexNewOrderBlock(testAddr)
 	benchmarkSend(b, sendBlock)
@@ -361,11 +361,11 @@ func makeDexNotifyTimeBlock(addr types.Address) *ledger.AccountBlock {
 }
 
 func BenchmarkVMDexNewInviterSend(b *testing.B) {
-	sendBlock := makeDexNewInviterBlock(testAddr)
+	sendBlock := makeDexNewInviterBlock(dexAddr)
 	benchmarkSend(b, sendBlock)
 }
 func BenchmarkVMDexNewInviterReceive(b *testing.B) {
-	sendBlock := makeDexNewInviterBlock(testAddr)
+	sendBlock := makeDexNewInviterBlock(dexAddr)
 	receiveBlock := makeReceiveBlock(types.AddressDexFund)
 	benchmarkReceive(b, sendBlock, receiveBlock)
 }
