@@ -196,6 +196,12 @@ var (
 		Usage: "The token id",
 	}
 
+	ExportTypeFlags = cli.StringFlag{
+		Name:  "type",
+		Usage: "data type",
+		Value: "balance",
+	}
+
 	//Net
 	SingleFlag = cli.BoolFlag{
 		Name:  "single",

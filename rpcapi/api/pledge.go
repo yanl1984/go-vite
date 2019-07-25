@@ -127,6 +127,7 @@ func (p *PledgeApi) GetPledgeList(addr types.Address, index int, count int) (*Pl
 	if err != nil {
 		return nil, err
 	}
+
 	sort.Sort(byWithdrawHeight(list))
 	startHeight, endHeight := index*count, (index+1)*count
 	if startHeight >= len(list) {

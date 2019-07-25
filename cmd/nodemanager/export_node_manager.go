@@ -11,7 +11,9 @@ import (
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/ledger"
 	"github.com/vitelabs/go-vite/node"
+	"github.com/vitelabs/go-vite/vm/contracts/abi"
 	"github.com/vitelabs/go-vite/vm/contracts/dex"
+	"github.com/vitelabs/go-vite/vm_db"
 	"gopkg.in/urfave/cli.v1"
 	"math/big"
 	"strings"
@@ -53,6 +55,14 @@ func (nodeManager *ExportNodeManager) getSbHeight() uint64 {
 		sbHeight = nodeManager.ctx.GlobalUint64(utils.ExportSbHeightFlags.Name)
 	}
 	return sbHeight
+}
+
+func (nodeManager *ExportNodeManager) getDataType() string {
+	dataType := "balance"
+	if nodeManager.ctx.GlobalIsSet(utils.ExportTypeFlags.Name) {
+		dataType = nodeManager.ctx.GlobalString(utils.ExportTypeFlags.Name)
+	}
+	return dataType
 }
 func (nodeManager *ExportNodeManager) getTokenIdList() []types.TokenTypeId {
 	var tokenIds []types.TokenTypeId
@@ -101,13 +111,9 @@ func (nodeManager *ExportNodeManager) Start() error {
 			return err
 		}
 	}
+
 	if sbHeader == nil {
 		return errors.New(fmt.Sprintf("sbHeader is nil, beforeTime is %d, height is %d", beforeTime, sbHeight))
-	}
-
-	tokenIds := nodeManager.getTokenIdList()
-	if len(tokenIds) <= 0 {
-		return errors.New("len(tokenIds) is 0")
 	}
 
 	var addrList []types.Address
@@ -123,6 +129,76 @@ func (nodeManager *ExportNodeManager) Start() error {
 		return true
 	})
 
+	dataType := nodeManager.getDataType()
+	if dataType == "balance" {
+		tokenIds := nodeManager.getTokenIdList()
+		if len(tokenIds) <= 0 {
+			return errors.New("len(tokenIds) is 0")
+		}
+
+		return nodeManager.exportBalance(sbHeader, addrList, tokenIds)
+	} else if dataType == "pledge" {
+
+		latestAb, err := c.GetLatestAccountBlock(types.AddressPledge)
+		//prevHash, err := getPrevBlockHash(c, addr)
+		if err != nil {
+			return err
+		}
+
+		db, err := vm_db.NewVmDb(c, &types.AddressPledge, &sbHeader.Hash, &latestAb.Hash)
+		if err != nil {
+			return err
+		}
+
+		var content [][]string
+		for _, addr := range addrList {
+			_, amount, err := abi.GetPledgeInfoList(db, addr)
+			if err != nil {
+				return err
+			}
+
+			if amount.Cmp(big.NewInt(0)) > 0 {
+				var items []string
+				items = append(items, addr.String())
+
+				newAmount := decimal.NewFromBigInt(amount, 0).Div(decimal.New(1, int32(18)))
+				items = append(items, newAmount.String())
+				content = append(content, items)
+			}
+
+		}
+
+		timeFormat := fmt.Sprintf("%d_%d_%d_%d_%d_%d", sbHeader.Timestamp.Year(),
+			sbHeader.Timestamp.Month(),
+			sbHeader.Timestamp.Day(),
+			sbHeader.Timestamp.Hour(),
+			sbHeader.Timestamp.Minute(),
+			sbHeader.Timestamp.Second())
+
+		if err := nodeManager.writeExcel("pledge_"+timeFormat+".xlsx", content); err != nil {
+			return err
+		}
+
+		fmt.Printf("export %d address. time is %s, snapshot height is %d, snapshot hash is %s.\n", len(content), timeFormat, sbHeader.Height, sbHeader.Hash)
+		//return db, err
+		//
+		//db, err := getVmDb(p.chain, types.AddressPledge)
+		//if err != nil {
+		//	return nil, err
+		//}
+		//list, amount, err := abi.GetPledgeInfoL	ist(db, addr)
+		//if err != nil {
+		//	return nil, err
+		//}
+		return nil
+	}
+
+	panic(fmt.Sprintf("Unknown dataType: %s", dataType))
+	return nil
+}
+
+func (nodeManager *ExportNodeManager) exportBalance(sbHeader *ledger.SnapshotBlock, addrList []types.Address, tokenIds []types.TokenTypeId) error {
+	c := nodeManager.chain
 	// dex fund
 	dexResult, err := nodeManager.getDexFunds(sbHeader.Hash, addrList, tokenIds)
 	if err != nil {
@@ -195,14 +271,13 @@ func (nodeManager *ExportNodeManager) Start() error {
 		sbHeader.Timestamp.Hour(),
 		sbHeader.Timestamp.Minute(),
 		sbHeader.Timestamp.Second())
+
 	if err := nodeManager.writeExcel(timeFormat+".xlsx", content); err != nil {
 		return err
 	}
 
 	fmt.Printf("export %d address. time is %s, snapshot height is %d, snapshot hash is %s.\n", len(content), timeFormat, sbHeader.Height, sbHeader.Hash)
-
 	return nil
-
 }
 
 func (nodeManager *ExportNodeManager) getDexFunds(snapshotBlockHash types.Hash, addrList []types.Address, tokenIdList []types.TokenTypeId) (map[types.Address]map[types.TokenTypeId]*big.Int, error) {
