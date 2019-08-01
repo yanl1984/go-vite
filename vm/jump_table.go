@@ -30,11 +30,29 @@ type operation struct {
 }
 
 var (
-	simpleInstructionSet         = newSimpleInstructionSet()
-	offchainSimpleInstructionSet = newOffchainSimpleInstructionSet()
-	randInstructionSet           = newRandInstructionSet()
-	offchainRandInstructionSet   = newRandOffchainInstructionSet()
+	simpleInstructionSet          = newSimpleInstructionSet()
+	offchainSimpleInstructionSet  = newOffchainSimpleInstructionSet()
+	randInstructionSet            = newRandInstructionSet()
+	offchainRandInstructionSet    = newRandOffchainInstructionSet()
+	crontabInstructionSet         = newCrontabInstructionSet()
+	offchainCrontabInstructionSet = newCrontabOffchainInstructionSet()
 )
+
+func newCrontabInstructionSet() [256]operation {
+	instructionSet := newSimpleInstructionSet()
+	instructionSet[SELFDESTRUCT] = operation{
+		execute:       opSelfDestruct,
+		gasCost:       gasSelfDestruct,
+		validateStack: makeStackFunc(1, 0),
+		valid:         true,
+		halts:         true,
+	}
+	return instructionSet
+}
+
+func newCrontabOffchainInstructionSet() [256]operation {
+	return newOffchainSimpleInstructionSet()
+}
 
 func newRandInstructionSet() [256]operation {
 	instructionSet := newSimpleInstructionSet()

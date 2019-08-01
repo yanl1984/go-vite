@@ -64,6 +64,5 @@ func GetBuiltinContractMeta(addr types.Address) *ContractMeta {
 	return nil
 }
 func getBuiltinContractQuotaRatio(addr types.Address) uint8 {
-	// TODO use special quota ratio for dex contracts
 	return 10
 }

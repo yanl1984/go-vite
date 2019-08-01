@@ -101,6 +101,8 @@ type VmDb interface {
 	GetBalance(tokenTypeId *types.TokenTypeId) (*big.Int, error)
 	SetBalance(tokenTypeId *types.TokenTypeId, amount *big.Int)
 
+	GetBalanceMap() (map[types.TokenTypeId]*big.Int, error)
+
 	GetUnsavedBalanceMap() map[types.TokenTypeId]*big.Int
 
 	// ====== VMLog ======

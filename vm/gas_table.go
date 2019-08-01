@@ -171,6 +171,9 @@ func gasSeed(vm *VM, c *contract, stack *stack, mem *memory, memorySize uint64) 
 func gasRandom(vm *VM, c *contract, stack *stack, mem *memory, memorySize uint64) (uint64, bool, error) {
 	return vm.gasTable.RandomGas, true, nil
 }
+func gasSelfDestruct(vm *VM, c *contract, stack *stack, mem *memory, memorySize uint64) (uint64, bool, error) {
+	return vm.gasTable.SelfDestructGas, true, nil
+}
 func gasPop(vm *VM, c *contract, stack *stack, mem *memory, memorySize uint64) (uint64, bool, error) {
 	return vm.gasTable.PopGas, true, nil
 }

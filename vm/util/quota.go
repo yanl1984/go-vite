@@ -150,6 +150,7 @@ type GasTable struct {
 	FromhashGas       uint64
 	SeedGas           uint64
 	RandomGas         uint64
+	SelfDestructGas   uint64
 	PopGas            uint64
 	MloadGas          uint64
 	MstoreGas         uint64
@@ -318,7 +319,12 @@ var (
 		GetTokenInfoGas:       63200,
 	}
 
-	viteGasTable = GasTable{
+	viteGasTable    = newViteGasTable()
+	crontabGasTable = newCrontabGasTable()
+)
+
+func newViteGasTable() GasTable {
+	return GasTable{
 		AddGas:            2,
 		MulGas:            2,
 		SubGas:            2,
@@ -436,11 +442,19 @@ var (
 		DexFundEndorseVxMinePoolGas:    6300,
 		DexFundSettleMakerMinedVxGas:   25200,
 	}
-)
+}
+
+func newCrontabGasTable() GasTable {
+	gt := newViteGasTable()
+	gt.SelfDestructGas = 5000
+	return gt
+}
 
 func GasTableByHeight(sbHeight uint64) *GasTable {
 	if !fork.IsDexFork(sbHeight) {
 		return &initGasTable
+	} else if !fork.IsNewFork(sbHeight) {
+		return &viteGasTable
 	}
-	return &viteGasTable
+	return &crontabGasTable
 }

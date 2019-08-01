@@ -19,6 +19,11 @@ func (vdb *vmDb) SetBalance(tokenTypeId *types.TokenTypeId, amount *big.Int) {
 	vdb.unsaved().SetBalance(tokenTypeId, amount)
 }
 
+func (vdb *vmDb) GetBalanceMap() (map[types.TokenTypeId]*big.Int, error) {
+	// TODO
+	return nil, nil
+}
+
 func (vdb *vmDb) GetUnsavedBalanceMap() map[types.TokenTypeId]*big.Int {
 	if vdb.uns == nil {
 		return make(map[types.TokenTypeId]*big.Int)
