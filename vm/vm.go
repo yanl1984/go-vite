@@ -435,6 +435,9 @@ func (vm *VM) receiveCreate(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock
 		}
 	}
 	vm.revert(db)
+	if fork.IsNewFork(vm.latestSnapshotHeight) {
+		vm.isDestructed = true
+	}
 
 	// try refund
 	vm.updateBlock(db, block, err, 0, 0)
