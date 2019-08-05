@@ -581,6 +581,9 @@ func getQuotaRatioForRS(db vm_db.VmDb, toAddr types.Address, sendBlock *ledger.A
 	util.DealWithErr(err)
 	meta, err := db.GetContractMetaInSnapshot(toAddr, sb)
 	util.DealWithErr(err)
+	if meta != nil && meta.IsDeleted() {
+		return 0, util.ErrContractNotExists
+	}
 	if meta != nil {
 		return meta.QuotaRatio, nil
 	}
@@ -590,7 +593,7 @@ func getQuotaRatioForRS(db vm_db.VmDb, toAddr types.Address, sendBlock *ledger.A
 func getQuotaRatioBySnapshotBlock(db vm_db.VmDb, toAddr types.Address, snapshotBlock *ledger.SnapshotBlock) (uint8, error) {
 	meta, err := db.GetContractMetaInSnapshot(toAddr, snapshotBlock)
 	util.DealWithErr(err)
-	if meta == nil {
+	if meta == nil || meta.IsDeleted() {
 		return 0, util.ErrContractNotExists
 	}
 	return meta.QuotaRatio, nil

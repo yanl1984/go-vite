@@ -17,6 +17,7 @@ var (
 	ErrBlockTypeNotSupported     = errors.New("block type not supported")
 	ErrDataNotExist              = errors.New("data not exist")
 	ErrContractNotExists         = errors.New("contract not exists")
+	ErrContractDeleted           = errors.New("contract deleted")
 	ErrNoReliableStatus          = errors.New("no reliable status")
 	ErrSendBlockListLimitReached = errors.New("too many send blocks")
 

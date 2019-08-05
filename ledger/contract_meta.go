@@ -15,6 +15,11 @@ type ContractMeta struct {
 
 const LengthBeforeSeedFork = types.GidSize + 1 + types.HashSize + 1
 
+func (cm *ContractMeta) IsDeleted() bool {
+	// TODO
+	return true
+}
+
 func (cm *ContractMeta) Serialize() []byte {
 	buf := make([]byte, 0, LengthBeforeSeedFork+1)
 

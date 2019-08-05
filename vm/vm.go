@@ -258,8 +258,8 @@ func (vm *VM) RunV2(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger
 		vm.globalStatus = status
 		blockCopy.Data = nil
 		contractMeta := getContractMeta(db)
-		if checkContractDeleted(db) {
-			return nil, noRetry, util.ErrContractNotExists
+		if checkContractDestructed(blockCopy.AccountAddress, contractMeta) {
+			return vm.receiveDestructedCall(db, blockCopy, sendBlock)
 		}
 		if sendBlock.BlockType == ledger.BlockTypeSendCreate {
 			return vm.receiveCreate(db, blockCopy, sendBlock, contractMeta)
@@ -282,6 +282,30 @@ func (vm *VM) RunV2(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger
 // Cancel method stops the running contract receive
 func (vm *VM) Cancel() {
 	atomic.StoreInt32(&vm.abort, 1)
+}
+
+func (vm *VM) receiveDestructedCall(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock) (*vm_db.VmAccountBlock, bool, error) {
+	if sendBlock.Amount.Sign() > 0 {
+		util.AddBalance(db, &sendBlock.TokenId, sendBlock.Amount)
+		vm.vmContext.AppendBlock(
+			util.MakeSendBlock(
+				block.AccountAddress,
+				sendBlock.AccountAddress,
+				ledger.BlockTypeSendRefund,
+				sendBlock.Amount,
+				sendBlock.TokenId,
+				nil))
+		var refundErr error
+		if db, refundErr = vm.doSendBlockList(db, 0); refundErr != nil {
+			monitor.LogEvent("vm", "impossibleReceiveError")
+			nodeConfig.log.Error("Impossible receive error", "err", refundErr, "fromhash", sendBlock.Hash)
+			return nil, retry, refundErr
+		}
+	}
+	err := util.ErrContractDeleted
+	vm.updateBlock(db, block, err, 0, 0)
+	block.Data = getReceiveCallData(db, err)
+	return mergeReceiveBlock(db, block, vm.sendBlockList), noRetry, err
 }
 
 // sendCreate executes a send transaction to create a contract.
@@ -700,6 +724,9 @@ func (a byTokenId) Less(i, j int) bool {
 }
 
 func selfDestruct(vm *VM, db vm_db.VmDb, block *ledger.AccountBlock) (vm_db.VmDb, error) {
+	if !vm.isDestructed {
+		return db, nil
+	}
 	offset := len(vm.sendBlockList)
 	balanceMap, err := db.GetBalanceMap()
 	util.DealWithErr(err)
@@ -968,6 +995,13 @@ func (vm *VM) OffChainReader(db vm_db.VmDb, code []byte, data []byte) (result []
 			err = errors.New("offchain reader panic")
 		}
 	}()
+	meta, err := db.GetContractMeta()
+	if err != nil {
+		return nil, err
+	}
+	if meta == nil || meta.IsDeleted() {
+		return nil, util.ErrContractNotExists
+	}
 	sb, err := db.LatestSnapshotBlock()
 	if err != nil {
 		return nil, err
@@ -1014,16 +1048,11 @@ func getContractMeta(db vm_db.VmDb) *ledger.ContractMeta {
 	return meta
 }
 
-func checkContractDeleted(db vm_db.VmDb) bool {
-	if !types.IsContractAddr(*db.Address()) {
+func checkContractDestructed(addr types.Address, meta *ledger.ContractMeta) bool {
+	if !types.IsContractAddr(addr) {
 		return false
 	}
-	prev, err := db.PrevAccountBlock()
-	util.DealWithErr(err)
-	if prev == nil {
-		return false
-	}
-	return prev.BlockType == ledger.BlockTypeReceiveDestruct
+	return meta == nil || meta.IsDeleted()
 }
 
 // printDebugBlockInfo prints block info after execution.

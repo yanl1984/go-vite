@@ -114,6 +114,13 @@ func (db *mockDB) GetBalance(tokenTypeId *types.TokenTypeId) (*big.Int, error) {
 func (db *mockDB) SetBalance(tokenTypeId *types.TokenTypeId, amount *big.Int) {
 	db.balanceMap[*tokenTypeId] = amount
 }
+func (db *mockDB) GetBalanceMap() (map[types.TokenTypeId]*big.Int, error) {
+	balanceMap := make(map[types.TokenTypeId]*big.Int)
+	for tid, amount := range db.balanceMap {
+		balanceMap[tid] = new(big.Int).Set(amount)
+	}
+	return balanceMap, nil
+}
 func (db *mockDB) GetUnsavedBalanceMap() map[types.TokenTypeId]*big.Int {
 	return nil
 }

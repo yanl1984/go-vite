@@ -97,6 +97,16 @@ func (db *testDatabase) SetBalance(tokenTypeID *types.TokenTypeId, amount *big.I
 
 	}
 }
+func (db *testDatabase) GetBalanceMap() (map[types.TokenTypeId]*big.Int, error) {
+	balanceMap := make(map[types.TokenTypeId]*big.Int)
+	m, ok := db.balanceMap[db.addr]
+	if ok {
+		for tid, amount := range m {
+			balanceMap[tid] = new(big.Int).Set(amount)
+		}
+	}
+	return balanceMap, nil
+}
 func (db *testDatabase) SetContractMeta(toAddr types.Address, meta *ledger.ContractMeta) {
 	db.contractMetaMap[toAddr] = meta
 }
