@@ -17,7 +17,7 @@ const LengthBeforeSeedFork = types.GidSize + 1 + types.HashSize + 1
 
 func (cm *ContractMeta) IsDeleted() bool {
 	// TODO
-	return true
+	return false
 }
 
 func (cm *ContractMeta) Serialize() []byte {

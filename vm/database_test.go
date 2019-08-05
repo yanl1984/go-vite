@@ -195,8 +195,10 @@ func (db *testDatabase) GetConfirmSnapshotHeader(blockHash types.Hash) (*ledger.
 	return db.LatestSnapshotBlock()
 }
 func (db *testDatabase) GetContractMetaInSnapshot(contractAddress types.Address, snapshotBlock *ledger.SnapshotBlock) (*ledger.ContractMeta, error) {
-	meta := db.contractMetaMap[contractAddress]
-	return meta, nil
+	if types.IsBuiltinContractAddrInUse(contractAddress) {
+		return &ledger.ContractMeta{QuotaRatio: 10}, nil
+	}
+	return db.contractMetaMap[contractAddress], nil
 }
 func (db *testDatabase) CanWrite() bool {
 	return false
