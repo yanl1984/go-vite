@@ -7,6 +7,9 @@ import (
 )
 
 const (
+	retry   = true
+	noRetry = false
+
 	callDepth  uint16 = 512  // Maximum Depth of call.
 	stackLimit uint64 = 1024 // Maximum size of VM stack allowed.
 

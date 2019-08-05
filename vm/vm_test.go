@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"github.com/vitelabs/go-vite/common"
 	"github.com/vitelabs/go-vite/common/fork"
 	"github.com/vitelabs/go-vite/common/helper"
@@ -748,5 +749,19 @@ func BenchmarkReceiveCall(b *testing.B) {
 		if err != nil {
 			b.Fatalf("vm run failed, err: %v", err)
 		}
+	}
+}
+
+func TestInitVMConfig(t *testing.T) {
+	for i := 1; i <= 50; i++ {
+		index := big.NewInt(int64(i))
+		tid, _ := types.BigToTokenTypeId(index)
+
+		fmt.Println("{\n" +
+			"        \"blockType\":6,\n" +
+			"        \"toAddress\":\"vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502\",\n" +
+			"        \"amount\"    :\"" + index.Text(16) + "\",\n" +
+			"        \"tokenID\"   :\"" + tid.String() + "\"\n" +
+			"      },")
 	}
 }

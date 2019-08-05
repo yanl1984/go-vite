@@ -3,6 +3,7 @@ package vm
 import (
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/ledger"
 	"github.com/vitelabs/go-vite/vm_db"
@@ -31,6 +32,7 @@ type VMRunTestCase struct {
 	PledgeBeneficialAmount string
 	PreStorage             map[string]string
 	PreBalanceMap          map[types.TokenTypeId]string
+	PreContractMetaMap     map[types.Address]*ledger.ContractMeta
 	ContractMetaMap        map[types.Address]*ledger.ContractMeta
 	// result
 	Err           string
@@ -61,9 +63,6 @@ func TestVM_RunV2(t *testing.T) {
 		if testFile.IsDir() {
 			continue
 		}
-		/*if testFile.Name() != "contract.json" {
-			continue
-		}*/
 		file, ok := os.Open(testDir + testFile.Name())
 		if ok != nil {
 			t.Fatalf("open test file failed, %v", ok)
@@ -129,7 +128,7 @@ func TestVM_RunV2(t *testing.T) {
 				sendBlock.AccountAddress = testCase.FromAddress
 				sendBlock.ToAddress = testCase.ToAddress
 				var newDbErr error
-				db, newDbErr = NewMockDB(&testCase.FromAddress, latestSnapshotBlock, prevBlock, quotaInfoList, pledgeBeneficialAmount, testCase.BalanceMap, testCase.Storage, testCase.ContractMetaMap, code)
+				db, newDbErr = NewMockDB(&testCase.FromAddress, latestSnapshotBlock, prevBlock, quotaInfoList, pledgeBeneficialAmount, testCase.PreBalanceMap, testCase.PreStorage, testCase.PreContractMetaMap, code)
 				if newDbErr != nil {
 					t.Fatal("new mock db failed", "filename", testFile.Name(), "caseName", k, "err", newDbErr)
 				}
@@ -163,7 +162,7 @@ func TestVM_RunV2(t *testing.T) {
 					}
 				}
 				var newDbErr error
-				db, newDbErr = NewMockDB(&testCase.ToAddress, latestSnapshotBlock, prevBlock, quotaInfoList, pledgeBeneficialAmount, testCase.BalanceMap, testCase.Storage, testCase.ContractMetaMap, code)
+				db, newDbErr = NewMockDB(&testCase.ToAddress, latestSnapshotBlock, prevBlock, quotaInfoList, pledgeBeneficialAmount, testCase.PreBalanceMap, testCase.PreStorage, testCase.PreContractMetaMap, code)
 				if newDbErr != nil {
 					t.Fatal("new mock db failed", "filename", testFile.Name(), "caseName", k, "err", newDbErr)
 				}
@@ -178,6 +177,7 @@ func TestVM_RunV2(t *testing.T) {
 				t.Fatal("invalid test case run result, isRetry", "filename", testFile.Name(), "caseName", k, "expected", testCase.IsRetry, "got", isRetry)
 			}
 			if testCase.Success {
+				balanceMapGot, _ := db.GetBalanceMap()
 				if vmBlock == nil {
 					t.Fatal("invalid test case run result, vmBlock", "filename", testFile.Name(), "caseName", k, "expected", "exist", "got", "nil")
 				} else if testCase.BlockType != vmBlock.AccountBlock.BlockType {
@@ -186,9 +186,9 @@ func TestVM_RunV2(t *testing.T) {
 					t.Fatal("invalid test case run result, quota", "filename", testFile.Name(), "caseName", k, "expected", testCase.Quota, "got", vmBlock.AccountBlock.Quota)
 				} else if testCase.QuotaUsed != vmBlock.AccountBlock.QuotaUsed {
 					t.Fatal("invalid test case run result, quotaUsed", "filename", testFile.Name(), "caseName", k, "expected", testCase.QuotaUsed, "got", vmBlock.AccountBlock.QuotaUsed)
-				} else if checkBalanceResult := checkBalanceMap(testCase.BalanceMap, db.balanceMap); len(checkBalanceResult) > 0 {
+				} else if checkBalanceResult := checkBalanceMap(testCase.BalanceMap, balanceMapGot); len(checkBalanceResult) > 0 {
 					t.Fatal("invalid test case run result, balanceMap", "filename", testFile.Name(), "caseName", k, checkBalanceResult)
-				} else if checkStorageResult := checkStorageMap(testCase.Storage, db.storageMap); len(checkStorageResult) > 0 {
+				} else if checkStorageResult := checkStorageMap(testCase.Storage, db.getStorageMap()); len(checkStorageResult) > 0 {
 					t.Fatal("invalid test case run result, storageMap", "filename", testFile.Name(), "caseName", k, checkStorageResult)
 				} else if checkSendBlockListResult := checkSendBlockList(testCase.SendBlockList, vmBlock.AccountBlock.SendBlockList); len(checkSendBlockListResult) > 0 {
 					t.Fatal("invalid test case run result, sendBlockList", "filename", testFile.Name(), "caseName", k, checkSendBlockListResult)
@@ -196,6 +196,8 @@ func TestVM_RunV2(t *testing.T) {
 					t.Fatal("invalid test case run result, logList", "filename", testFile.Name(), "caseName", k, checkLogListResult)
 				} else if expected := db.GetLogListHash(); expected != vmBlock.AccountBlock.LogHash {
 					t.Fatal("invalid test case run result, logHash", "filename", testFile.Name(), "caseName", k, "expected", expected, "got", vmBlock.AccountBlock.LogHash)
+				} else if checkContractMetaMapResult := checkContractMetaMap(testCase.ContractMetaMap, db.getContractMetaMap()); len(checkContractMetaMapResult) > 0 {
+					t.Fatal("invalid test case run result, contractMetaMap", "filename", testFile.Name(), "caseName", k, checkContractMetaMapResult)
 				}
 				// TODO check data
 			} else if vmBlock != nil {
@@ -263,6 +265,29 @@ func checkStorageMap(expected, got map[string]string) string {
 		}
 		if expectedV, ok := expected[k]; !ok || expectedV != v {
 			return k + " storage, expect " + expectedV + ", got " + v
+		}
+	}
+	return ""
+}
+
+func checkContractMetaMap(expected, got map[types.Address]*ledger.ContractMeta) string {
+	gotCount := len(got)
+	expectedCount := len(expected)
+	if expectedCount != gotCount {
+		return "contract meta map len, expected " + strconv.Itoa(expectedCount) + ", got " + strconv.Itoa(gotCount)
+	}
+	for k, v := range got {
+		expectedV, ok := expected[k]
+		if !ok {
+			return "contract meta not exists, " + k.String()
+		}
+		if v.QuotaRatio != expectedV.QuotaRatio ||
+			v.Gid != expectedV.Gid ||
+			v.SendConfirmedTimes != expectedV.SendConfirmedTimes ||
+			v.SeedConfirmedTimes != expectedV.SeedConfirmedTimes {
+			return fmt.Sprintf("%v contract meta, expect [%v,%v,%v,%v] , got [%v,%v,%v,%v]", k.String(),
+				expectedV.Gid, expectedV.SendConfirmedTimes, expectedV.SeedConfirmedTimes, expectedV.QuotaRatio,
+				v.Gid, v.SendConfirmedTimes, v.SeedConfirmedTimes, v.QuotaRatio)
 		}
 	}
 	return ""

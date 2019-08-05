@@ -14,6 +14,11 @@
     "success":true,
     "quota":0,
     "quotaUsed":0,
+    "preContractMetaMap":{
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86":{
+        "quotaRatio":10
+      }
+    },
     "contractMetaMap":{
       "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86":{
         "quotaRatio":10
@@ -43,6 +48,11 @@
     "success":true,
     "quota":0,
     "quotaUsed":0,
+    "preContractMetaMap":{
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86":{
+        "quotaRatio":10
+      }
+    },
     "contractMetaMap":{
       "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86":{
         "quotaRatio":10
@@ -72,6 +82,11 @@
     "success":true,
     "quota":0,
     "quotaUsed":0,
+    "preContractMetaMap":{
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86":{
+        "quotaRatio":10
+      }
+    },
     "contractMetaMap":{
       "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86":{
         "quotaRatio":10
@@ -94,6 +109,11 @@
     "success":true,
     "quota":0,
     "quotaUsed":0,
+    "preContractMetaMap":{
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86":{
+        "quotaRatio":10
+      }
+    },
     "contractMetaMap":{
       "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86":{
         "quotaRatio":10

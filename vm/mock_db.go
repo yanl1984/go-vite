@@ -216,6 +216,30 @@ func (db *mockDB) GetContractMetaInSnapshot(contractAddress types.Address, snaps
 	}
 	return nil, nil
 }
+func (db *mockDB) getContractMetaMap() map[types.Address]*ledger.ContractMeta {
+	metaMap := make(map[types.Address]*ledger.ContractMeta)
+	for addr, meta := range db.contractMetaMap {
+		metaMap[addr] = meta
+	}
+	for addr, meta := range db.contractMetaMapOrigin {
+		if _, ok := metaMap[addr]; !ok {
+			metaMap[addr] = meta
+		}
+	}
+	return metaMap
+}
+func (db *mockDB) getStorageMap() map[string]string {
+	storageMap := make(map[string]string)
+	for k, v := range db.storageMap {
+		storageMap[k] = v
+	}
+	for k, v := range db.storageMapOrigin {
+		if _, ok := storageMap[k]; !ok {
+			storageMap[k] = v
+		}
+	}
+	return storageMap
+}
 func (db *mockDB) SetContractCode(code []byte) {
 	db.code = code
 }
