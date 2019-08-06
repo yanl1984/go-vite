@@ -70,8 +70,7 @@ type Redo struct {
 	log log15.Logger
 }
 
-
-func NewStorageRedoWithStore(chain Chain, store * chain_db.Store) (*Redo, error) {
+func NewStorageRedoWithStore(chain Chain, store *chain_db.Store) (*Redo, error) {
 	redo := &Redo{
 		store:        store,
 		chain:        chain,
