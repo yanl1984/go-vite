@@ -447,7 +447,7 @@ func newViteGasTable() GasTable {
 
 func newCrontabGasTable() GasTable {
 	gt := newViteGasTable()
-	gt.SelfDestructGas = 5000
+	gt.SelfDestructGas = 7500
 	return gt
 }
 
