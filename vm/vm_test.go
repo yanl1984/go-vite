@@ -753,15 +753,5 @@ func BenchmarkReceiveCall(b *testing.B) {
 }
 
 func TestInitVMConfig(t *testing.T) {
-	for i := 1; i <= 50; i++ {
-		index := big.NewInt(int64(i))
-		tid, _ := types.BigToTokenTypeId(index)
-
-		fmt.Println("{\n" +
-			"        \"blockType\":6,\n" +
-			"        \"toAddress\":\"vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502\",\n" +
-			"        \"amount\"    :\"" + index.Text(16) + "\",\n" +
-			"        \"tokenID\"   :\"" + tid.String() + "\"\n" +
-			"      },")
-	}
+	fmt.Println(types.CreateAddress())
 }
