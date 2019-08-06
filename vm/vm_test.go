@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"github.com/vitelabs/go-vite/common"
 	"github.com/vitelabs/go-vite/common/fork"
 	"github.com/vitelabs/go-vite/common/helper"
@@ -750,8 +749,4 @@ func BenchmarkReceiveCall(b *testing.B) {
 			b.Fatalf("vm run failed, err: %v", err)
 		}
 	}
-}
-
-func TestInitVMConfig(t *testing.T) {
-	fmt.Println(types.CreateAddress())
 }

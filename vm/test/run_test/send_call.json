@@ -5,7 +5,7 @@
     "fromAddress": "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
     "toAddress": "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86",
     "data": "",
-    "amount": "0100",
+    "amount": "00",
     "tokenId": "tti_5649544520544f4b454e6e40",
     "pledgeBeneficialAmount": "10000000000000000000000",
     "err": "contract not exists",
@@ -14,17 +14,37 @@
     "quotaUsed": 21000
   },
   "send_call_to_non_exist_contract_after_hardfork": {
-    "sbHeight": 1,
+    "sbHeight": 300,
     "blockType": 2,
     "fromAddress": "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
     "toAddress": "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86",
     "data": "",
-    "amount": "0100",
+    "amount": "00",
     "tokenId": "tti_5649544520544f4b454e6e40",
     "pledgeBeneficialAmount": "10000000000000000000000",
     "err": "contract not exists",
     "success": false,
     "quota": 21000,
     "quotaUsed": 21000
+  },
+  "send_call_to_deleted_contract_after_hardfork": {
+    "sbHeight": 300,
+    "blockType": 2,
+    "fromAddress": "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+    "toAddress": "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86",
+    "data": "",
+    "amount": "00",
+    "tokenId": "tti_5649544520544f4b454e6e40",
+    "pledgeBeneficialAmount": "10000000000000000000000",
+    "err": "contract not exists",
+    "success": false,
+    "quota": 21000,
+    "quotaUsed": 21000,
+    "preContractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10,
+        "deleted":true
+      }
+    }
   }
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/ledger"
+	"github.com/vitelabs/go-vite/vm/util"
 	"github.com/vitelabs/go-vite/vm_db"
 	"io/ioutil"
 	"math/big"
@@ -19,15 +20,16 @@ type VMRunTestCase struct {
 	// global status
 	SbHeight uint64
 	// block
-	BlockType     byte
-	SendBlockType byte
-	FromAddress   types.Address
-	ToAddress     types.Address
-	Data          string
-	Amount        string
-	TokenId       types.TokenTypeId
-	Fee           string
-	Code          string
+	BlockType        byte
+	SendBlockType    byte
+	FromAddress      types.Address
+	ToAddress        types.Address
+	Data             string
+	Amount           string
+	TokenId          types.TokenTypeId
+	Fee              string
+	Code             string
+	NeedGlobalStatus bool
 	// environment
 	PledgeBeneficialAmount string
 	PreStorage             map[string]string
@@ -167,7 +169,11 @@ func TestVM_RunV2(t *testing.T) {
 					t.Fatal("new mock db failed", "filename", testFile.Name(), "caseName", k, "err", newDbErr)
 				}
 				vm := NewVM(nil)
-				vmBlock, isRetry, err = vm.RunV2(db, receiveBlock, sendBlock, nil)
+				var status util.GlobalStatus
+				if testCase.NeedGlobalStatus {
+					status = NewTestGlobalStatus(0, latestSnapshotBlock)
+				}
+				vmBlock, isRetry, err = vm.RunV2(db, receiveBlock, sendBlock, status)
 			} else {
 				t.Fatal("invalid test case block type", "filename", testFile.Name(), "caseName", k, "blockType", testCase.BlockType)
 			}

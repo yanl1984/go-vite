@@ -999,7 +999,7 @@ func (vm *VM) OffChainReader(db vm_db.VmDb, code []byte, data []byte) (result []
 	if err != nil {
 		return nil, err
 	}
-	if meta == nil || meta.IsDeleted() {
+	if meta == nil || meta.Deleted {
 		return nil, util.ErrContractNotExists
 	}
 	sb, err := db.LatestSnapshotBlock()
@@ -1052,7 +1052,7 @@ func checkContractDestructed(addr types.Address, meta *ledger.ContractMeta) bool
 	if !types.IsContractAddr(addr) {
 		return false
 	}
-	return meta == nil || meta.IsDeleted()
+	return meta == nil || meta.Deleted
 }
 
 // printDebugBlockInfo prints block info after execution.

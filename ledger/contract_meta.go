@@ -11,14 +11,12 @@ type ContractMeta struct {
 	QuotaRatio      uint8      // the ratio of quota cost for the send block
 
 	SeedConfirmedTimes uint8
+
+	// TODO
+	Deleted bool
 }
 
 const LengthBeforeSeedFork = types.GidSize + 1 + types.HashSize + 1
-
-func (cm *ContractMeta) IsDeleted() bool {
-	// TODO
-	return false
-}
 
 func (cm *ContractMeta) Serialize() []byte {
 	buf := make([]byte, 0, LengthBeforeSeedFork+1)
@@ -62,9 +60,9 @@ func (cm *ContractMeta) Deserialize(buf []byte) error {
 
 func GetBuiltinContractMeta(addr types.Address) *ContractMeta {
 	if types.IsBuiltinContractAddrInUseWithSendConfirm(addr) {
-		return &ContractMeta{types.DELEGATE_GID, 1, types.Hash{}, getBuiltinContractQuotaRatio(addr), 0}
+		return &ContractMeta{types.DELEGATE_GID, 1, types.Hash{}, getBuiltinContractQuotaRatio(addr), 0, false}
 	} else if types.IsBuiltinContractAddrInUse(addr) {
-		return &ContractMeta{types.DELEGATE_GID, 0, types.Hash{}, getBuiltinContractQuotaRatio(addr), 0}
+		return &ContractMeta{types.DELEGATE_GID, 0, types.Hash{}, getBuiltinContractQuotaRatio(addr), 0, false}
 	}
 	return nil
 }
