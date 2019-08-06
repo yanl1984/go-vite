@@ -29,15 +29,6 @@ type operation struct {
 	returns bool // determines whether the operations sets the return data content
 }
 
-var (
-	simpleInstructionSet          = newSimpleInstructionSet()
-	offchainSimpleInstructionSet  = newOffchainSimpleInstructionSet()
-	randInstructionSet            = newRandInstructionSet()
-	offchainRandInstructionSet    = newRandOffchainInstructionSet()
-	crontabInstructionSet         = newCrontabInstructionSet()
-	offchainCrontabInstructionSet = newCrontabOffchainInstructionSet()
-)
-
 func newCrontabInstructionSet() [256]operation {
 	instructionSet := newSimpleInstructionSet()
 	instructionSet[SELFDESTRUCT] = operation{

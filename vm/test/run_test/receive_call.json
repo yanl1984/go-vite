@@ -1400,5 +1400,83 @@
         "tokenID": "tti_5649544520544f4b454e6e40"
       }
     ]
+  },
+  "receive_destructed_contract_call_destructed_contract_after_hardfork": {
+    "sbHeight": 300,
+    "blockType": 4,
+    "sendBlockType": 2,
+    "fromAddress": "vite_e5a70ff20e7c01db293c0f82236b4a8a4b8bef87805c8c6c8b",
+    "toAddress": "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86",
+    "data": "",
+    "amount": "0100",
+    "tokenId": "tti_5649544520544f4b454e6e40",
+    "code": "01",
+    "needGlobalStatus":true,
+    "pledgeBeneficialAmount": "10000000000000000000000",
+    "err": "contract deleted",
+    "success": true,
+    "quota": 0,
+    "quotaUsed": 0,
+    "preContractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10,
+        "deleted":true
+      },
+      "vite_e5a70ff20e7c01db293c0f82236b4a8a4b8bef87805c8c6c8b": {
+        "quotaRatio": 10,
+        "deleted":true
+      }
+    },
+    "contractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10,
+        "deleted":true
+      },
+      "vite_e5a70ff20e7c01db293c0f82236b4a8a4b8bef87805c8c6c8b": {
+        "quotaRatio": 10,
+        "deleted":true
+      }
+    },
+    "balanceMap": {
+      "tti_5649544520544f4b454e6e40": "0100"
+    }
+  },
+  "destructed_contract_receive_refund_after_hardfork": {
+    "sbHeight": 300,
+    "blockType": 4,
+    "sendBlockType": 6,
+    "fromAddress": "vite_e5a70ff20e7c01db293c0f82236b4a8a4b8bef87805c8c6c8b",
+    "toAddress": "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86",
+    "data": "",
+    "amount": "0100",
+    "tokenId": "tti_5649544520544f4b454e6e40",
+    "code": "01",
+    "needGlobalStatus":true,
+    "pledgeBeneficialAmount": "10000000000000000000000",
+    "err": "",
+    "success": true,
+    "quota": 0,
+    "quotaUsed": 0,
+    "preContractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10,
+        "deleted":true
+      },
+      "vite_e5a70ff20e7c01db293c0f82236b4a8a4b8bef87805c8c6c8b": {
+        "quotaRatio": 10
+      }
+    },
+    "contractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10,
+        "deleted":true
+      },
+      "vite_e5a70ff20e7c01db293c0f82236b4a8a4b8bef87805c8c6c8b": {
+        "quotaRatio": 10
+      }
+    },
+    "balanceMap": {
+      "tti_5649544520544f4b454e6e40": "0100"
+    }
   }
 }

@@ -258,10 +258,12 @@ func (vm *VM) RunV2(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger
 		vm.globalStatus = status
 		blockCopy.Data = nil
 		contractMeta := getContractMeta(db)
-		if checkContractDestructed(blockCopy.AccountAddress, contractMeta) {
+		destructed := checkContractDestructed(blockCopy.AccountAddress, contractMeta)
+		if sendBlock.BlockType == ledger.BlockTypeSendRefund {
+			return vm.receiveRefund(db, blockCopy, sendBlock, contractMeta, !destructed)
+		} else if destructed {
 			return vm.receiveDestructedCall(db, blockCopy, sendBlock)
-		}
-		if sendBlock.BlockType == ledger.BlockTypeSendCreate {
+		} else if sendBlock.BlockType == ledger.BlockTypeSendCreate {
 			return vm.receiveCreate(db, blockCopy, sendBlock, contractMeta)
 		} else if sendBlock.BlockType == ledger.BlockTypeSendCall {
 			return vm.receiveCall(db, blockCopy, sendBlock, contractMeta)
@@ -270,8 +272,6 @@ func (vm *VM) RunV2(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger
 				return vm.receiveCall(db, blockCopy, sendBlock, contractMeta)
 			}
 			return vm.receiveReward(db, blockCopy, sendBlock, contractMeta)
-		} else if sendBlock.BlockType == ledger.BlockTypeSendRefund {
-			return vm.receiveRefund(db, blockCopy, sendBlock, contractMeta)
 		}
 	}
 	// Notice that send reward and send refund type is not supposed to be
@@ -287,19 +287,21 @@ func (vm *VM) Cancel() {
 func (vm *VM) receiveDestructedCall(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock) (*vm_db.VmAccountBlock, bool, error) {
 	if sendBlock.Amount.Sign() > 0 {
 		util.AddBalance(db, &sendBlock.TokenId, sendBlock.Amount)
-		vm.vmContext.AppendBlock(
-			util.MakeSendBlock(
-				block.AccountAddress,
-				sendBlock.AccountAddress,
-				ledger.BlockTypeSendRefund,
-				sendBlock.Amount,
-				sendBlock.TokenId,
-				nil))
-		var refundErr error
-		if db, refundErr = vm.doSendBlockList(db, 0); refundErr != nil {
-			monitor.LogEvent("vm", "impossibleReceiveError")
-			nodeConfig.log.Error("Impossible receive error", "err", refundErr, "fromhash", sendBlock.Hash)
-			return nil, retry, refundErr
+		if _, err := getQuotaRatioForRS(db, sendBlock.AccountAddress, sendBlock, vm.GlobalStatus()); err == nil {
+			vm.vmContext.AppendBlock(
+				util.MakeSendBlock(
+					block.AccountAddress,
+					sendBlock.AccountAddress,
+					ledger.BlockTypeSendRefund,
+					sendBlock.Amount,
+					sendBlock.TokenId,
+					nil))
+			var refundErr error
+			if db, refundErr = vm.doSendBlockList(db, 0); refundErr != nil {
+				monitor.LogEvent("vm", "impossibleReceiveError")
+				nodeConfig.log.Error("Impossible receive error", "err", refundErr, "fromhash", sendBlock.Hash)
+				return nil, retry, refundErr
+			}
 		}
 	}
 	err := util.ErrContractDeleted
@@ -735,7 +737,7 @@ func selfDestruct(vm *VM, db vm_db.VmDb, block *ledger.AccountBlock) (vm_db.VmDb
 		if amount.Sign() == 0 {
 			continue
 		}
-		if len(balanceList) == selfDestructBalanceListMax {
+		if len(balanceList) >= selfDestructBalanceListMax {
 			return db, util.ErrSendBlockListLimitReached
 		}
 		balanceList = append(balanceList, &balanceInfo{tid, amount})
@@ -878,27 +880,30 @@ func (vm *VM) receiveReward(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock
 	return &vm_db.VmAccountBlock{block, db}, noRetry, nil
 }
 
-func (vm *VM) receiveRefund(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, meta *ledger.ContractMeta) (*vm_db.VmAccountBlock, bool, error) {
+func (vm *VM) receiveRefund(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, meta *ledger.ContractMeta, useQuota bool) (*vm_db.VmAccountBlock, bool, error) {
 	defer monitor.LogTimerConsuming([]string{"vm", "receiveRefund"}, time.Now())
-	// check can make transaction
-	quotaTotal, quotaAddition, err := quota.CalcQuotaForBlock(
-		db,
-		block.AccountAddress,
-		getPledgeAmount(db),
-		block.Difficulty,
-		vm.latestSnapshotHeight)
-	util.DealWithErr(err)
-	quotaLeft := quotaTotal
-	cost, err := gasReceive(block, meta, vm.gasTable)
-	if err != nil {
-		return nil, noRetry, err
-	}
-	quotaLeft, err = util.UseQuota(quotaLeft, cost)
-	if err != nil {
-		return nil, retry, err
+	q := uint64(0)
+	qUsed := uint64(0)
+	if useQuota {
+		quotaTotal, quotaAddition, err := quota.CalcQuotaForBlock(
+			db,
+			block.AccountAddress,
+			getPledgeAmount(db),
+			block.Difficulty,
+			vm.latestSnapshotHeight)
+		util.DealWithErr(err)
+		quotaLeft := quotaTotal
+		cost, err := gasReceive(block, meta, vm.gasTable)
+		if err != nil {
+			return nil, noRetry, err
+		}
+		quotaLeft, err = util.UseQuota(quotaLeft, cost)
+		if err != nil {
+			return nil, retry, err
+		}
+		q, qUsed = util.CalcQuotaUsed(true, quotaTotal, quotaAddition, quotaLeft, nil)
 	}
 	util.AddBalance(db, &sendBlock.TokenId, sendBlock.Amount)
-	q, qUsed := util.CalcQuotaUsed(true, quotaTotal, quotaAddition, quotaLeft, nil)
 	vm.updateBlock(db, block, nil, q, qUsed)
 	return &vm_db.VmAccountBlock{block, db}, noRetry, nil
 }

@@ -13,12 +13,12 @@ type interpreter struct {
 }
 
 var (
-	simpleInterpreter          = &interpreter{simpleInstructionSet}
-	offchainSimpleInterpreter  = &interpreter{offchainSimpleInstructionSet}
-	randInterpreter            = &interpreter{randInstructionSet}
-	offchainRandInterpreter    = &interpreter{offchainRandInstructionSet}
-	crontabInterpreter         = &interpreter{crontabInstructionSet}
-	offchainCrontabInterpreter = &interpreter{offchainCrontabInstructionSet}
+	simpleInterpreter          = &interpreter{newSimpleInstructionSet()}
+	offchainSimpleInterpreter  = &interpreter{newOffchainSimpleInstructionSet()}
+	randInterpreter            = &interpreter{newRandInstructionSet()}
+	offchainRandInterpreter    = &interpreter{newRandOffchainInstructionSet()}
+	crontabInterpreter         = &interpreter{newCrontabInstructionSet()}
+	offchainCrontabInterpreter = &interpreter{newCrontabOffchainInstructionSet()}
 )
 
 func newInterpreter(blockHeight uint64, offChain bool) *interpreter {
