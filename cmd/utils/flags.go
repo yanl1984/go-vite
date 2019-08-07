@@ -181,9 +181,35 @@ var (
 	}
 
 	// Export sb height
-	ExportSbHeightFlags = cli.Uint64Flag{
-		Name:  "sbHeight",
+	ExportEndSbHeightFlags = cli.Uint64Flag{
+		Name:  "endSbHeight",
 		Usage: "The snapshot block height",
+	}
+
+	ExportBeginSbHeightFlags = cli.Uint64Flag{
+		Name:  "beginSbHeight",
+		Usage: "The snapshot block height",
+	}
+
+	ExportBeginTimeFlags = cli.Int64Flag{
+		Name:  "beginTime",
+		Usage: "Begin time",
+	}
+
+	ExportEndTimeFlags = cli.Int64Flag{
+		Name:  "endTime",
+		Usage: "end time",
+	}
+
+	ExportTokenFlags = cli.StringFlag{
+		Name:  "token",
+		Usage: "The token id",
+	}
+
+	ExportTypeFlags = cli.StringFlag{
+		Name:  "type",
+		Usage: "data type",
+		Value: "balance",
 	}
 
 	//Net

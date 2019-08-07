@@ -39,6 +39,8 @@ node_config_*.json
 
 vite/net/simular/genesis.go
 genesis_*.json
+xlsx_outputs/
+gvite.log
 
 **/p2p/**/simular/**
 !**/p2p/**/simular/**/*.go
