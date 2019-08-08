@@ -52,6 +52,7 @@ type builtinContract struct {
 var (
 	simpleContracts = newSimpleContracts()
 	dexContracts    = newDexContracts()
+	timerContracts  = newTimerContracts()
 )
 
 func newSimpleContracts() map[types.Address]*builtinContract {
@@ -128,12 +129,27 @@ func newDexContracts() map[types.Address]*builtinContract {
 	return contracts
 }
 
+func newTimerContracts() map[types.Address]*builtinContract {
+	contracts := newDexContracts()
+	contracts[types.AddressDexFund] = &builtinContract{
+		map[string]BuiltinContractMethod{
+			cabi.MethodNameTimerNewTask:    &MethodTimerNewTask{},
+			cabi.MethodNameTimerDeleteTask: &MethodTimerDeleteTask{},
+			cabi.MethodNameTimerRecharge:   &MethodTimerRecharge{},
+		},
+		cabi.ABITimer,
+	}
+	return contracts
+}
+
 func GetBuiltinContractMethod(addr types.Address, methodSelector []byte, sbHeight uint64) (BuiltinContractMethod, bool, error) {
 	var contractsMap map[types.Address]*builtinContract
 	if !fork.IsDexFork(sbHeight) {
 		contractsMap = simpleContracts
-	} else {
+	} else if !fork.IsNewFork(sbHeight) {
 		contractsMap = dexContracts
+	} else {
+		contractsMap = timerContracts
 	}
 	p, ok := contractsMap[addr]
 	if ok {

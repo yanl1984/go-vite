@@ -24,14 +24,19 @@ const (
 	GetRewardTimeLimit int64  = 3600 // Cannot get snapshot block reward of current few blocks, for latest snapshot block could be reverted
 
 	PledgeHeightMax uint64 = 3600 * 24 * 365
+
+	TimerTimeGapMin   uint64 = 5 * 60
+	TimerTimeGapMax   uint64 = 90 * 24 * 3600
+	TimerHeightGapMin uint64 = 5 * 60
+	TimerHeightGapMax uint64 = 90 * 24 * 3600
 )
 
 var (
 	rewardPerBlock  = big.NewInt(951293759512937595) // Reward pre snapshot block, rewardPreBlock * blockNumPerYear / viteTotalSupply = 3%
 	pledgeAmountMin = new(big.Int).Mul(big.NewInt(134), util.AttovPerVite)
 	mintageFee      = new(big.Int).Mul(big.NewInt(1e3), util.AttovPerVite) // Mintage cost choice 1, destroy ViteToken
-	// mintagePledgeAmount              = new(big.Int).Mul(big.NewInt(1e5), util.AttovPerVite) // Mintage cost choice 2, pledge ViteToken for 3 month
-	createConsensusGroupPledgeAmount = new(big.Int).Mul(big.NewInt(1000), util.AttovPerVite)
+	// createConsensusGroupPledgeAmount = new(big.Int).Mul(big.NewInt(1000), util.AttovPerVite)
+	timerChargeAmountPerTask = new(big.Int).Mul(big.NewInt(1), util.AttovPerVite)
 )
 
 type ContractsParams struct {

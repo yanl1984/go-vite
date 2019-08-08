@@ -573,7 +573,7 @@ func opSelfDestruct(pc *uint64, vm *VM, c *contract, mem *memory, stack *stack) 
 	addr, _ := types.BigToAddress(bigAddr)
 	// addr is user address or
 	// addr is contract address and contract exists
-	_, err := getQuotaRatioForRS(c.db, addr, c.sendBlock, vm.GlobalStatus())
+	_, err := util.GetQuotaRatioForRS(c.db, addr, c.sendBlock, vm.GlobalStatus())
 	if err != nil {
 		return nil, err
 	}

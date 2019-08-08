@@ -29,7 +29,7 @@ type operation struct {
 	returns bool // determines whether the operations sets the return data content
 }
 
-func newCrontabInstructionSet() [256]operation {
+func newTimerInstructionSet() [256]operation {
 	instructionSet := newSimpleInstructionSet()
 	instructionSet[SELFDESTRUCT] = operation{
 		execute:       opSelfDestruct,
@@ -41,7 +41,7 @@ func newCrontabInstructionSet() [256]operation {
 	return instructionSet
 }
 
-func newCrontabOffchainInstructionSet() [256]operation {
+func newTimerOffchainInstructionSet() [256]operation {
 	return newOffchainSimpleInstructionSet()
 }
 

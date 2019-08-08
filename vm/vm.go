@@ -287,7 +287,7 @@ func (vm *VM) Cancel() {
 func (vm *VM) receiveDestructedCall(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock) (*vm_db.VmAccountBlock, bool, error) {
 	if sendBlock.Amount.Sign() > 0 {
 		util.AddBalance(db, &sendBlock.TokenId, sendBlock.Amount)
-		if _, err := getQuotaRatioForRS(db, sendBlock.AccountAddress, sendBlock, vm.GlobalStatus()); err == nil {
+		if _, err := util.GetQuotaRatioForRS(db, sendBlock.AccountAddress, sendBlock, vm.GlobalStatus()); err == nil {
 			vm.vmContext.AppendBlock(
 				util.MakeSendBlock(
 					block.AccountAddress,
@@ -1029,7 +1029,7 @@ func useQuotaForSend(block *ledger.AccountBlock, db vm_db.VmDb, quotaLeft uint64
 	if err != nil {
 		return quotaLeft, err
 	}
-	quotaRatio, err := getQuotaRatioForS(db, block.ToAddress)
+	quotaRatio, err := util.GetQuotaRatioForS(db, block.ToAddress)
 	if err != nil {
 		return quotaLeft, err
 	}
