@@ -32,7 +32,8 @@ const (
 	TimerHeightGapMin    uint64 = 75
 	TimerHeightGapMax    uint64 = 90 * 24 * 3600
 
-	TimerTriggerTasksNumMax int = 100
+	TimerTriggerTasksNumMax    int    = 100
+	TimerArrearageDeleteHeight uint64 = 7 * 24 * 3600
 )
 
 var (
@@ -42,6 +43,7 @@ var (
 	// createConsensusGroupPledgeAmount = new(big.Int).Mul(big.NewInt(1000), util.AttovPerVite)
 	timerChargeAmountPerTask = new(big.Int).Mul(big.NewInt(10), util.AttovPerVite)
 	timerNewTaskFee          = new(big.Int).Mul(big.NewInt(10), util.AttovPerVite)
+	timerBurnFeeMin          = new(big.Int).Mul(big.NewInt(1e4), util.AttovPerVite)
 )
 
 type ContractsParams struct {

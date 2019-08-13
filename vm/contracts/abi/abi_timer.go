@@ -13,10 +13,10 @@ import (
 const (
 	jsonTimer = `
 	[
-		{"type":"function","name":"NewTask", "inputs":[{"name":"taskType","type":"uint64"},{"name":"start","type":"uint64"},{"name":"window","type":"uint64"},{"name":"gap","type":"uint64"},{"name":"endCondition","type":"uint64"},{"name":"receiverAddress","type":"address"}]},
+		{"type":"function","name":"NewTask", "inputs":[{"name":"taskType","type":"uint64"},{"name":"start","type":"uint64"},{"name":"window","type":"uint64"},{"name":"gap","type":"uint64"},{"name":"endCondition","type":"uint64"},{"name":"receiverAddress","type":"address"},{"name":"refundAddress","type":"address"}]},
 		{"type":"function","name":"DeleteTask", "inputs":[{"name":"taskId","type":"hash"},{"name":"refundAddress","type":"address"}]},
 		{"type":"function","name":"Recharge", "inputs":[{"name":"taskId","type":"hash"}]},
-		{"type":"variable","name":"taskInfo","inputs":[{"name":"taskId","type":"hash"},{"name":"taskType","type":"uint64"},{"name":"window","type":"uint64"},{"name":"gap","type":"uint64"},{"name":"endCondition","type":"uint64"},{"name":"receiverAddress","type":"address"}]},
+		{"type":"variable","name":"taskInfo","inputs":[{"name":"taskId","type":"hash"},{"name":"taskType","type":"uint64"},{"name":"window","type":"uint64"},{"name":"gap","type":"uint64"},{"name":"endCondition","type":"uint64"},{"name":"receiverAddress","type":"address"},{"name":"refundAddress","type":"address"}]},
 		{"type":"variable","name":"taskTriggerInfo","inputs":[{"name":"balance","type":"uint256"},{"name":"triggerTimes","type":"uint64"},{"name":"next","type":"uint64"},{"name":"delete","type":"uint64"}]},
 		{"type":"variable","name":"lastTriggerInfo","inputs":[{"name":"timestamp","type":"uint64"},{"name":"height","type":"uint64"}]}
 	]`
@@ -67,6 +67,7 @@ type ParamTimerNewTask struct {
 	Window          uint64
 	Gap             uint64
 	ReceiverAddress types.Address
+	RefundAddress   types.Address
 }
 
 type ParamTimerDeleteTask struct {
@@ -81,6 +82,7 @@ type TimerTaskInfo struct {
 	Gap             uint64
 	EndCondition    uint64
 	ReceiverAddress types.Address
+	RefundAddress   types.Address
 }
 
 type TimerTaskTriggerInfo struct {
@@ -88,6 +90,14 @@ type TimerTaskTriggerInfo struct {
 	TriggerTimes uint64
 	Next         uint64
 	Delete       uint64
+}
+
+func (t *TimerTaskTriggerInfo) IsStopped() bool {
+	return t.Delete > 0
+}
+
+func (t *TimerTaskTriggerInfo) IsFinish() bool {
+	return t.Delete == 0 && t.Next == 0
 }
 
 type TimerLastTriggerInfo struct {
@@ -136,11 +146,11 @@ func IsTimerQueueKey(k []byte) bool {
 func GetNextTriggerFromTimerQueueKey(k []byte) uint64 {
 	return new(big.Int).SetBytes(k[3:11]).Uint64()
 }
-func GetTimerStoppedQueueKey(timeHeight uint8, timerId []byte, delete uint64) []byte {
-	return helper.JoinBytes(timerStoppedQueueKeyPrefix, []byte{byte(timeHeight)}, helper.LeftPadBytes(new(big.Int).SetUint64(delete).Bytes(), 8), getIdFromTimerId(timerId))
+func GetTimerStoppedQueueKey(timerId []byte, delete uint64) []byte {
+	return helper.JoinBytes(timerStoppedQueueKeyPrefix, helper.LeftPadBytes(new(big.Int).SetUint64(delete).Bytes(), 8), getIdFromTimerId(timerId))
 }
 func GetTimerNewStoppedQueueKey(oldKey []byte, next uint64) []byte {
-	return helper.JoinBytes(oldKey[:3], helper.LeftPadBytes(new(big.Int).SetUint64(next).Bytes(), 8), oldKey[11:])
+	return helper.JoinBytes(oldKey[:2], helper.LeftPadBytes(new(big.Int).SetUint64(next).Bytes(), 8), oldKey[10:])
 }
 func GetTimerTaskInfoKey(timerId []byte) []byte {
 	return helper.JoinBytes(timerTaskInfoKeyPrefix, timerId)
