@@ -25,10 +25,14 @@ const (
 
 	PledgeHeightMax uint64 = 3600 * 24 * 365
 
-	TimerTimeGapMin   uint64 = 5 * 60
-	TimerTimeGapMax   uint64 = 90 * 24 * 3600
-	TimerHeightGapMin uint64 = 5 * 60
-	TimerHeightGapMax uint64 = 90 * 24 * 3600
+	TimerTimeWindowMin   uint64 = 75
+	TimerHeightWindowMin uint64 = 75
+	TimerTimeGapMin      uint64 = 75
+	TimerTimeGapMax      uint64 = 90 * 24 * 3600
+	TimerHeightGapMin    uint64 = 75
+	TimerHeightGapMax    uint64 = 90 * 24 * 3600
+
+	TimerTriggerTasksNumMax int = 100
 )
 
 var (
@@ -36,7 +40,8 @@ var (
 	pledgeAmountMin = new(big.Int).Mul(big.NewInt(134), util.AttovPerVite)
 	mintageFee      = new(big.Int).Mul(big.NewInt(1e3), util.AttovPerVite) // Mintage cost choice 1, destroy ViteToken
 	// createConsensusGroupPledgeAmount = new(big.Int).Mul(big.NewInt(1000), util.AttovPerVite)
-	timerChargeAmountPerTask = new(big.Int).Mul(big.NewInt(1), util.AttovPerVite)
+	timerChargeAmountPerTask = new(big.Int).Mul(big.NewInt(10), util.AttovPerVite)
+	timerNewTaskFee          = new(big.Int).Mul(big.NewInt(10), util.AttovPerVite)
 )
 
 type ContractsParams struct {

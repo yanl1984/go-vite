@@ -977,7 +977,7 @@ func (context *vmContext) AppendBlock(block *ledger.AccountBlock) {
 }
 
 func calcContractFee(data []byte) (*big.Int, error) {
-	return createContractFee, nil
+	return new(big.Int).Set(createContractFee), nil
 }
 
 func checkDepth(db vm_db.VmDb, sendBlock *ledger.AccountBlock) bool {
