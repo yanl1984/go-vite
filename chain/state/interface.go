@@ -91,7 +91,7 @@ type StateDBInterface interface {
 		rollbackKeySet map[types.Address]map[string]struct{}, rollbackTokenSet map[types.Address]map[types.TokenTypeId]struct{}) error
 	recoverLatestIndexToSnapshot(batch *leveldb.Batch, hashHeight ledger.HashHeight, keySetMap map[types.Address]map[string]struct{}, tokenSetMap map[types.Address]map[types.TokenTypeId]struct{}) error
 	recoverLatestIndexByRedo(batch *leveldb.Batch, addrMap map[types.Address]struct{}, redoLogMap map[types.Address][]LogItem, rollbackKeySet map[types.Address]map[string]struct{}, rollbackTokenSet map[types.Address]map[types.TokenTypeId]struct{})
-	rollbackAccountBlock(batch *leveldb.Batch, accountBlock *ledger.AccountBlock)
+	rollbackAccountBlock(batch *leveldb.Batch, accountBlock *ledger.AccountBlock) error
 	recoverToSnapshot(batch *leveldb.Batch, snapshotHeight uint64, unconfirmedLog map[types.Address][]LogItem, addrMap map[types.Address]struct{}) error
 	recoverStorageToSnapshot(batch *leveldb.Batch, height uint64, addr types.Address, keySet map[string][]byte) error
 	recoverBalanceToSnapshot(batch *leveldb.Batch, height uint64, addr types.Address, tokenSet map[types.TokenTypeId]*big.Int) error
@@ -134,7 +134,7 @@ type StateDBInterface interface {
 	copyValue(value []byte) []byte
 	Write(block *vm_db.VmAccountBlock) error
 	WriteByRedo(blockHash types.Hash, addr types.Address, redoLog LogItem)
-	InsertSnapshotBlock(snapshotBlock *ledger.SnapshotBlock, confirmedBlocks []*ledger.AccountBlock) error
+	InsertSnapshotBlock(snapshotBlock *ledger.SnapshotBlock, confirmedBlocks []*ledger.AccountBlock) (map[types.Address]struct{}, error)
 	writeContractMeta(batch interfaces.Batch, key, value []byte)
 	writeBalance(batch interfaces.Batch, key, value []byte)
 	writeHistoryKey(batch interfaces.Batch, key, value []byte)
