@@ -41,6 +41,7 @@ var (
 	BuiltinContractAddrList             = []Address{AddressPledge, AddressConsensusGroup, AddressMintage, AddressDexFund, AddressDexTrade}
 	BuiltinContractWithoutQuotaAddrList = []Address{AddressPledge, AddressConsensusGroup, AddressMintage, AddressDexTrade}
 	BuiltinContractWithSendConfirm      = []Address{AddressPledge, AddressConsensusGroup, AddressMintage}
+	BuiltinCoreContracts                = []Address{AddressPledge, AddressConsensusGroup, AddressMintage}
 )
 
 func IsContractAddr(addr Address) bool {
@@ -54,6 +55,16 @@ func IsBuiltinContractAddr(addr Address) bool {
 	}
 	return false
 }
+
+func IsBuiltinCoreContract(addr Address) bool {
+	for _, cAddr := range BuiltinCoreContracts {
+		if cAddr == addr {
+			return true
+		}
+	}
+	return false
+}
+
 func IsBuiltinContractAddrInUse(addr Address) bool {
 	for _, cAddr := range BuiltinContractAddrList {
 		if cAddr == addr {

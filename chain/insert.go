@@ -3,6 +3,7 @@ package chain
 import (
 	"errors"
 	"fmt"
+	"github.com/vitelabs/go-vite/common/types"
 	"strconv"
 
 	"github.com/vitelabs/go-vite/ledger"
@@ -46,12 +47,13 @@ func (c *chain) InsertAccountBlock(vmAccountBlock *vm_db.VmAccountBlock) error {
 func (c *chain) InsertSnapshotBlock(snapshotBlock *ledger.SnapshotBlock) ([]*ledger.AccountBlock, error) {
 	// FOR DEBUG
 	c.log.Info(fmt.Sprintf("insert snapshot block %s %d\n", snapshotBlock.Hash, snapshotBlock.Height))
-	if err := c.insertSnapshotBlock(snapshotBlock); err != nil {
+	deletedContracts, err := c.insertSnapshotBlock(snapshotBlock)
+	if err != nil {
 		return nil, err
 	}
 
 	// delete invalidBlocks
-	invalidBlocks := c.filterUnconfirmedBlocks(snapshotBlock, true)
+	invalidBlocks := c.filterUnconfirmedBlocks(snapshotBlock, true, deletedContracts)
 
 	if len(invalidBlocks) > 0 {
 		if err := c.deleteAccountBlocks(invalidBlocks); err != nil {
@@ -91,7 +93,7 @@ func (c *chain) getBlocksToBeConfirmed(sc ledger.SnapshotContent) ([]*ledger.Acc
 	return blocks, errors.New(fmt.Sprintf("lack block, sc is %s", sPrintError(sc, blocks)))
 }
 
-func (c *chain) insertSnapshotBlock(snapshotBlock *ledger.SnapshotBlock) error {
+func (c *chain) insertSnapshotBlock(snapshotBlock *ledger.SnapshotBlock) (map[types.Address]struct{}, error) {
 	c.flushMu.RLock()
 	defer func() {
 		if e := recover(); e != nil {
@@ -105,7 +107,7 @@ func (c *chain) insertSnapshotBlock(snapshotBlock *ledger.SnapshotBlock) error {
 
 	canBeSnappedBlocks, err := c.getBlocksToBeConfirmed(snapshotBlock.SnapshotContent)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	//sbList := []*ledger.SnapshotBlock{snapshotBlock}
@@ -115,7 +117,7 @@ func (c *chain) insertSnapshotBlock(snapshotBlock *ledger.SnapshotBlock) error {
 	}}
 
 	if err := c.em.TriggerInsertSbs(prepareInsertSbsEvent, chunks); err != nil {
-		return err
+		return nil, err
 	}
 
 	// write block db
@@ -137,16 +139,22 @@ func (c *chain) insertSnapshotBlock(snapshotBlock *ledger.SnapshotBlock) error {
 		c.cache.InsertSnapshotBlock(snapshotBlock, canBeSnappedBlocks)
 	}()
 
+	deletedContracts := make(map[types.Address]struct{}, 0)
 	go func() {
 		defer wg.Done()
 		// insert snapshot blocks
-		c.stateDB.InsertSnapshotBlock(snapshotBlock, canBeSnappedBlocks)
+		var err error
+		deletedContracts, err = c.stateDB.InsertSnapshotBlock(snapshotBlock, canBeSnappedBlocks)
+		if err != nil {
+			cErr := errors.New(fmt.Sprintf("c.stateDB.InsertSnapshotBlock failed, snapshotBlock is %+v. Error: %s", snapshotBlock, err.Error()))
+			c.log.Crit(cErr.Error(), "method", "InsertSnapshotBlock")
+		}
 	}()
 
 	wg.Wait()
 
 	c.em.TriggerInsertSbs(InsertSbsEvent, chunks)
-	return nil
+	return deletedContracts, nil
 }
 
 func sPrintError(sc ledger.SnapshotContent, blocks []*ledger.AccountBlock) string {
