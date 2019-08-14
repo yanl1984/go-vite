@@ -12,7 +12,6 @@ import (
 	"github.com/vitelabs/go-vite/crypto/ed25519"
 	"github.com/vitelabs/go-vite/generator"
 	"github.com/vitelabs/go-vite/ledger"
-	"github.com/vitelabs/go-vite/vite/net/message"
 	"github.com/vitelabs/go-vite/vm"
 	"github.com/vitelabs/go-vite/vm/contracts/abi"
 	"github.com/vitelabs/go-vite/vm/util"
@@ -24,7 +23,7 @@ import (
 )
 
 func initVMEnvironment() {
-	vm.InitVMConfig(false, true, false, "")
+	vm.InitVMConfig(false, true, true, false, "")
 	chainInstance, err := NewChainInstance("unit_test/devdata", false)
 	if err != nil {
 		panic(err)
@@ -47,7 +46,7 @@ var (
 
 	mockConsensus = &test_tools.MockConsensus{
 		Cr: &test_tools.MockConsensusReader{
-			DayTimeIndex: test_tools.MockTimeIndex{
+			DayTimeIndex: &test_tools.MockTimeIndex{
 				GenesisTime: time.Unix(1558411200, 0),
 				Interval:    3 * time.Second,
 			},
@@ -739,17 +738,13 @@ func printBlockSize(name string, sendBlock, receiveBlock *ledger.AccountBlock) {
 
 func printSendBlock(name string, sendBlock *ledger.AccountBlock) {
 	bs, _ := sendBlock.Serialize()
-	netB := &message.NewAccountBlock{Block: sendBlock, TTL: 32}
-	netBs, _ := netB.Serialize()
-	fmt.Printf("blocksize: send %v block, chain block size %v, net block size %v\n", name, len(bs), len(netBs))
+	fmt.Printf("blocksize: send %v block, chain block size %v, net block size %v\n", name, len(bs), len(bs)+5)
 }
 
 func printReceiveBlock(name string, receiveBlock *ledger.AccountBlock) {
 	if len(receiveBlock.SendBlockList) == 0 {
 		bs, _ := receiveBlock.Serialize()
-		netB := &message.NewAccountBlock{Block: receiveBlock, TTL: 32}
-		netBs, _ := netB.Serialize()
-		fmt.Printf("blocksize: receive %v block without send block, chain block size %v, net block size %v\n", name, len(bs), len(netBs))
+		fmt.Printf("blocksize: receive %v block without send block, chain block size %v, net block size %v\n", name, len(bs), len(bs)+5)
 		return
 	}
 	for i, _ := range receiveBlock.SendBlockList {
@@ -759,7 +754,5 @@ func printReceiveBlock(name string, receiveBlock *ledger.AccountBlock) {
 		receiveBlock.SendBlockList[i].Hash, _ = types.HexToHash("8f85502f81fc544cb6700ad9ecc44f3eace065ae8e34d2269d7ff8d7c94ac920")
 	}
 	rsbs, _ := receiveBlock.Serialize()
-	netRb := &message.NewAccountBlock{Block: receiveBlock, TTL: 32}
-	netRbs, _ := netRb.Serialize()
-	fmt.Printf("blocksize: receive %v block with send block, chain block size %v, net block size %v\n", name, len(rsbs), len(netRbs))
+	fmt.Printf("blocksize: receive %v block with send block, chain block size %v, net block size %v\n", name, len(rsbs), len(rsbs)+5)
 }

@@ -31,6 +31,10 @@ var GenesisJson = `{
 	"SeedFork":{
       "Height":1,
       "Version":1
+    },
+	"DexFork":{
+      "Height":2,
+      "Version":2
     }
   },
   "ConsensusGroupInfo": {
@@ -380,7 +384,16 @@ func NewChainInstance(dirName string, clear bool) (*chain, error) {
 		return nil, err
 	}
 	// mock consensus
-	chainInstance.SetConsensus(&test_tools.MockConsensus{})
+	chainInstance.SetConsensus(&test_tools.MockConsensus{Cr: &test_tools.MockConsensusReader{
+		DayTimeIndex: &test_tools.MockTimeIndex{
+			GenesisTime: *chainInstance.genesisSnapshotBlock.Timestamp,
+			Interval:    24 * 3600 * time.Second,
+		},
+		PeriodTimeIndex: &test_tools.MockTimeIndex{
+			GenesisTime: *chainInstance.genesisSnapshotBlock.Timestamp,
+			Interval:    75 * time.Second,
+		},
+	}})
 
 	chainInstance.Start()
 	return chainInstance, nil
@@ -397,6 +410,10 @@ func SetUp(accountNum, txCount, snapshotPerBlockNum int) (*chain, map[types.Addr
 		fork.SetForkPoints(&config.ForkPoints{
 			SeedFork: &config.ForkPoint{
 				Version: 1,
+				Height:  10000000,
+			},
+			DexFork: &config.ForkPoint{
+				Version: 2,
 				Height:  10000000,
 			},
 		})

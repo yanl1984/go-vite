@@ -204,6 +204,13 @@ func (c *chain) Destroy() error {
 	}
 	c.log.Info("Close blockDB", "method", "Close")
 
+	if err := c.syncCache.Close(); err != nil {
+		cErr := errors.New(fmt.Sprintf("c.syncCache.Close failed, error is %s", err))
+		c.log.Error(cErr.Error(), "method", "Close")
+		return cErr
+	}
+	c.log.Info("Close syncCache", "method", "Close")
+
 	c.flusher = nil
 	c.cache = nil
 	c.stateDB = nil

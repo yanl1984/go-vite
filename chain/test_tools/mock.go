@@ -19,6 +19,14 @@ func (c *MockConsensus) VerifyAccountProducer(block *ledger.AccountBlock) (bool,
 	return true, nil
 }
 
+func (c *MockConsensus) VerifyABsProducer(abs map[types.Gid][]*ledger.AccountBlock) ([]*ledger.AccountBlock, error) {
+	list := make([]*ledger.AccountBlock, 0)
+	for _, bs := range abs {
+		list = append(list, bs...)
+	}
+	return list, nil
+}
+
 type MockCssVerifier struct{}
 
 func (c *MockCssVerifier) VerifyABsProducer(abs map[types.Gid][]*ledger.AccountBlock) ([]*ledger.AccountBlock, error) {
@@ -34,8 +42,9 @@ func (c *MockCssVerifier) VerifyAccountProducer(block *ledger.AccountBlock) (boo
 }
 
 type MockConsensusReader struct {
-	DayTimeIndex MockTimeIndex
-	DayStatsMap  map[uint64]*core.DayStats
+	DayTimeIndex    *MockTimeIndex
+	PeriodTimeIndex *MockTimeIndex
+	DayStatsMap     map[uint64]*core.DayStats
 }
 
 func (c *MockConsensusReader) DayStats(startIndex uint64, endIndex uint64) ([]*core.DayStats, error) {
@@ -61,7 +70,7 @@ func (c *MockConsensusReader) PeriodStats(startIndex uint64, endIndex uint64) ([
 	return nil, nil
 }
 func (c *MockConsensusReader) GetPeriodTimeIndex() core.TimeIndex {
-	return nil
+	return c.PeriodTimeIndex
 }
 func (c *MockConsensusReader) GetSuccessRateByHour(index uint64) (map[types.Address]int32, error) {
 	return nil, nil
