@@ -376,8 +376,7 @@ func benchmarkReceive(b *testing.B, sendBlock *ledger.AccountBlock, receiveBlock
 			panic(err)
 		}
 		receiveBlock.AccountAddress = sendVMBlock.AccountBlock.ToAddress
-		pubKey := ed25519.PublicKey(randomByte32())
-		_, _, err = InsertSnapshotBlock(chainInstance, false, &pubKey)
+		_, _, err = InsertSnapshotBlock(chainInstance, false)
 		if err != nil {
 			panic(err)
 		}
@@ -499,7 +498,7 @@ func BenchmarkVMGetValue(b *testing.B) {
 	if err := chainInstance.InsertAccountBlock(vmBlock); err != nil {
 		panic(err)
 	}
-	snapshotBlock, _, err := InsertSnapshotBlock(chainInstance, true, nil)
+	snapshotBlock, _, err := InsertSnapshotBlock(chainInstance, true)
 	if err != nil {
 		panic(err)
 	}
@@ -601,7 +600,7 @@ func BenchmarkVMCheckConfirmTime(b *testing.B) {
 		panic(err)
 	}
 	for i := 0; i < 100; i++ {
-		snapshotBlock, _, err := InsertSnapshotBlock(chainInstance, true, nil)
+		snapshotBlock, _, err := InsertSnapshotBlock(chainInstance, true)
 		if err != nil {
 			panic(err)
 		}
@@ -702,7 +701,7 @@ func printBlockSize(name string, sendBlock, receiveBlock *ledger.AccountBlock) {
 	initVMEnvironment()
 	chainInstance, _, _ := SetUp(1, 100, 1)
 	defer TearDown(chainInstance)
-	sb := createSnapshotBlock(chainInstance, createSbOption{SnapshotAll: false, Seed: 1, PublicKey: ed25519.PublicKey(randomByte32())})
+	sb := createSnapshotBlock(chainInstance, createSbOption{SnapshotAll: false, Seed: 1})
 	ts := time.Now()
 	sb.Timestamp = &ts
 	sb.Hash = sb.ComputeHash()

@@ -216,6 +216,7 @@ func (c *chain) Destroy() error {
 	c.stateDB = nil
 	c.indexDB = nil
 	c.blockDB = nil
+	c.syncCache = nil
 
 	c.log.Info("Complete destruction", "method", "Close")
 

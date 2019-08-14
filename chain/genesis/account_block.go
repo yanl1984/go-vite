@@ -375,6 +375,9 @@ func newDexFundContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock,
 			dex.SaveInviterByCode(vmdb, addr, code)
 			dex.SaveCodeByInviter(vmdb, addr, code)
 		}
+		for principal, agent := range cfg.DexFundInfo.MarketAgents {
+			vmdb.SetValue(dex.GetGrantedMarketToAgentKey(principal, 1), agent.Bytes())
+		}
 		block.Hash = block.ComputeHash()
 		fmt.Printf("fund block.hash %s\n", block.Hash.String())
 		list = append(list, &vm_db.VmAccountBlock{&block, vmdb})
@@ -435,12 +438,15 @@ func newDexTradeContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock
 			order.ExecutedBaseFee = od.ExecutedBaseFee.Bytes()
 			order.ExecutedBrokerFee = od.ExecutedBrokerFee.Bytes()
 			order.Timestamp = cfg.DexTradeInfo.Timestamp
+			order.Agent = od.Agent.Bytes()
+			order.SendHash = od.SenHash.Bytes()
 			orderId := order.Id
 			if data, err := order.SerializeCompact(); err != nil {
 				panic(err)
 			} else {
 				vmdb.SetValue(orderId, data)
 			}
+			dex.SaveHashMapOrderId(vmdb, order.SendHash, order.Id)
 		}
 		block.Hash = block.ComputeHash()
 		fmt.Printf("trade block.hash %s\n", block.Hash.String())

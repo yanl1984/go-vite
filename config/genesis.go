@@ -36,6 +36,7 @@ type ForkPoint struct {
 type ForkPoints struct {
 	SeedFork *ForkPoint
 	DexFork  *ForkPoint
+	NewFork  *ForkPoint
 }
 
 type GenesisVmLog struct {
@@ -129,6 +130,7 @@ type DexFundContractInfo struct {
 	PledgeVips            []types.Address
 	MakerMinedVxs         map[string]*big.Int
 	Inviters              map[types.Address]uint32
+	MarketAgents          map[types.Address]types.Address
 }
 type DexTokenInfo struct {
 	TokenId        types.TokenTypeId
@@ -195,4 +197,6 @@ type DexTradeOrder struct {
 	ExecutedBaseFee    *big.Int
 	ExecutedBrokerFee  *big.Int
 	Timestamp          int64
+	Agent              types.Address
+	SenHash            types.Hash
 }

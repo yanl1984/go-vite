@@ -35,6 +35,10 @@ var GenesisJson = `{
 	"DexFork":{
       "Height":2,
       "Version":2
+    },
+	"NewFork":{
+      "Height":3,
+      "Version":3
     }
   },
   "ConsensusGroupInfo": {
@@ -307,6 +311,9 @@ var GenesisJson = `{
       },
       "Inviters": {
 		   "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a":123
+      },
+      "MarketAgents": {
+		   "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a":"vite_56fd05b23ff26cd7b0a40957fb77bde60c9fd6ebc35f809c23"
       }
   },
   "DexTradeInfo": {
@@ -350,7 +357,9 @@ var GenesisJson = `{
             "ExecutedAmount": 23692297872600000000000,
             "ExecutedBaseFee": 47384595745200000000,
             "ExecutedBrokerFee": 23692297872600000000,
-            "Timestamp": 1563038386     
+            "Timestamp": 1563038386,
+            "Agent": "vite_56fd05b23ff26cd7b0a40957fb77bde60c9fd6ebc35f809c23",
+            "SendHash": "ba5520be6bbc1b8a77ab83af14f2a14c86a6abbcf380d314b4c9d8e440b5ff3b"
          }
       ]
   }
