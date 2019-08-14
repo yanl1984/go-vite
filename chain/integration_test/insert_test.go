@@ -63,7 +63,7 @@ func TestTmpInsert(t *testing.T) {
 
 	//snapshotPerNum := 0
 	quota.InitQuotaConfig(true, true)
-	vm.InitVMConfig(true, true, false, "")
+	vm.InitVMConfig(true, true, true, false, "")
 
 	chainInstance, err := NewChainInstance("bench_test", false)
 	if err != nil {
@@ -171,7 +171,7 @@ func BenchmarkInsert(b *testing.B) {
 
 	snapshotPerNum := 1
 	quota.InitQuotaConfig(true, true)
-	vm.InitVMConfig(true, true, false, "")
+	vm.InitVMConfig(true, true, true, false, "")
 
 	chainInstance, err := NewChainInstance("bench_test", false)
 	if err != nil {

@@ -272,12 +272,50 @@ func ReceiveTaskTrigger(db vm_db.VmDb, sb *ledger.SnapshotBlock, vm vmEnvironmen
 	if taskNum >= TimerTriggerTasksNumMax {
 		return returnBlocks, nil
 	}
+
 	returnBlocks = burnFee(db, returnBlocks)
+
+	lastTriggerInfoValue, _ := abi.ABITimer.PackVariable(abi.VariableNameTimerLastTriggerInfo, currentTime, currentHeight)
+	err = db.SetValue(abi.GetTimerLastTriggerInfoKey(), lastTriggerInfoValue)
+	util.DealWithErr(err)
 	return returnBlocks, nil
 }
 
 func deleteExpiredTask(db vm_db.VmDb, currentHeight uint64, taskNum int, returnBlocks []*ledger.AccountBlock) (int, []*ledger.AccountBlock) {
-	// TODO
+	iterator, err := db.NewStorageIterator(abi.GetTimerStoppedQueueKeyPrefix())
+	util.DealWithErr(err)
+	defer iterator.Release()
+	for {
+		if taskNum >= TimerTriggerTasksNumMax {
+			break
+		}
+		if !iterator.Next() {
+			if iterator.Error() != nil {
+				util.DealWithErr(iterator.Error())
+			}
+			break
+		}
+		if !abi.IsTimerStoppedQueueKey(iterator.Key()) {
+			continue
+		}
+		deleteHeight := abi.GetDeleteHeightFromTimerStoppedQueueKey(iterator.Key())
+		if deleteHeight > currentHeight {
+			break
+		}
+
+		taskNum = taskNum + 1
+		timerId := iterator.Value()
+		err := db.SetValue(iterator.Key(), nil)
+		util.DealWithErr(err)
+		taskInfoKey, taskInfo, err := abi.GetTaskInfoByTimerId(db, timerId)
+		util.DealWithErr(err)
+		err = db.SetValue(taskInfoKey, nil)
+		util.DealWithErr(err)
+		db.SetValue(abi.GetTimerTaskTriggerInfoKey(timerId), nil)
+		util.DealWithErr(err)
+		db.SetValue(taskInfo.TaskId.Bytes(), nil)
+		util.DealWithErr(err)
+	}
 	return taskNum, returnBlocks
 }
 

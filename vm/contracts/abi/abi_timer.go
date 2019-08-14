@@ -14,16 +14,17 @@ const (
 	jsonTimer = `
 	[
 		{"type":"function","name":"NewTask", "inputs":[{"name":"taskType","type":"uint64"},{"name":"start","type":"uint64"},{"name":"window","type":"uint64"},{"name":"gap","type":"uint64"},{"name":"endCondition","type":"uint64"},{"name":"receiverAddress","type":"address"},{"name":"refundAddress","type":"address"}]},
-		{"type":"function","name":"DeleteTask", "inputs":[{"name":"taskId","type":"hash"},{"name":"refundAddress","type":"address"}]},
-		{"type":"function","name":"Recharge", "inputs":[{"name":"taskId","type":"hash"}]},
-		{"type":"variable","name":"taskInfo","inputs":[{"name":"taskId","type":"hash"},{"name":"taskType","type":"uint64"},{"name":"window","type":"uint64"},{"name":"gap","type":"uint64"},{"name":"endCondition","type":"uint64"},{"name":"receiverAddress","type":"address"},{"name":"refundAddress","type":"address"}]},
+		{"type":"function","name":"DeleteTask", "inputs":[{"name":"taskId","type":"bytes32"},{"name":"refundAddress","type":"address"}]},
+		{"type":"function","name":"Recharge", "inputs":[{"name":"taskId","type":"bytes32"}]},
+		{"type":"variable","name":"test", "inputs":[{"name":"taskId","type":"bytes32"}]},
+		{"type":"variable","name":"taskInfo","inputs":[{"name":"taskId","type":"bytes32"},{"name":"taskType","type":"uint64"},{"name":"window","type":"uint64"},{"name":"gap","type":"uint64"},{"name":"endCondition","type":"uint64"},{"name":"receiverAddress","type":"address"},{"name":"refundAddress","type":"address"}]},
 		{"type":"variable","name":"taskTriggerInfo","inputs":[{"name":"balance","type":"uint256"},{"name":"triggerTimes","type":"uint64"},{"name":"next","type":"uint64"},{"name":"delete","type":"uint64"}]},
 		{"type":"variable","name":"lastTriggerInfo","inputs":[{"name":"timestamp","type":"uint64"},{"name":"height","type":"uint64"}]}
 	]`
 
 	jsonTimerNotify = `
 	[
-		{"type":"function","name":"__notify", "inputs":[{"name":"current","type":"uint64"},{"name":"taskId","type":"hash"}]}
+		{"type":"function","name":"__notify", "inputs":[{"name":"current","type":"uint64"},{"name":"taskId","type":"bytes32"}]}
 	]
 	`
 
@@ -45,9 +46,19 @@ const (
 
 	timerIdLen              = types.AddressSize + 8
 	timerQueueKeyLen        = 2 + 1 + 8 + 8
-	timerStoppedQueueKeyLen = 2 + 1 + 8 + 8
+	timerStoppedQueueKeyLen = 2 + 8 + 8
 )
 
+/*
+ taskInfo: 31 byte, 2 byte prefix + 21 byte address + 8 byte id
+ taskTriggerInfo: 31 byte, 2 byte prefix + 21 byte address + 8 byte id
+ queue: 19 byte, 2 byte prefix + 1 byte time height type + 8 byte next time height + 8 byte id
+ stoppedQueue: 18 byte, 2 byte prefix + 8 byte delete height + 8 byte id
+ taskId: 32 byte request hash
+ nextId: 3 byte
+ lastTriggerInfo: 3 byte
+ fee: 3 byte
+*/
 var (
 	ABITimer, _                   = abi.JSONToABIContract(strings.NewReader(jsonTimer))
 	ABITimerNotify, _             = abi.JSONToABIContract(strings.NewReader(jsonTimerNotify))
@@ -149,8 +160,17 @@ func GetNextTriggerFromTimerQueueKey(k []byte) uint64 {
 func GetTimerStoppedQueueKey(timerId []byte, delete uint64) []byte {
 	return helper.JoinBytes(timerStoppedQueueKeyPrefix, helper.LeftPadBytes(new(big.Int).SetUint64(delete).Bytes(), 8), getIdFromTimerId(timerId))
 }
-func GetTimerNewStoppedQueueKey(oldKey []byte, next uint64) []byte {
-	return helper.JoinBytes(oldKey[:2], helper.LeftPadBytes(new(big.Int).SetUint64(next).Bytes(), 8), oldKey[10:])
+func IsTimerStoppedQueueKey(k []byte) bool {
+	return len(k) == timerStoppedQueueKeyLen && bytes.Equal(k[:2], timerStoppedQueueKeyPrefix)
+}
+func GetTimerNewStoppedQueueKey(oldKey []byte, deleteHeight uint64) []byte {
+	return helper.JoinBytes(oldKey[:2], helper.LeftPadBytes(new(big.Int).SetUint64(deleteHeight).Bytes(), 8), oldKey[10:])
+}
+func GetTimerStoppedQueueKeyPrefix() []byte {
+	return timerStoppedQueueKeyPrefix
+}
+func GetDeleteHeightFromTimerStoppedQueueKey(key []byte) uint64 {
+	return new(big.Int).SetBytes(key[2:10]).Uint64()
 }
 func GetTimerTaskInfoKey(timerId []byte) []byte {
 	return helper.JoinBytes(timerTaskInfoKeyPrefix, timerId)
@@ -160,6 +180,9 @@ func GetTimerTaskTriggerInfoKey(timerId []byte) []byte {
 }
 func GetTimerFeeKey() []byte {
 	return timerFeeKey
+}
+func GetTimerLastTriggerInfoKey() []byte {
+	return timerLastTriggerInfoKey
 }
 
 func GetTaskInfoByTimerId(db vm_db.VmDb, timerId []byte) ([]byte, *TimerTaskInfo, error) {
@@ -185,7 +208,7 @@ func GetTaskTriggerInfoByTimerId(db vm_db.VmDb, timerId []byte) ([]byte, *TimerT
 }
 
 func GetTimerLastTriggerInfo(db StorageDatabase) (*TimerLastTriggerInfo, error) {
-	lastTriggerInfoValue, err := db.GetValue(timerLastTriggerInfoKey)
+	lastTriggerInfoValue, err := db.GetValue(GetTimerLastTriggerInfoKey())
 	if err != nil {
 		return nil, err
 	}
