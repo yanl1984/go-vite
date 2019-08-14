@@ -222,6 +222,9 @@ func (p *MethodReward) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
 	if err := abi.ABIConsensusGroup.UnpackMethod(param, abi.MethodNameReward, block.Data); err != nil {
 		return util.ErrInvalidMethodParam
 	}
+	if err := util.CheckContractAddrInSAfterNewFork(db, param.BeneficialAddr); err != nil {
+		return err
+	}
 	if !util.IsSnapshotGid(param.Gid) {
 		return util.ErrInvalidMethodParam
 	}

@@ -3,6 +3,7 @@ package vm
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/ledger"
 	"github.com/vitelabs/go-vite/vm/util"
@@ -10,6 +11,12 @@ import (
 	"testing"
 )
 
+func TestInitVMConfig(t *testing.T) {
+	addr, _, _ := types.CreateAddress()
+	addrBytes := addr.Bytes()
+	addrBytes[20] = 1
+	fmt.Println(types.BytesToAddress(addrBytes))
+}
 func TestRun(t *testing.T) {
 	tests := []struct {
 		input, result []byte
