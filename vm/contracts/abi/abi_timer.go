@@ -5,7 +5,6 @@ import (
 	"github.com/vitelabs/go-vite/common/helper"
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/vm/abi"
-	"github.com/vitelabs/go-vite/vm_db"
 	"math/big"
 	"strings"
 )
@@ -16,6 +15,7 @@ const (
 		{"type":"function","name":"NewTask", "inputs":[{"name":"taskType","type":"uint64"},{"name":"start","type":"uint64"},{"name":"window","type":"uint64"},{"name":"gap","type":"uint64"},{"name":"endCondition","type":"uint64"},{"name":"receiverAddress","type":"address"},{"name":"refundAddress","type":"address"}]},
 		{"type":"function","name":"DeleteTask", "inputs":[{"name":"taskId","type":"bytes32"},{"name":"refundAddress","type":"address"}]},
 		{"type":"function","name":"Recharge", "inputs":[{"name":"taskId","type":"bytes32"}]},
+		{"type":"function","name":"UpdateOwner", "inputs":[{"name":"owner","type":"address"}]},
 		{"type":"variable","name":"test", "inputs":[{"name":"taskId","type":"bytes32"}]},
 		{"type":"variable","name":"taskInfo","inputs":[{"name":"taskId","type":"bytes32"},{"name":"taskType","type":"uint64"},{"name":"window","type":"uint64"},{"name":"gap","type":"uint64"},{"name":"endCondition","type":"uint64"},{"name":"receiverAddress","type":"address"},{"name":"refundAddress","type":"address"}]},
 		{"type":"variable","name":"taskTriggerInfo","inputs":[{"name":"balance","type":"uint256"},{"name":"triggerTimes","type":"uint64"},{"name":"next","type":"uint64"},{"name":"delete","type":"uint64"}]},
@@ -31,18 +31,21 @@ const (
 	MethodNameTimerNewTask           = "NewTask"
 	MethodNameTimerDeleteTask        = "DeleteTask"
 	MethodNameTimerRecharge          = "Recharge"
+	MethodNameTimerUpdateOwner       = "UpdateOwner"
 	MethodNameTimerNotify            = "__notify"
 	VariableNameTimerTaskInfo        = "taskInfo"
 	VariableNameTimerTaskTriggerInfo = "taskTriggerInfo"
 	VariableNameTimerLastTriggerInfo = "lastTriggerInfo"
 
-	TimeHeightTime uint8 = iota + 1
-	TimeHeightHeight
-	EndTypeEndTimeHeight uint8 = iota + 1
-	EndTypeTimes
-	EndTypePermanent
-	GapTypePostpone uint8 = iota + 1
-	GapTypeFixed
+	TimerTimeHeightTime uint8 = iota + 1
+	TimerTimeHeightHeight
+	TimerEndTypeEndTimeHeight uint8 = iota + 1
+	TimerEndTypeTimes
+	TimerEndTypePermanent
+	TimerGapTypePostpone uint8 = iota + 1
+	TimerGapTypeFixed
+	TimerChargeTypeFree uint8 = iota + 1
+	TimerChargeTypeCharge
 
 	timerIdLen              = types.AddressSize + 8
 	timerQueueKeyLen        = 2 + 1 + 8 + 8
@@ -65,6 +68,7 @@ var (
 	timerNextIdKey                = []byte("nid")
 	timerLastTriggerInfoKey       = []byte("lti")
 	timerFeeKey                   = []byte("fee")
+	timerOwnerKey                 = []byte("own")
 	timerTaskInfoKeyPrefix        = []byte{0, 0}
 	timerTaskTriggerInfoKeyPrefix = []byte{0, 1}
 	timerQueueKeyPrefix           = []byte{1, 0}
@@ -132,11 +136,18 @@ func IsTimerIdKey(k []byte) bool {
 func GetTimerNextIdKey() []byte {
 	return timerNextIdKey
 }
-func GetTimerTaskTypeDetail(taskType uint64) (timeHeight, endType, gapType uint8) {
-	th := taskType / 100
-	et := (taskType - th*100) / 10
-	gt := taskType - th*100 - et*10
-	return uint8(th), uint8(et), uint8(gt)
+func GetTimerTaskTypeDetail(taskType uint64) (chargeType, timeHeight, endType, gapType uint8) {
+	ct := taskType / 1000
+	th := (taskType - ct*1000) / 100
+	et := (taskType - ct*1000 - th*100) / 10
+	gt := taskType - ct*1000 - th*100 - et*10
+	return uint8(ct), uint8(th), uint8(et), uint8(gt)
+}
+func GetVariableTaskTypeByParamTaskType(taskType uint64, isOwner bool) uint64 {
+	if isOwner {
+		return uint64(TimerChargeTypeFree)*1000 + taskType
+	}
+	return uint64(TimerChargeTypeCharge)*1000 + taskType
 }
 func GenerateTimerTaskType(timeHeight, endType, gapType uint8) uint64 {
 	return uint64(gapType) + uint64(endType)*10 + uint64(timeHeight)*100
@@ -184,8 +195,11 @@ func GetTimerFeeKey() []byte {
 func GetTimerLastTriggerInfoKey() []byte {
 	return timerLastTriggerInfoKey
 }
+func GetTimerOwnerKey() []byte {
+	return timerOwnerKey
+}
 
-func GetTaskInfoByTimerId(db vm_db.VmDb, timerId []byte) ([]byte, *TimerTaskInfo, error) {
+func GetTaskInfoByTimerId(db StorageDatabase, timerId []byte) ([]byte, *TimerTaskInfo, error) {
 	taskInfoKey := GetTimerTaskInfoKey(timerId)
 	taskInfoValue, err := db.GetValue(taskInfoKey)
 	if err != nil {
@@ -196,7 +210,7 @@ func GetTaskInfoByTimerId(db vm_db.VmDb, timerId []byte) ([]byte, *TimerTaskInfo
 	return taskInfoKey, taskInfo, nil
 }
 
-func GetTaskTriggerInfoByTimerId(db vm_db.VmDb, timerId []byte) ([]byte, *TimerTaskTriggerInfo, error) {
+func GetTaskTriggerInfoByTimerId(db StorageDatabase, timerId []byte) ([]byte, *TimerTaskTriggerInfo, error) {
 	taskTriggerInfoKey := GetTimerTaskTriggerInfoKey(timerId)
 	taskTriggerInfoValue, err := db.GetValue(taskTriggerInfoKey)
 	if err != nil {

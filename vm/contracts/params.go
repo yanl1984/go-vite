@@ -1,6 +1,7 @@
 package contracts
 
 import (
+	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/vm/util"
 	"math/big"
 )
@@ -52,15 +53,20 @@ type ContractsParams struct {
 	CreateConsensusGroupPledgeHeight uint64 // Pledge height for registering to be a super node of snapshot group and common delegate group
 	MintPledgeHeight                 uint64 // Pledge height for mintage if choose to pledge instead of destroy vite token
 	ViteXVipPledgeHeight             uint64 // Pledge height for dex_fund contract, in order to upgrade to viteX vip
+	TimerOwnerAddressDefault         types.Address
 }
 
 var (
+	TimerOwnerAddressDefaultTest, _       = types.HexToAddress("vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a")
+	TimerOwnerAddressDefaultPreMainnet, _ = types.HexToAddress("")
+
 	ContractsParamsTest = ContractsParams{
 		RegisterMinPledgeHeight:          1,
 		PledgeHeight:                     1,
 		CreateConsensusGroupPledgeHeight: 1,
 		MintPledgeHeight:                 1,
 		ViteXVipPledgeHeight:             1,
+		TimerOwnerAddressDefault:         TimerOwnerAddressDefaultTest,
 	}
 	ContractsParamsMainNet = ContractsParams{
 		RegisterMinPledgeHeight:          3600 * 24 * 3,
@@ -68,5 +74,6 @@ var (
 		CreateConsensusGroupPledgeHeight: 3600 * 24 * 3,
 		MintPledgeHeight:                 3600 * 24 * 30 * 3,
 		ViteXVipPledgeHeight:             3600 * 24 * 30,
+		TimerOwnerAddressDefault:         TimerOwnerAddressDefaultPreMainnet,
 	}
 )

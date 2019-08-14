@@ -283,6 +283,7 @@ type GasTable struct {
 	TimerNewTaskGas                uint64
 	TimerDeleteTaskGas             uint64
 	TimerRechargeGas               uint64
+	TimerUpdateOwnerGas            uint64
 }
 
 func GasTableByHeight(sbHeight uint64) *GasTable {
@@ -523,5 +524,6 @@ func newTimerGasTable() GasTable {
 	gt.TimerNewTaskGas = 1
 	gt.TimerDeleteTaskGas = 1
 	gt.TimerRechargeGas = 1
+	gt.TimerUpdateOwnerGas = 1
 	return gt
 }

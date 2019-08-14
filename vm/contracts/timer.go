@@ -42,13 +42,13 @@ func (p *MethodTimerNewTask) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) e
 		return err
 	}
 
-	timeHeight, endType, gapType := abi.GetTimerTaskTypeDetail(param.TaskType)
+	_, timeHeight, endType, gapType := abi.GetTimerTaskTypeDetail(param.TaskType)
 	if generatedTimerTaskType := abi.GenerateTimerTaskType(timeHeight, endType, gapType); generatedTimerTaskType != param.TaskType {
 		return util.ErrInvalidMethodParam
 	}
-	if (timeHeight != abi.TimeHeightTime && timeHeight != abi.TimeHeightHeight) ||
-		(endType != abi.EndTypeEndTimeHeight && endType != abi.EndTypeTimes && endType != abi.EndTypePermanent) ||
-		(gapType != abi.GapTypePostpone && gapType != abi.GapTypeFixed) {
+	if (timeHeight != abi.TimerTimeHeightTime && timeHeight != abi.TimerTimeHeightHeight) ||
+		(endType != abi.TimerEndTypeEndTimeHeight && endType != abi.TimerEndTypeTimes && endType != abi.TimerEndTypePermanent) ||
+		(gapType != abi.TimerGapTypePostpone && gapType != abi.TimerGapTypeFixed) {
 		return util.ErrInvalidMethodParam
 	}
 
@@ -62,20 +62,20 @@ func (p *MethodTimerNewTask) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) e
 		return err
 	}
 
-	if (timeHeight == abi.TimeHeightTime && (param.Gap < TimerTimeGapMin || param.Gap > TimerTimeGapMax)) ||
-		(timeHeight == abi.TimeHeightHeight && (param.Gap < TimerHeightGapMin || param.Gap > TimerHeightGapMax)) {
+	if (timeHeight == abi.TimerTimeHeightTime && (param.Gap < TimerTimeGapMin || param.Gap > TimerTimeGapMax)) ||
+		(timeHeight == abi.TimerTimeHeightHeight && (param.Gap < TimerHeightGapMin || param.Gap > TimerHeightGapMax)) {
 		return util.ErrInvalidMethodParam
 	}
 
-	if (timeHeight == abi.TimeHeightTime && param.Window < TimerTimeWindowMin) ||
-		(timeHeight == abi.TimeHeightHeight && param.Window < TimerHeightWindowMin) ||
+	if (timeHeight == abi.TimerTimeHeightTime && param.Window < TimerTimeWindowMin) ||
+		(timeHeight == abi.TimerTimeHeightHeight && param.Window < TimerHeightWindowMin) ||
 		param.Window > param.Gap {
 		return util.ErrInvalidMethodParam
 	}
 
-	if (endType == abi.EndTypeEndTimeHeight && (param.EndCondition <= 0 || param.EndCondition < param.Start)) ||
-		(endType == abi.EndTypeTimes && param.EndCondition <= 0) ||
-		(endType == abi.EndTypePermanent && param.EndCondition != 0) {
+	if (endType == abi.TimerEndTypeEndTimeHeight && (param.EndCondition <= 0 || param.EndCondition < param.Start)) ||
+		(endType == abi.TimerEndTypeTimes && param.EndCondition <= 0) ||
+		(endType == abi.TimerEndTypePermanent && param.EndCondition != 0) {
 		return util.ErrInvalidMethodParam
 	}
 
@@ -94,11 +94,11 @@ func (p *MethodTimerNewTask) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) e
 func (p *MethodTimerNewTask) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) ([]*ledger.AccountBlock, error) {
 	param := new(abi.ParamTimerNewTask)
 	abi.ABITimer.UnpackMethod(param, abi.MethodNameTimerNewTask, block.Data)
-	timeHeight, endType, _ := abi.GetTimerTaskTypeDetail(param.TaskType)
+	_, timeHeight, endType, _ := abi.GetTimerTaskTypeDetail(param.TaskType)
 
 	current := getCurrent(timeHeight, db, vm)
 	next := firstTrigger(param.Start, current, param.Gap)
-	if endType == abi.EndTypeEndTimeHeight &&
+	if endType == abi.TimerEndTypeEndTimeHeight &&
 		next > param.EndCondition {
 		return nil, util.ErrInvalidMethodParam
 	}
@@ -111,7 +111,19 @@ func (p *MethodTimerNewTask) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock
 	err = db.SetValue(abi.GetTimerQueueKey(timeHeight, timerId, next), timerId)
 	util.DealWithErr(err)
 
-	taskInfo, _ := abi.ABITimer.PackVariable(abi.VariableNameTimerTaskInfo, sendBlock.Hash, param.TaskType, param.Window, param.Gap, param.EndCondition, param.ReceiverAddress, param.RefundAddress)
+	isOwner := getTimerOwner(db) == sendBlock.AccountAddress
+	if isBuiltInContract := types.IsBuiltinContractAddr(param.ReceiverAddress); (isOwner && !isBuiltInContract) || (!isOwner && isBuiltInContract) {
+		return nil, util.ErrInvalidMethodParam
+	}
+	taskInfo, _ := abi.ABITimer.PackVariable(
+		abi.VariableNameTimerTaskInfo,
+		sendBlock.Hash,
+		abi.GetVariableTaskTypeByParamTaskType(param.TaskType, isOwner),
+		param.Window,
+		param.Gap,
+		param.EndCondition,
+		param.ReceiverAddress,
+		param.RefundAddress)
 	err = db.SetValue(abi.GetTimerTaskInfoKey(timerId), taskInfo)
 	util.DealWithErr(err)
 
@@ -175,7 +187,7 @@ func (p *MethodTimerDeleteTask) DoReceive(db vm_db.VmDb, block *ledger.AccountBl
 
 	taskTriggerInfo, refundBlocks := deleteTaskTriggerInfoAndRefund(db, timerId, param.RefundAddress)
 	if !taskTriggerInfo.IsFinish() {
-		timeHeight, _, _ := abi.GetTimerTaskTypeDetail(taskInfo.TaskType)
+		_, timeHeight, _, _ := abi.GetTimerTaskTypeDetail(taskInfo.TaskType)
 		if taskTriggerInfo.IsStopped() {
 			db.SetValue(abi.GetTimerStoppedQueueKey(timerId, taskTriggerInfo.Delete), nil)
 		} else {
@@ -232,7 +244,7 @@ func (p *MethodTimerRecharge) DoReceive(db vm_db.VmDb, block *ledger.AccountBloc
 	if taskTriggerInfo.IsStopped() {
 		_, taskInfo, err := abi.GetTaskInfoByTimerId(db, timerId)
 		util.DealWithErr(err)
-		timeHeight, _, _ := abi.GetTimerTaskTypeDetail(taskInfo.TaskType)
+		_, timeHeight, _, _ := abi.GetTimerTaskTypeDetail(taskInfo.TaskType)
 		db.SetValue(abi.GetTimerStoppedQueueKey(timerId, taskTriggerInfo.Delete), nil)
 
 		taskTriggerInfo.Next = firstTrigger(taskTriggerInfo.Next, getCurrent(timeHeight, db, vm), taskInfo.Gap)
@@ -248,6 +260,50 @@ func (p *MethodTimerRecharge) DoReceive(db vm_db.VmDb, block *ledger.AccountBloc
 	return nil, nil
 }
 
+type MethodTimerUpdateOwner struct{}
+
+func (p *MethodTimerUpdateOwner) GetFee(block *ledger.AccountBlock) (*big.Int, error) {
+	return big.NewInt(0), nil
+}
+
+func (p *MethodTimerUpdateOwner) GetRefundData(sendBlock *ledger.AccountBlock) ([]byte, bool) {
+	return []byte{}, false
+}
+
+func (p *MethodTimerUpdateOwner) GetSendQuota(data []byte, gasTable *util.GasTable) (uint64, error) {
+	return gasTable.TimerRechargeGas, nil
+}
+func (p *MethodTimerUpdateOwner) GetReceiveQuota(gasTable *util.GasTable) uint64 {
+	return 0
+}
+
+func (p *MethodTimerUpdateOwner) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
+	if block.Amount.Sign() != 0 {
+		return util.ErrInvalidMethodParam
+	}
+	newOwner := new(types.Address)
+	err := abi.ABITimer.UnpackMethod(newOwner, abi.MethodNameTimerUpdateOwner, block.Data)
+	if err != nil {
+		return err
+	}
+	if *newOwner == block.AccountAddress {
+		return util.ErrInvalidMethodParam
+	}
+	block.Data, _ = abi.ABITimer.PackMethod(abi.MethodNameTimerUpdateOwner, *newOwner)
+	return nil
+}
+func (p *MethodTimerUpdateOwner) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) ([]*ledger.AccountBlock, error) {
+	owner := getTimerOwner(db)
+	if owner != sendBlock.AccountAddress {
+		return nil, util.ErrInvalidMethodParam
+	}
+	newOwner := new(types.Address)
+	abi.ABITimer.UnpackMethod(newOwner, abi.MethodNameTimerUpdateOwner, block.Data)
+	err := db.SetValue(abi.GetTimerOwnerKey(), newOwner.Bytes())
+	util.DealWithErr(err)
+	return nil, nil
+}
+
 func ReceiveTaskTrigger(db vm_db.VmDb, sb *ledger.SnapshotBlock, vm vmEnvironment) ([]*ledger.AccountBlock, error) {
 	lastTriggerInfo, err := abi.GetTimerLastTriggerInfo(db)
 	util.DealWithErr(err)
@@ -259,11 +315,11 @@ func ReceiveTaskTrigger(db vm_db.VmDb, sb *ledger.SnapshotBlock, vm vmEnvironmen
 
 	taskNum := 0
 	returnBlocks := make([]*ledger.AccountBlock, 0)
-	taskNum, returnBlocks = trigger(db, abi.TimeHeightHeight, currentHeight, currentHeight, taskNum, returnBlocks)
+	taskNum, returnBlocks = trigger(db, abi.TimerTimeHeightHeight, currentHeight, currentHeight, taskNum, returnBlocks)
 	if taskNum >= TimerTriggerTasksNumMax {
 		return returnBlocks, nil
 	}
-	taskNum, returnBlocks = trigger(db, abi.TimeHeightTime, currentTime, currentHeight, taskNum, returnBlocks)
+	taskNum, returnBlocks = trigger(db, abi.TimerTimeHeightTime, currentTime, currentHeight, taskNum, returnBlocks)
 	if taskNum >= TimerTriggerTasksNumMax {
 		return returnBlocks, nil
 	}
@@ -374,10 +430,10 @@ func trigger(db vm_db.VmDb, timerQueueKeyPrefix uint8, current uint64, currentHe
 		taskTriggerInfoKey, taskTriggerInfo, err := abi.GetTaskTriggerInfoByTimerId(db, timerId)
 		util.DealWithErr(err)
 		taskTriggerInfo.Balance.Sub(taskTriggerInfo.Balance, timerChargeAmountPerTask)
-		_, endType, gapType := abi.GetTimerTaskTypeDetail(taskInfo.TaskType)
+		_, _, endType, gapType := abi.GetTimerTaskTypeDetail(taskInfo.TaskType)
 		next = nextTrigger(next, current, taskInfo.Gap, gapType)
-		if (endType == abi.EndTypeTimes && taskTriggerInfo.TriggerTimes+1 == taskInfo.EndCondition) ||
-			(endType == abi.EndTypeEndTimeHeight && (current >= taskInfo.EndCondition || next > taskInfo.EndCondition)) {
+		if (endType == abi.TimerEndTypeTimes && taskTriggerInfo.TriggerTimes+1 == taskInfo.EndCondition) ||
+			(endType == abi.TimerEndTypeEndTimeHeight && (current >= taskInfo.EndCondition || next > taskInfo.EndCondition)) {
 			// task finish, delete all
 			err = db.SetValue(taskInfo.TaskId.Bytes(), nil)
 			util.DealWithErr(err)
@@ -442,7 +498,7 @@ func getCurrent(timeHeight uint8, db vm_db.VmDb, vm vmEnvironment) uint64 {
 	lastTriggerInfo, err := abi.GetTimerLastTriggerInfo(db)
 	util.DealWithErr(err)
 	var current uint64
-	if timeHeight == abi.TimeHeightHeight {
+	if timeHeight == abi.TimerTimeHeightHeight {
 		current = currentSb.Height
 		if lastTriggerInfo != nil {
 			current = helper.Max(current, lastTriggerInfo.Height)
@@ -464,7 +520,7 @@ func firstTrigger(start, current, gap uint64) uint64 {
 }
 
 func nextTrigger(last, current, gap uint64, gapType uint8) uint64 {
-	if gapType == abi.GapTypeFixed {
+	if gapType == abi.TimerGapTypeFixed {
 		return last + (current-last+gap-1)/gap*gap
 	} else {
 		return current + gap
@@ -518,4 +574,14 @@ func refundTask(taskTriggerInfo *abi.TimerTaskTriggerInfo, refundAddr types.Addr
 		}
 	}
 	return nil
+}
+
+func getTimerOwner(db vm_db.VmDb) types.Address {
+	value, err := db.GetValue(abi.GetTimerOwnerKey())
+	util.DealWithErr(err)
+	if len(value) > 0 {
+		owner, _ := types.BytesToAddress(value)
+		return owner
+	}
+	return nodeConfig.params.TimerOwnerAddressDefault
 }
