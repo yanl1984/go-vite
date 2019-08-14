@@ -309,7 +309,8 @@ func (sDB *StateDB) GetSnapshotBalanceList(balanceMap map[types.Address]*big.Int
 
 func (sDB *StateDB) GetSnapshotValue(snapshotBlockHeight uint64, addr types.Address, key []byte) ([]byte, error) {
 
-	if sDB.useCache && types.IsBuiltinContractAddr(addr) && snapshotBlockHeight == sDB.chain.GetLatestSnapshotBlock().Height {
+	if sDB.useCache && types.IsBuiltinCoreContract(addr) &&
+		snapshotBlockHeight == sDB.chain.GetLatestSnapshotBlock().Height {
 		return sDB.getValueInCache(append(addr.Bytes(), key...), snapshotValuePrefix)
 	}
 

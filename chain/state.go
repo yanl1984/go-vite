@@ -91,6 +91,13 @@ func (c *chain) GetContractMetaInSnapshot(contractAddress types.Address, snapsho
 		return nil, nil
 	}
 
+	latestSnapshotBlock := c.GetLatestSnapshotBlock()
+
+	if latestSnapshotBlock.Height < meta.DeleteSnapshotHeight ||
+		meta.DeleteSnapshotHeight > snapshotHeight {
+		meta.IsDelete = 0
+	}
+
 	return meta, nil
 }
 

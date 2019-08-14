@@ -41,7 +41,9 @@ func (c *chain) GetContentNeedSnapshot() ledger.SnapshotContent {
 	return sc
 }
 
-func (c *chain) filterUnconfirmedBlocks(snapshotBlock *ledger.SnapshotBlock, checkConsensus bool) []*ledger.AccountBlock {
+func (c *chain) filterUnconfirmedBlocks(snapshotBlock *ledger.SnapshotBlock, checkConsensus bool,
+	deletedContracts map[types.Address]struct{}) []*ledger.AccountBlock {
+
 	// get unconfirmed blocks
 	blocks := c.cache.GetUnconfirmedBlocks()
 	if len(blocks) <= 0 {
@@ -86,6 +88,7 @@ func (c *chain) filterUnconfirmedBlocks(snapshotBlock *ledger.SnapshotBlock, che
 		valid := true
 
 		addr := block.AccountAddress
+
 		// dependence
 		if _, ok := invalidAddrSet[addr]; ok {
 			valid = false
@@ -98,6 +101,20 @@ func (c *chain) filterUnconfirmedBlocks(snapshotBlock *ledger.SnapshotBlock, che
 				valid = false
 			}
 		}
+
+		// toAddress is deleted contract
+		if block.IsSendBlock() {
+			if _, ok := deletedContracts[block.ToAddress]; ok {
+				valid = false
+			}
+		}
+
+		for _, sendBlock := range block.SendBlockList {
+			if _, ok := deletedContracts[sendBlock.ToAddress]; ok {
+				valid = false
+			}
+		}
+
 		// consensus
 		if valid && checkConsensus {
 			if _, ok := invalidConsensusBlocks[block.Hash]; ok {

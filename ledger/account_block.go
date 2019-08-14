@@ -23,7 +23,7 @@ const (
 	BlockTypeSendRefund   = byte(6) // send
 
 	BlockTypeGenesisReceive  = byte(7) // receive
-	BlockTypeReceiveDestruct = byte(8) // receive
+	BlockTypeReceiveDestruct = byte(8) // receive destruct
 )
 
 type AccountBlock struct {
