@@ -22,7 +22,7 @@ const (
 	BlockTypeReceiveError    = byte(5) // receive
 	BlockTypeSendRefund      = byte(6) // send
 	BlockTypeGenesisReceive  = byte(7) // receive
-	BlockTypeReceiveDestruct = byte(8) // receive
+	BlockTypeReceiveDestruct = byte(8) // receive destruct
 	BlockTypeReceiveTimer    = byte(9) // receive
 )
 

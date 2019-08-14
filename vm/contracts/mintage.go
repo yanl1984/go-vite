@@ -149,6 +149,9 @@ func (p *MethodIssue) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
 	if err != nil {
 		return err
 	}
+	if err := util.CheckContractAddrInSAfterNewFork(db, param.Beneficial); err != nil {
+		return err
+	}
 	if param.Amount.Sign() <= 0 || block.Amount.Sign() > 0 {
 		return util.ErrInvalidMethodParam
 	}
@@ -261,6 +264,9 @@ func (p *MethodTransferOwner) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) 
 	}
 	if param.NewOwner == block.AccountAddress {
 		return util.ErrInvalidMethodParam
+	}
+	if err := util.CheckContractAddrInSAfterNewFork(db, param.NewOwner); err != nil {
+		return err
 	}
 	block.Data, _ = abi.ABIMintage.PackMethod(abi.MethodNameTransferOwner, param.TokenId, param.NewOwner)
 	return nil

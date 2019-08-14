@@ -287,7 +287,7 @@ func (vm *VM) Cancel() {
 func (vm *VM) receiveDestructedCall(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock) (*vm_db.VmAccountBlock, bool, error) {
 	if sendBlock.Amount.Sign() > 0 {
 		util.AddBalance(db, &sendBlock.TokenId, sendBlock.Amount)
-		if _, err := util.GetQuotaRatioForRS(db, sendBlock.AccountAddress, sendBlock, vm.GlobalStatus()); err == nil {
+		if _, err := util.GetQuotaRatioForRS(db, sendBlock.AccountAddress, sendBlock.Hash, vm.GlobalStatus()); err == nil {
 			vm.vmContext.AppendBlock(
 				util.MakeSendBlock(
 					block.AccountAddress,
@@ -1004,7 +1004,7 @@ func (vm *VM) OffChainReader(db vm_db.VmDb, code []byte, data []byte) (result []
 	if err != nil {
 		return nil, err
 	}
-	if meta == nil || meta.Deleted {
+	if meta == nil || meta.IsDeleted() {
 		return nil, util.ErrContractNotExists
 	}
 	sb, err := db.LatestSnapshotBlock()
@@ -1057,7 +1057,7 @@ func checkContractDestructed(addr types.Address, meta *ledger.ContractMeta) bool
 	if !types.IsContractAddr(addr) {
 		return false
 	}
-	return meta == nil || meta.Deleted
+	return meta == nil || meta.IsDeleted()
 }
 
 // printDebugBlockInfo prints block info after execution.

@@ -451,7 +451,7 @@ func gasCall(vm *VM, c *contract, stack *stack, mem *memory, memorySize uint64) 
 	if err != nil {
 		return 0, true, err
 	}
-	quotaRatio, err := util.GetQuotaRatioForRS(c.db, toAddress, c.sendBlock, vm.globalStatus)
+	quotaRatio, err := util.GetQuotaRatioForRS(c.db, toAddress, c.sendBlock.Hash, vm.globalStatus)
 	if err != nil {
 		return 0, true, err
 	}

@@ -43,7 +43,7 @@
     "preContractMetaMap": {
       "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
         "quotaRatio": 10,
-        "deleted":true
+        "isDelete":1
       }
     }
   }

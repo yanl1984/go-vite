@@ -1322,7 +1322,7 @@
       },
       "vite_339a7c0e4f325014ec5bc11f7633ed32b2aa6059a66985d4db": {
         "quotaRatio": 10,
-        "deleted":true
+        "isDelete":1
       }
     },
     "contractMetaMap": {
@@ -1331,7 +1331,7 @@
       },
       "vite_339a7c0e4f325014ec5bc11f7633ed32b2aa6059a66985d4db": {
         "quotaRatio": 10,
-        "deleted":true
+        "isDelete":1
       }
     }
   },
@@ -1354,13 +1354,13 @@
     "preContractMetaMap": {
       "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
         "quotaRatio": 10,
-        "deleted":true
+        "isDelete":1
       }
     },
     "contractMetaMap": {
       "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
         "quotaRatio": 10,
-        "deleted":true
+        "isDelete":1
       }
     }
   },
@@ -1383,13 +1383,13 @@
     "preContractMetaMap": {
       "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
         "quotaRatio": 10,
-        "deleted":true
+        "isDelete":1
       }
     },
     "contractMetaMap": {
       "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
         "quotaRatio": 10,
-        "deleted":true
+        "isDelete":1
       }
     },
     "sendBlockList": [
@@ -1420,21 +1420,21 @@
     "preContractMetaMap": {
       "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
         "quotaRatio": 10,
-        "deleted":true
+        "isDelete":1
       },
       "vite_e5a70ff20e7c01db293c0f82236b4a8a4b8bef87805c8c6c8b": {
         "quotaRatio": 10,
-        "deleted":true
+        "isDelete":1
       }
     },
     "contractMetaMap": {
       "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
         "quotaRatio": 10,
-        "deleted":true
+        "isDelete":1
       },
       "vite_e5a70ff20e7c01db293c0f82236b4a8a4b8bef87805c8c6c8b": {
         "quotaRatio": 10,
-        "deleted":true
+        "isDelete":1
       }
     },
     "balanceMap": {
@@ -1460,7 +1460,7 @@
     "preContractMetaMap": {
       "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
         "quotaRatio": 10,
-        "deleted":true
+        "isDelete":1
       },
       "vite_e5a70ff20e7c01db293c0f82236b4a8a4b8bef87805c8c6c8b": {
         "quotaRatio": 10
@@ -1469,7 +1469,7 @@
     "contractMetaMap": {
       "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
         "quotaRatio": 10,
-        "deleted":true
+        "isDelete":1
       },
       "vite_e5a70ff20e7c01db293c0f82236b4a8a4b8bef87805c8c6c8b": {
         "quotaRatio": 10

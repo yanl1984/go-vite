@@ -2,6 +2,7 @@ package chain_state
 
 import (
 	"encoding/binary"
+	"fmt"
 	"github.com/patrickmn/go-cache"
 	"github.com/vitelabs/go-vite/chain/utils"
 	"github.com/vitelabs/go-vite/common"
@@ -79,6 +80,24 @@ func (sDB *StateDB) Write(block *vm_db.VmAccountBlock) error {
 			redoLog.ContractMeta[addr] = metaBytes
 		}
 
+	}
+
+	// delete unsaved contract meta
+	if accountBlock.BlockType == ledger.BlockTypeReceiveDestruct {
+		meta, err := sDB.GetContractMeta(accountBlock.AccountAddress)
+		if err != nil {
+			return err
+		}
+		if meta == nil {
+			return errors.New(fmt.Sprintf("meta is nil, block is %+v", accountBlock))
+		}
+
+		meta.IsDelete = 1
+		contractKey := chain_utils.CreateContractMetaKey(accountBlock.AccountAddress)
+		metaBytes := meta.Serialize()
+		sDB.writeContractMeta(batch, contractKey, metaBytes)
+
+		redoLog.ContractMeta[accountBlock.AccountAddress] = metaBytes
 	}
 
 	// write vm log
@@ -185,7 +204,7 @@ func (sDB *StateDB) WriteByRedo(blockHash types.Hash, addr types.Address, redoLo
 	sDB.store.WriteAccountBlockByHash(batch, blockHash)
 }
 
-func (sDB *StateDB) InsertSnapshotBlock(snapshotBlock *ledger.SnapshotBlock, confirmedBlocks []*ledger.AccountBlock) error {
+func (sDB *StateDB) InsertSnapshotBlock(snapshotBlock *ledger.SnapshotBlock, confirmedBlocks []*ledger.AccountBlock) (map[types.Address]struct{}, error) {
 	height := snapshotBlock.Height
 
 	// next snapshot
@@ -194,7 +213,7 @@ func (sDB *StateDB) InsertSnapshotBlock(snapshotBlock *ledger.SnapshotBlock, con
 	// write history
 	snapshotRedoLog, _, err := sDB.redo.QueryLog(height)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	batch := sDB.store.NewBatch()
@@ -203,7 +222,7 @@ func (sDB *StateDB) InsertSnapshotBlock(snapshotBlock *ledger.SnapshotBlock, con
 
 		redoKvMap, redoBalanceMap, err := parseRedoLog(snapshotRedoLog)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		// put history storage kv
@@ -221,9 +240,9 @@ func (sDB *StateDB) InsertSnapshotBlock(snapshotBlock *ledger.SnapshotBlock, con
 
 				sDB.writeHistoryKey(batch, putKeyTemplate, value)
 			}
-
 		}
 
+		// put balance
 		putBalanceTemplate := chain_utils.CreateHistoryBalanceKey(types.Address{}, types.TokenTypeId{}, height)
 
 		for addr, balanceMap := range redoBalanceMap {
@@ -236,13 +255,34 @@ func (sDB *StateDB) InsertSnapshotBlock(snapshotBlock *ledger.SnapshotBlock, con
 		}
 	}
 
+	// put snapshot delete
+
+	deletesContracts := make(map[types.Address]struct{})
+	for _, block := range confirmedBlocks {
+		if block.BlockType == ledger.BlockTypeReceiveDestruct {
+			meta, err := sDB.GetContractMeta(block.AccountAddress)
+			if err != nil {
+				return nil, err
+			}
+			if meta == nil {
+				return nil, errors.New(fmt.Sprintf("meta is nil, block is %+v", block))
+			}
+
+			meta.IsDelete = 1
+			meta.DeleteSnapshotHeight = snapshotBlock.Height
+
+			sDB.writeContractMeta(batch, chain_utils.CreateContractMetaKey(block.AccountAddress), meta.Serialize())
+			deletesContracts[block.AccountAddress] = struct{}{}
+		}
+	}
+
 	// write snapshot
 	sDB.store.WriteSnapshot(batch, confirmedBlocks)
 
 	// set round cache
 	sDB.roundCache.InsertSnapshotBlock(snapshotBlock, snapshotRedoLog)
 
-	return nil
+	return deletesContracts, nil
 
 }
 
@@ -268,7 +308,7 @@ func (sDB *StateDB) writeHistoryKey(batch interfaces.Batch, key, value []byte) {
 	if err != nil {
 		panic(err)
 	}
-	if types.IsBuiltinContractAddr(addr) {
+	if types.IsBuiltinCoreContract(addr) {
 		sDB.cache.Set(snapshotValuePrefix+string(addrBytes)+string(sDB.parseStorageKey(key)), sDB.copyValue(value), cache.NoExpiration)
 	}
 }
