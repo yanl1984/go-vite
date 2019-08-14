@@ -491,7 +491,7 @@ func BenchmarkVMNewAgentOrderReceive(b *testing.B) {
 	benchmarkReceive(b, sendBlock, receiveBlock)
 }
 func makeDexNewAgentOrderBlock(addr types.Address) *ledger.AccountBlock {
-	data, err := abi.ABIDexFund.PackMethod(abi.MethodNameDexFundNewAgentOrder, testAddr, tradeToken, ledger.ViteTokenId, true, uint8(dex.Limited), "30", big1e18)
+	data, err := abi.ABIDexFund.PackMethod(abi.MethodNameDexFundNewAgentOrder, testAddr, tradeToken, ledger.ViteTokenId, true, uint8(dex.Limited), "30", new(big.Int).Mul(new(big.Int).SetInt64(1e18), big.NewInt(400)))
 	if err != nil {
 		panic(err)
 	}
@@ -708,6 +708,9 @@ func TestPrintDexBlockSize(t *testing.T) {
 		makeReceiveBlock(types.AddressDexFund))
 	printBlockSize("dexFundSettleMakerMinedVx",
 		makeDexSettleMakerMinedVxBlock(dexAddr),
+		makeReceiveBlock(types.AddressDexFund))
+	printBlockSize("dexFundPledgeForSuperVip",
+		makeDexPledgeForSuperVipBlock(dexAddr),
 		makeReceiveBlock(types.AddressDexFund))
 	printBlockSize("dexFundConfigMarketAgent",
 		makeDexConfigMarketAgentBlock(dexAddr),

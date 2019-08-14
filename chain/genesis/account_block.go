@@ -439,14 +439,14 @@ func newDexTradeContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock
 			order.ExecutedBrokerFee = od.ExecutedBrokerFee.Bytes()
 			order.Timestamp = cfg.DexTradeInfo.Timestamp
 			order.Agent = od.Agent.Bytes()
-			order.SendHash = od.SenHash.Bytes()
+			order.SendHash = od.SendHash.Bytes()
 			orderId := order.Id
 			if data, err := order.SerializeCompact(); err != nil {
 				panic(err)
 			} else {
 				vmdb.SetValue(orderId, data)
 			}
-			dex.SaveHashMapOrderId(vmdb, order.SendHash, order.Id)
+			dex.SaveHashMapOrderId(vmdb, order.SendHash, orderId)
 		}
 		block.Hash = block.ComputeHash()
 		fmt.Printf("trade block.hash %s\n", block.Hash.String())

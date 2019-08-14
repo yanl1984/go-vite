@@ -198,5 +198,5 @@ type DexTradeOrder struct {
 	ExecutedBrokerFee  *big.Int
 	Timestamp          int64
 	Agent              types.Address
-	SenHash            types.Hash
+	SendHash           types.Hash
 }
