@@ -97,6 +97,7 @@ func makeDexNewOrderBlock(addr types.Address) *ledger.AccountBlock {
 // part of NewOrder
 // part of CancelOrder
 // part of NewAgentOrder
+// part of CancelOrderByHash
 func BenchmarkVMDexSettleOrdersSend(b *testing.B) {
 	sendBlock := makeDexSettleOrdersBlock(testAddr)
 	benchmarkSend(b, sendBlock)
@@ -105,6 +106,7 @@ func BenchmarkVMDexSettleOrdersSend(b *testing.B) {
 // part of NewOrder
 // part of CancelOrder
 // part of NewAgentOrder
+// part of CancelOrderByHash
 func BenchmarkVMDexSettleOrdersReceive(b *testing.B) {
 	sendBlock := makeDexSettleOrdersBlock(testAddr)
 	receiveBlock := makeReceiveBlock(types.AddressDexFund)
@@ -481,10 +483,12 @@ func makeDexConfigMarketAgentBlock(addr types.Address) *ledger.AccountBlock {
 	return makeSendBlock(addr, types.AddressDexFund, data, big0, big0)
 }
 
+// part of NewAgentOrder[entry]
 func BenchmarkVMNewAgentOrderSend(b *testing.B) {
 	sendBlock := makeDexNewAgentOrderBlock(dexAddr)
 	benchmarkSend(b, sendBlock)
 }
+// part of NewAgentOrder
 func BenchmarkVMNewAgentOrderReceive(b *testing.B) {
 	sendBlock := makeDexNewAgentOrderBlock(dexAddr)
 	receiveBlock := makeReceiveBlock(types.AddressDexFund)
