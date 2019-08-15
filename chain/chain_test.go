@@ -225,6 +225,14 @@ var GenesisJson = `{
 	      "QuoteTokenType":0
 	  	},
 	    {
+	      "TokenId":"tti_4d3a69b12962332e8df52701",
+	      "Decimals":18,
+	      "Symbol":"VCP",
+	      "Index":1,
+	      "Owner":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+	      "QuoteTokenType":0
+	  	},
+	    {
 	      "TokenId":"tti_2736f320d7ed1c2871af1d9d",
 	      "Decimals":18,
 	      "Symbol":"VTT",
@@ -253,6 +261,23 @@ var GenesisJson = `{
 	      "MarketId":1,
 	      "MarketSymbol":"TEST_001-VITE",
 	      "TradeToken":"tti_045e6ca837c143cd477b32f3",
+	      "QuoteToken":"tti_5649544520544f4b454e6e40",
+	      "QuoteTokenType":1,
+	      "TradeTokenDecimals":18,
+	      "QuoteTokenDecimals":18,
+	      "TakerBrokerFeeRate":100,
+	      "MakerBrokerFeeRate":150,
+	      "AllowMine":true,
+	      "Valid":true,
+	      "Owner":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+	      "Creator":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+	      "Stopped":false,
+	      "Timestamp":1563187466
+	  	},
+	    {
+	      "MarketId":2,
+	      "MarketSymbol":"VCP_001-VITE",
+	      "TradeToken":"tti_4d3a69b12962332e8df52701",
 	      "QuoteToken":"tti_5649544520544f4b454e6e40",
 	      "QuoteTokenType":1,
 	      "TradeTokenDecimals":18,

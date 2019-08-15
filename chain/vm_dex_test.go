@@ -16,6 +16,7 @@ import (
 var (
 	dexAddr, _                = types.HexToAddress("vite_56fd05b23ff26cd7b0a40957fb77bde60c9fd6ebc35f809c23")
 	tradeToken, _             = types.HexToTokenTypeId("tti_045e6ca837c143cd477b32f3")
+	tradeToken1, _            = types.HexToTokenTypeId("tti_4d3a69b12962332e8df52701")
 	newTradeToken, _          = types.HexToTokenTypeId("tti_2736f320d7ed1c2871af1d9d")
 	notExistsNewTradeToken, _ = types.HexToTokenTypeId("tti_060e61a9f5222c0fcc0c7ff5")
 )
@@ -476,7 +477,9 @@ func BenchmarkVMDexConfigMarketAgentReceive(b *testing.B) {
 	benchmarkReceive(b, sendBlock, receiveBlock)
 }
 func makeDexConfigMarketAgentBlock(addr types.Address) *ledger.AccountBlock {
-	data, err := abi.ABIDexFund.PackMethod(abi.MethodNameDexFundConfigMarketAgent, uint8(dex.GrantAgent), dexAddr, tradeToken, ledger.ViteTokenId)
+	tradeTokens := []types.TokenTypeId{tradeToken, tradeToken1}
+	quoteTokens := []types.TokenTypeId{ledger.ViteTokenId, ledger.ViteTokenId}
+	data, err := abi.ABIDexFund.PackMethod(abi.MethodNameDexFundConfigMarketsAgent, uint8(dex.GrantAgent), dexAddr, tradeTokens, quoteTokens)
 	if err != nil {
 		panic(err)
 	}
@@ -488,6 +491,7 @@ func BenchmarkVMNewAgentOrderSend(b *testing.B) {
 	sendBlock := makeDexNewAgentOrderBlock(dexAddr)
 	benchmarkSend(b, sendBlock)
 }
+
 // part of NewAgentOrder
 func BenchmarkVMNewAgentOrderReceive(b *testing.B) {
 	sendBlock := makeDexNewAgentOrderBlock(dexAddr)
@@ -637,6 +641,7 @@ func BenchmarkVMDexTradeCancelOrderByHashSend(b *testing.B) {
 	sendBlock := makeDexTradeCancelOrderByHashBlock(testAddr)
 	benchmarkSend(b, sendBlock)
 }
+
 //part of CancelOrderByHash
 func BenchmarkVMDexTradeCancelOrderByHashReceive(b *testing.B) {
 	sendBlock := makeDexTradeCancelOrderByHashBlock(testAddr)
