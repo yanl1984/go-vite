@@ -354,3 +354,21 @@ func TestCalcQuotaByPledgeAmount(t *testing.T) {
 	InitQuotaConfig(false, true)
 	fmt.Println(calcPledgeQuota(big.NewInt(9999999999954), true, new(big.Int).Mul(big.NewInt(1100000), big.NewInt(1e18))))
 }
+
+func TestPrintPledgeAmountByUTPS(t *testing.T) {
+	InitQuotaConfig(false, false)
+	quotaPerTx := uint64(23448)
+	for i := uint64(1); i <= 75*20; {
+		index := (quotaPerTx*i + 280*75 - 1) / (280 * 75)
+		amount := nodeConfig.pledgeAmountList[int(index)]
+		utpsString := ""
+		if i < 75 {
+			utpsString = fmt.Sprintf("%v(%v/75 tps)", i, i)
+			i = i + 1
+		} else {
+			utpsString = fmt.Sprintf("%v(%v tps)", i, i/75)
+			i = i + 75
+		}
+		fmt.Printf("%v\t%v\n", utpsString, new(big.Int).Div(amount, big.NewInt(1e18)))
+	}
+}

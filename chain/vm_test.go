@@ -737,7 +737,7 @@ func printBlockSize(name string, sendBlock, receiveBlock *ledger.AccountBlock) {
 
 func printSendBlock(name string, sendBlock *ledger.AccountBlock) {
 	bs, _ := sendBlock.Serialize()
-	fmt.Printf("blocksize: send %v block, chain block size %v, net block size %v\n", name, len(bs), len(bs)+5)
+	fmt.Printf("blocksize: send %v block, chain block size %v, net block size %v, data size %v\n", name, len(bs), len(bs)+5, len(sendBlock.Data))
 }
 
 func printReceiveBlock(name string, receiveBlock *ledger.AccountBlock) {
