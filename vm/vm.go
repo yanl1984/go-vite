@@ -259,6 +259,9 @@ func (vm *VM) RunV2(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger
 		blockCopy.Data = nil
 		contractMeta := getContractMeta(db)
 		destructed := checkContractDestructed(blockCopy.AccountAddress, contractMeta)
+		if blockCopy.BlockType == ledger.BlockTypeReceiveTimer && fork.IsNewFork(sb.Height) {
+			return vm.receiveTimer(db, blockCopy, contractMeta)
+		}
 		if sendBlock.BlockType == ledger.BlockTypeSendRefund {
 			return vm.receiveRefund(db, blockCopy, sendBlock, contractMeta, !destructed)
 		} else if destructed {
@@ -908,6 +911,23 @@ func (vm *VM) receiveRefund(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock
 	return &vm_db.VmAccountBlock{block, db}, noRetry, nil
 }
 
+func (vm *VM) receiveTimer(db vm_db.VmDb, block *ledger.AccountBlock, meta *ledger.ContractMeta) (*vm_db.VmAccountBlock, bool, error) {
+	defer monitor.LogTimerConsuming([]string{"vm", "receiveTimer"}, time.Now())
+	blockListToSend, err := contracts.ReceiveTaskTrigger(db, vm.GlobalStatus().SnapshotBlock(), vm)
+	if err == nil {
+		if len(blockListToSend) == 0 {
+			return nil, noRetry, util.ErrNoTaskDue
+		}
+		vm.updateBlock(db, block, err, 0, 0)
+		vm.vmContext.sendBlockList = blockListToSend
+		if db, err = vm.doSendBlockList(db, 0); err == nil {
+			block.Data = getReceiveCallData(db, err)
+			return mergeReceiveBlock(db, block, vm.sendBlockList), noRetry, nil
+		}
+	}
+	return nil, noRetry, err
+}
+
 func (vm *VM) delegateCall(contractAddr types.Address, data []byte, c *contract) (ret []byte, err error) {
 	_, code := util.GetContractCode(c.db, &contractAddr, vm.globalStatus)
 	if len(code) > 0 {
@@ -925,12 +945,14 @@ func (vm *VM) updateBlock(db vm_db.VmDb, block *ledger.AccountBlock, err error, 
 	block.QuotaUsed = qUsed
 	if block.IsReceiveBlock() {
 		block.LogHash = db.GetLogListHash()
-		if err == util.ErrOutOfQuota {
-			block.BlockType = ledger.BlockTypeReceiveError
-		} else if vm.isDestructed {
-			block.BlockType = ledger.BlockTypeReceiveDestruct
-		} else {
-			block.BlockType = ledger.BlockTypeReceive
+		if block.BlockType != ledger.BlockTypeReceiveTimer {
+			if err == util.ErrOutOfQuota {
+				block.BlockType = ledger.BlockTypeReceiveError
+			} else if vm.isDestructed {
+				block.BlockType = ledger.BlockTypeReceiveDestruct
+			} else {
+				block.BlockType = ledger.BlockTypeReceive
+			}
 		}
 	}
 }

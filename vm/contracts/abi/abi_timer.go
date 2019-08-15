@@ -136,12 +136,15 @@ func IsTimerIdKey(k []byte) bool {
 func GetTimerNextIdKey() []byte {
 	return timerNextIdKey
 }
-func GetTimerTaskTypeDetail(taskType uint64) (chargeType, timeHeight, endType, gapType uint8) {
+func GetTimerTaskTypeDetail(taskType uint64) (timeHeight, endType, gapType uint8) {
 	ct := taskType / 1000
 	th := (taskType - ct*1000) / 100
 	et := (taskType - ct*1000 - th*100) / 10
 	gt := taskType - ct*1000 - th*100 - et*10
-	return uint8(ct), uint8(th), uint8(et), uint8(gt)
+	return uint8(th), uint8(et), uint8(gt)
+}
+func GetChargeTypeFromTaskType(taskType uint64) uint8 {
+	return uint8(taskType / 1000)
 }
 func GetVariableTaskTypeByParamTaskType(taskType uint64, isOwner bool) uint64 {
 	if isOwner {

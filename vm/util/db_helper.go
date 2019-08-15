@@ -58,7 +58,7 @@ func GetQuotaRatioForS(db dbInterface, toAddr types.Address) (uint8, error) {
 	}
 	sb, err := db.LatestSnapshotBlock()
 	DealWithErr(err)
-	return GetQuotaRatioBySnapshotBlock(db, toAddr, sb)
+	return getQuotaRatioBySnapshotBlock(db, toAddr, sb)
 }
 
 func CheckContractAddrInSAfterNewFork(db dbInterface, toAddr types.Address) error {
@@ -82,12 +82,12 @@ func GetQuotaRatioForRS(db dbInterface, toAddr types.Address, fromHash types.Has
 		return CommonQuotaRatio, nil
 	}
 	if !helper.IsNil(status) && status.SnapshotBlock() != nil {
-		return GetQuotaRatioBySnapshotBlock(db, toAddr, status.SnapshotBlock())
+		return getQuotaRatioBySnapshotBlock(db, toAddr, status.SnapshotBlock())
 	}
 	confirmSb, err := db.GetConfirmSnapshotHeader(fromHash)
 	DealWithErr(err)
 	if confirmSb != nil {
-		return GetQuotaRatioBySnapshotBlock(db, toAddr, confirmSb)
+		return getQuotaRatioBySnapshotBlock(db, toAddr, confirmSb)
 	}
 	sb, err := db.LatestSnapshotBlock()
 	DealWithErr(err)
@@ -113,6 +113,13 @@ func CheckContractAddrInRSAfterNewFork(db dbInterface, toAddr types.Address, fro
 }
 
 func GetQuotaRatioBySnapshotBlock(db dbInterface, toAddr types.Address, snapshotBlock *ledger.SnapshotBlock) (uint8, error) {
+	if !types.IsContractAddr(toAddr) {
+		return CommonQuotaRatio, nil
+	}
+	return getQuotaRatioBySnapshotBlock(db, toAddr, snapshotBlock)
+}
+
+func getQuotaRatioBySnapshotBlock(db dbInterface, toAddr types.Address, snapshotBlock *ledger.SnapshotBlock) (uint8, error) {
 	meta, err := db.GetContractMetaInSnapshot(toAddr, snapshotBlock)
 	DealWithErr(err)
 	if meta == nil || meta.IsDeleted() {

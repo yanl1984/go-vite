@@ -20,6 +20,7 @@ var (
 	ErrContractDeleted           = errors.New("contract deleted")
 	ErrNoReliableStatus          = errors.New("no reliable status")
 	ErrSendBlockListLimitReached = errors.New("too many send blocks")
+	ErrNoTaskDue                 = errors.New("currently no task is due")
 
 	ErrAddressCollision = errors.New("contract address collision")
 	ErrIdCollision      = errors.New("id collision")
