@@ -49,6 +49,14 @@ type VMRunTestCase struct {
 	BalanceMap    map[types.TokenTypeId]string
 }
 
+func TestInitVMConfig(t *testing.T) {
+	/*addr1, _, _ := types.CreateAddress()
+	addr2, _ := types.HexToAddress("vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a")
+	v, _ := abi.ABITimer.PackMethod(abi.MethodNameTimerNewTask, uint64(122), uint64(1565884800), uint64(3600), uint64(3600), uint64(1), addr1, addr2)
+	fmt.Println(hex.EncodeToString(v))*/
+	fmt.Println(new(big.Int).Mul(big.NewInt(1000), big.NewInt(1e18)).Text(16))
+}
+
 var (
 	quotaInfoList = commonQuotaInfoList()
 	prevHash, _   = types.HexToHash("82a8ecfe0df3dea6256651ee3130747386d4d6ab61201ce0050a6fe394a0f595")
@@ -63,6 +71,9 @@ func TestVM_RunV2(t *testing.T) {
 		t.Fatalf("read dir failed, %v", ok)
 	}
 	for _, testFile := range testFiles {
+		if testFile.Name() != "timer_new_task.json" {
+			continue
+		}
 		if testFile.IsDir() {
 			continue
 		}
