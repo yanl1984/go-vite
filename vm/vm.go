@@ -887,7 +887,7 @@ func (vm *VM) receiveRefund(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock
 	defer monitor.LogTimerConsuming([]string{"vm", "receiveRefund"}, time.Now())
 	q := uint64(0)
 	qUsed := uint64(0)
-	if useQuota {
+	if useQuota && (!fork.IsNewFork(vm.latestSnapshotHeight) || !types.IsBuiltinContractAddrInUse(block.AccountAddress)) {
 		quotaTotal, quotaAddition, err := quota.CalcQuotaForBlock(
 			db,
 			block.AccountAddress,

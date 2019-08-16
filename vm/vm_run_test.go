@@ -1,6 +1,7 @@
 package vm
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -204,8 +205,30 @@ func TestVM_RunV2(t *testing.T) {
 					t.Fatal("invalid test case run result, logHash", "filename", testFile.Name(), "caseName", k, "expected", expected, "got", vmBlock.AccountBlock.LogHash)
 				} else if checkContractMetaMapResult := checkContractMetaMap(testCase.ContractMetaMap, db.getContractMetaMap()); len(checkContractMetaMapResult) > 0 {
 					t.Fatal("invalid test case run result, contractMetaMap", "filename", testFile.Name(), "caseName", k, checkContractMetaMapResult)
+				} else if expected := db.GetLogListHash(); (vmBlock.AccountBlock.LogHash == nil && expected != nil) ||
+					(vmBlock.AccountBlock.LogHash != nil && expected == nil) ||
+					(vmBlock.AccountBlock.LogHash != nil && expected != nil && vmBlock.AccountBlock.LogHash != expected) {
+					t.Fatal("invalid test case run result, log hash", "filename", testFile.Name(), "caseName", k, "expected", expected, "got", vmBlock.AccountBlock.LogHash)
 				}
-				// TODO check data
+				if types.IsContractAddr(vmBlock.AccountBlock.AccountAddress) {
+					if expected := append(db.GetReceiptHash().Bytes(), 0); err == nil && testCase.SendBlockType != ledger.BlockTypeSendRefund && !bytes.Equal(vmBlock.AccountBlock.Data, expected) {
+						t.Fatal("invalid test case run result, data", "filename", testFile.Name(), "caseName", k, "expected", bytesToString(expected), "got", bytesToString(vmBlock.AccountBlock.Data))
+					} else if err == nil && testCase.SendBlockType == ledger.BlockTypeSendRefund && len(vmBlock.AccountBlock.Data) > 0 {
+						t.Fatal("invalid test case run result, data", "filename", testFile.Name(), "caseName", k, "expected", "nil", "got", bytesToString(vmBlock.AccountBlock.Data))
+					} else if expected := append([]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, byte(1)); err != nil && err.Error() != util.ErrDepth.Error() && !bytes.Equal(vmBlock.AccountBlock.Data, expected) {
+						t.Fatal("invalid test case run result, data", "filename", testFile.Name(), "caseName", k, "expected", bytesToString(expected), "got", bytesToString(vmBlock.AccountBlock.Data))
+					} else if expected := append([]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, byte(2)); err != nil && err.Error() == util.ErrDepth.Error() && !bytes.Equal(vmBlock.AccountBlock.Data, expected) {
+						t.Fatal("invalid test case run result, data", "filename", testFile.Name(), "caseName", k, "expected", bytesToString(expected), "got", bytesToString(vmBlock.AccountBlock.Data))
+					}
+				} else if vmBlock.AccountBlock.IsReceiveBlock() {
+					if len(vmBlock.AccountBlock.Data) > 0 {
+						t.Fatal("invalid test case run result, data", "filename", testFile.Name(), "caseName", k, "expected", "nil", "got", bytesToString(vmBlock.AccountBlock.Data))
+					}
+				} else {
+					if bytes.Equal(vmBlock.AccountBlock.Data, stringToBytes(testCase.Data)) {
+						t.Fatal("invalid test case run result, data", "filename", testFile.Name(), "caseName", k, "expected", testCase.Data, "got", bytesToString(vmBlock.AccountBlock.Data))
+					}
+				}
 			} else if vmBlock != nil {
 				t.Fatal("invalid test case run result, vmBlock", "filename", testFile.Name(), "caseName", k, "expected", "nil", "got", vmBlock.AccountBlock)
 			}

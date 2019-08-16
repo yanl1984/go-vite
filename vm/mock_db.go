@@ -1,11 +1,15 @@
 package vm
 
 import (
+	"bytes"
+	"encoding/hex"
 	"github.com/vitelabs/go-vite/common/db/xleveldb/errors"
 	"github.com/vitelabs/go-vite/common/types"
+	"github.com/vitelabs/go-vite/crypto"
 	"github.com/vitelabs/go-vite/interfaces"
 	"github.com/vitelabs/go-vite/ledger"
 	"math/big"
+	"sort"
 )
 
 type mockDB struct {
@@ -111,9 +115,34 @@ func (db *mockDB) GetQuotaUsedList(addr types.Address) []types.QuotaInfo {
 func (db *mockDB) GetGlobalQuota() types.QuotaInfo {
 	return types.QuotaInfo{}
 }
+
+type mockDBStorageKv struct {
+	k string
+	v string
+}
+type byKey []*mockDBStorageKv
+
+func (a byKey) Len() int      { return len(a) }
+func (a byKey) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a byKey) Less(i, j int) bool {
+	return a[i].k < a[j].k
+}
 func (db *mockDB) GetReceiptHash() *types.Hash {
-	// TODO
-	return &types.Hash{}
+	list := make([]*mockDBStorageKv, 0, len(db.storageMap))
+	for k, v := range db.storageMap {
+		list = append(list, &mockDBStorageKv{k, v})
+	}
+	sort.Sort(byKey(list))
+	var source []byte
+	for _, kv := range list {
+		source = append(source, stringToBytes(kv.k)...)
+		source = append(source, stringToBytes(kv.v)...)
+	}
+	if len(source) == 0 {
+		return &types.Hash{}
+	}
+	hash, _ := types.BytesToHash(crypto.Hash256(source))
+	return &hash
 }
 func (db *mockDB) Reset() {
 	db.balanceMap = make(map[types.TokenTypeId]*big.Int)
@@ -125,20 +154,118 @@ func (db *mockDB) Finish() {
 
 }
 func (db *mockDB) GetValue(key []byte) ([]byte, error) {
-	// TODO
+	keyStr := bytesToString(key)
+	if v, ok := db.storageMap[keyStr]; ok {
+		return stringToBytes(v), nil
+	}
+	if v, ok := db.storageMapOrigin[keyStr]; ok {
+		return stringToBytes(v), nil
+	}
 	return nil, nil
 }
 func (db *mockDB) GetOriginalValue(key []byte) ([]byte, error) {
-	// TODO
+	if v, ok := db.storageMapOrigin[bytesToString(key)]; ok {
+		return stringToBytes(v), nil
+	}
 	return nil, nil
 }
 func (db *mockDB) SetValue(key []byte, value []byte) error {
-	// TODO
+	db.storageMap[bytesToString(key)] = hex.EncodeToString(value)
 	return nil
 }
 func (db *mockDB) NewStorageIterator(prefix []byte) (interfaces.StorageIterator, error) {
-	// TODO
+	items := make([]mockIteratorItem, 0)
+	for key, value := range db.storageMap {
+		if len(value) == 0 {
+			continue
+		}
+		keyBytes := stringToBytes(key)
+		prefixLen := len(prefix)
+		if prefixLen > 0 {
+			if len(keyBytes) >= prefixLen && bytes.Equal(keyBytes[:prefixLen], prefix) {
+				items = append(items, mockIteratorItem{keyBytes, stringToBytes(value)})
+			}
+		} else {
+			items = append(items, mockIteratorItem{keyBytes, stringToBytes(value)})
+		}
+	}
+	for key, value := range db.storageMapOrigin {
+		if _, ok := db.storageMap[key]; ok {
+			continue
+		}
+		keyBytes := stringToBytes(key)
+		prefixLen := len(prefix)
+		if prefixLen > 0 {
+			if len(keyBytes) >= prefixLen && bytes.Equal(keyBytes[:prefixLen], prefix) {
+				items = append(items, mockIteratorItem{keyBytes, stringToBytes(value)})
+			}
+		} else {
+			items = append(items, mockIteratorItem{keyBytes, stringToBytes(value)})
+		}
+	}
+	sort.Sort(mockIteratorSorter(items))
+	return &mockIterator{-1, items}, nil
 	return nil, nil
+}
+
+type mockIteratorItem struct {
+	key, value []byte
+}
+type mockIterator struct {
+	index int
+	items []mockIteratorItem
+}
+
+func (i *mockIterator) Next() (ok bool) {
+	if i.index < len(i.items)-1 {
+		i.index = i.index + 1
+		return true
+	}
+	return false
+}
+func (i *mockIterator) Prev() bool {
+	return i.index <= 0
+}
+func (i *mockIterator) Last() bool {
+	return i.index == len(i.items)-1
+}
+func (i *mockIterator) Key() []byte {
+	return i.items[i.index].key
+}
+func (i *mockIterator) Value() []byte {
+	return i.items[i.index].value
+}
+func (i *mockIterator) Error() error {
+	return nil
+}
+func (i *mockIterator) Release() {
+
+}
+func (i *mockIterator) Seek(key []byte) bool {
+	for index, item := range i.items {
+		if bytes.Equal(item.key, key) {
+			i.index = index
+			return true
+		}
+	}
+	return false
+}
+
+type mockIteratorSorter []mockIteratorItem
+
+func (st mockIteratorSorter) Len() int {
+	return len(st)
+}
+func (st mockIteratorSorter) Swap(i, j int) {
+	st[i], st[j] = st[j], st[i]
+}
+func (st mockIteratorSorter) Less(i, j int) bool {
+	tkCmp := bytes.Compare(st[i].key, st[j].key)
+	if tkCmp < 0 {
+		return true
+	} else {
+		return false
+	}
 }
 func (db *mockDB) GetUnsavedStorage() [][2][]byte {
 	return nil
@@ -180,8 +307,18 @@ func (db *mockDB) GetHistoryLogList(logHash *types.Hash) (ledger.VmLogList, erro
 	return nil, nil
 }
 func (db *mockDB) GetLogListHash() *types.Hash {
-	// TODO
-	return nil
+	if len(db.logList) == 0 {
+		return nil
+	}
+	var source []byte
+	for _, log := range db.logList {
+		for _, topic := range log.Topics {
+			source = append(source, topic.Bytes()...)
+		}
+		source = append(source, log.Data...)
+	}
+	hash, _ := types.BytesToHash(crypto.Hash256(source))
+	return &hash
 }
 func (db *mockDB) GetUnconfirmedBlocks(address types.Address) []*ledger.AccountBlock {
 	return nil
@@ -267,4 +404,11 @@ func (db *mockDB) DebugGetStorage() (map[string][]byte, error) {
 }
 func (db *mockDB) CanWrite() bool {
 	return false
+}
+func bytesToString(v []byte) string {
+	return hex.EncodeToString(v)
+}
+func stringToBytes(v string) []byte {
+	vBytes, _ := hex.DecodeString(v)
+	return vBytes
 }
