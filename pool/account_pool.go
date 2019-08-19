@@ -59,7 +59,11 @@ type accountPoolBlock struct {
 
 func (accB *accountPoolBlock) ReferHashes() (keys []types.Hash, accounts []types.Hash, snapshot *types.Hash) {
 	if accB.block.IsReceiveBlock() {
-		accounts = append(accounts, accB.block.FromBlockHash)
+		if accB.block.BlockType == ledger.BlockTypeReceiveTimer {
+			snapshot = &accB.block.FromBlockHash
+		} else {
+			accounts = append(accounts, accB.block.FromBlockHash)
+		}
 	}
 	if accB.Height() > types.GenesisHeight {
 		accounts = append(accounts, accB.PrevHash())

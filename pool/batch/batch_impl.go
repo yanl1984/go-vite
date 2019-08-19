@@ -171,7 +171,7 @@ func (self *batchSnapshot) addSnapshotItem(b Item) error {
 func (self *batchSnapshot) addAccountItem(b Item, sHash *types.Hash) error {
 	max := -1
 	owner := b.Owner()
-	keys, accounts, _ := b.ReferHashes()
+	keys, accounts, referedS := b.ReferHashes()
 	// account levelInfo
 	for _, r := range accounts {
 		tmp, ok := self.all[r]
@@ -198,6 +198,20 @@ func (self *batchSnapshot) addAccountItem(b Item, sHash *types.Hash) error {
 		}
 		if max > self.maxLevel-1 {
 			return ErrorArrivedToMax
+		}
+	}
+	if referedS != nil {
+		sl, ok := self.all[*referedS]
+		if !ok {
+			err := self.snapshotExistsF(*referedS)
+			if err != nil {
+				return errors.WithMessage(ErrorReference, fmt.Sprintf("[S]snapshot[%s] not exist.", referedS))
+			}
+		} else {
+			tmp := sl.level + 1
+			if max < tmp {
+				max = tmp
+			}
 		}
 	}
 	if max < 0 {
