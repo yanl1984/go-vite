@@ -1,0 +1,15 @@
+{
+  "trigger_fail_invalid_snapshot_block":{
+    "sbHeight": 300,
+    "sbTime": 1565884799,
+    "sbHash": "44381ab6610817cd43a9d2a28b00228908936aa3e54eaab1ee32ef67f4800278",
+    "blockType": 9,
+    "toAddress": "vite_0000000000000000000000000000000000000008e745d12403",
+    "needGlobalStatus":true,
+    "success": false,
+    "err":"invalid method param",
+    "preStorage":{
+      "6c7469":"000000000000000000000000000000000000000000000000000000005d558180000000000000000000000000000000000000000000000000000000000000012d"
+    }
+  }
+}

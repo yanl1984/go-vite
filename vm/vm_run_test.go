@@ -21,6 +21,7 @@ type VMRunTestCase struct {
 	// global status
 	SbHeight uint64
 	SbTime   int64
+	SbHash   string
 	// block
 	BlockType        byte
 	SendBlockType    byte
@@ -88,6 +89,13 @@ func TestVM_RunV2(t *testing.T) {
 				Height:    testCase.SbHeight,
 				Timestamp: &currentTime,
 			}
+			if len(testCase.SbHash) > 0 {
+				sbHash, parseErr := types.HexToHash(testCase.SbHash)
+				if parseErr != nil {
+					t.Fatal("invalid test case sbHash", "filename", testFile.Name(), "caseName", k, "sbHash", testCase.SbHash)
+				}
+				latestSnapshotBlock.Hash = sbHash
+			}
 			var ok bool
 			pledgeBeneficialAmount := big.NewInt(0)
 			if len(testCase.PledgeBeneficialAmount) > 0 {
@@ -101,89 +109,19 @@ func TestVM_RunV2(t *testing.T) {
 				t.Fatal("invalid test case code", "filename", testFile.Name(), "caseName", k, "code", testCase.Code, "err", parseErr)
 			}
 
-			sendBlock := &ledger.AccountBlock{
-				Amount:  big.NewInt(0),
-				TokenId: testCase.TokenId,
-				Fee:     big.NewInt(0),
-			}
-			if len(testCase.Fee) > 0 {
-				sendBlock.Fee, ok = new(big.Int).SetString(testCase.Fee, 16)
-				if !ok {
-					t.Fatal("invalid test case data", "filename", testFile.Name(), "caseName", k, "fee", testCase.Fee)
-				}
-			}
-			if len(testCase.Amount) > 0 {
-				sendBlock.Amount, ok = new(big.Int).SetString(testCase.Amount, 16)
-				if !ok {
-					t.Fatal("invalid test case data", "filename", testFile.Name(), "caseName", k, "amount", testCase.Amount)
-				}
-			}
-			if len(testCase.Data) > 0 {
-				sendBlock.Data, parseErr = hex.DecodeString(testCase.Data)
-				if parseErr != nil {
-					t.Fatal("invalid test case data", "filename", testFile.Name(), "caseName", k, "data", testCase.Data)
-				}
-			}
-
 			var db *mockDB
 			var vmBlock *vm_db.VmAccountBlock
 			var isRetry bool
 			var err error
-			if ledger.IsSendBlock(testCase.BlockType) {
-				prevBlock := &ledger.AccountBlock{
-					BlockType:      ledger.BlockTypeReceive,
+			if testCase.BlockType == ledger.BlockTypeReceiveTimer {
+				receiveBlock := &ledger.AccountBlock{
+					BlockType:      testCase.BlockType,
+					PrevHash:       types.Hash{},
 					Height:         1,
-					Hash:           prevHash,
-					PrevHash:       types.ZERO_HASH,
-					AccountAddress: testCase.FromAddress,
-				}
-				sendBlock.PrevHash = prevBlock.Hash
-				sendBlock.Height = prevBlock.Height + 1
-				sendBlock.BlockType = testCase.BlockType
-				sendBlock.AccountAddress = testCase.FromAddress
-				sendBlock.ToAddress = testCase.ToAddress
-				var newDbErr error
-				db, newDbErr = NewMockDB(&testCase.FromAddress, latestSnapshotBlock, prevBlock, quotaInfoList, pledgeBeneficialAmount, testCase.PreBalanceMap, testCase.PreStorage, testCase.PreContractMetaMap, code)
-				if newDbErr != nil {
-					t.Fatal("new mock db failed", "filename", testFile.Name(), "caseName", k, "err", newDbErr)
-				}
-				vm := NewVM(nil)
-				vmBlock, isRetry, err = vm.RunV2(db, sendBlock, nil, nil)
-			} else if ledger.IsReceiveBlock(testCase.BlockType) {
-				sendBlock.BlockType = testCase.SendBlockType
-				sendBlock.AccountAddress = testCase.FromAddress
-				sendBlock.ToAddress = testCase.ToAddress
-				if len(testCase.SendBlockHash) > 0 {
-					sendBlock.Hash, parseErr = types.HexToHash(testCase.SendBlockHash)
-					if parseErr != nil {
-						t.Fatal("invalid test case send block hash", "filename", testFile.Name(), "caseName", k, "hash", testCase.SendBlockHash)
-					}
-				}
-				var prevBlock, receiveBlock *ledger.AccountBlock
-				if testCase.SendBlockType == ledger.BlockTypeSendCreate {
-					receiveBlock = &ledger.AccountBlock{
-						BlockType:      testCase.BlockType,
-						PrevHash:       types.Hash{},
-						Height:         1,
-						AccountAddress: testCase.ToAddress,
-					}
-				} else {
-					prevBlock := &ledger.AccountBlock{
-						BlockType:      ledger.BlockTypeReceive,
-						Height:         1,
-						Hash:           prevHash,
-						PrevHash:       types.ZERO_HASH,
-						AccountAddress: testCase.ToAddress,
-					}
-					receiveBlock = &ledger.AccountBlock{
-						BlockType:      testCase.BlockType,
-						PrevHash:       prevBlock.Hash,
-						Height:         prevBlock.Height + 1,
-						AccountAddress: testCase.ToAddress,
-					}
+					AccountAddress: testCase.ToAddress,
 				}
 				var newDbErr error
-				db, newDbErr = NewMockDB(&testCase.ToAddress, latestSnapshotBlock, prevBlock, quotaInfoList, pledgeBeneficialAmount, testCase.PreBalanceMap, testCase.PreStorage, testCase.PreContractMetaMap, code)
+				db, newDbErr = NewMockDB(&testCase.ToAddress, latestSnapshotBlock, nil, quotaInfoList, pledgeBeneficialAmount, testCase.PreBalanceMap, testCase.PreStorage, testCase.PreContractMetaMap, code)
 				if newDbErr != nil {
 					t.Fatal("new mock db failed", "filename", testFile.Name(), "caseName", k, "err", newDbErr)
 				}
@@ -192,9 +130,99 @@ func TestVM_RunV2(t *testing.T) {
 				if testCase.NeedGlobalStatus {
 					status = NewTestGlobalStatus(0, latestSnapshotBlock)
 				}
-				vmBlock, isRetry, err = vm.RunV2(db, receiveBlock, sendBlock, status)
+				vmBlock, isRetry, err = vm.RunV2(db, receiveBlock, nil, status)
 			} else {
-				t.Fatal("invalid test case block type", "filename", testFile.Name(), "caseName", k, "blockType", testCase.BlockType)
+				sendBlock := &ledger.AccountBlock{
+					Amount:  big.NewInt(0),
+					TokenId: testCase.TokenId,
+					Fee:     big.NewInt(0),
+				}
+				if len(testCase.Fee) > 0 {
+					sendBlock.Fee, ok = new(big.Int).SetString(testCase.Fee, 16)
+					if !ok {
+						t.Fatal("invalid test case data", "filename", testFile.Name(), "caseName", k, "fee", testCase.Fee)
+					}
+				}
+				if len(testCase.Amount) > 0 {
+					sendBlock.Amount, ok = new(big.Int).SetString(testCase.Amount, 16)
+					if !ok {
+						t.Fatal("invalid test case data", "filename", testFile.Name(), "caseName", k, "amount", testCase.Amount)
+					}
+				}
+				if len(testCase.Data) > 0 {
+					sendBlock.Data, parseErr = hex.DecodeString(testCase.Data)
+					if parseErr != nil {
+						t.Fatal("invalid test case data", "filename", testFile.Name(), "caseName", k, "data", testCase.Data)
+					}
+				}
+
+				if ledger.IsSendBlock(testCase.BlockType) {
+					prevBlock := &ledger.AccountBlock{
+						BlockType:      ledger.BlockTypeReceive,
+						Height:         1,
+						Hash:           prevHash,
+						PrevHash:       types.ZERO_HASH,
+						AccountAddress: testCase.FromAddress,
+					}
+					sendBlock.PrevHash = prevBlock.Hash
+					sendBlock.Height = prevBlock.Height + 1
+					sendBlock.BlockType = testCase.BlockType
+					sendBlock.AccountAddress = testCase.FromAddress
+					sendBlock.ToAddress = testCase.ToAddress
+					var newDbErr error
+					db, newDbErr = NewMockDB(&testCase.FromAddress, latestSnapshotBlock, prevBlock, quotaInfoList, pledgeBeneficialAmount, testCase.PreBalanceMap, testCase.PreStorage, testCase.PreContractMetaMap, code)
+					if newDbErr != nil {
+						t.Fatal("new mock db failed", "filename", testFile.Name(), "caseName", k, "err", newDbErr)
+					}
+					vm := NewVM(nil)
+					vmBlock, isRetry, err = vm.RunV2(db, sendBlock, nil, nil)
+				} else if ledger.IsReceiveBlock(testCase.BlockType) {
+					sendBlock.BlockType = testCase.SendBlockType
+					sendBlock.AccountAddress = testCase.FromAddress
+					sendBlock.ToAddress = testCase.ToAddress
+					if len(testCase.SendBlockHash) > 0 {
+						sendBlock.Hash, parseErr = types.HexToHash(testCase.SendBlockHash)
+						if parseErr != nil {
+							t.Fatal("invalid test case send block hash", "filename", testFile.Name(), "caseName", k, "hash", testCase.SendBlockHash)
+						}
+					}
+					var prevBlock, receiveBlock *ledger.AccountBlock
+					if testCase.SendBlockType == ledger.BlockTypeSendCreate {
+						receiveBlock = &ledger.AccountBlock{
+							BlockType:      testCase.BlockType,
+							PrevHash:       types.Hash{},
+							Height:         1,
+							AccountAddress: testCase.ToAddress,
+						}
+					} else {
+						prevBlock = &ledger.AccountBlock{
+							BlockType:      ledger.BlockTypeReceive,
+							Height:         1,
+							Hash:           prevHash,
+							PrevHash:       types.ZERO_HASH,
+							AccountAddress: testCase.ToAddress,
+						}
+						receiveBlock = &ledger.AccountBlock{
+							BlockType:      testCase.BlockType,
+							PrevHash:       prevBlock.Hash,
+							Height:         prevBlock.Height + 1,
+							AccountAddress: testCase.ToAddress,
+						}
+					}
+					var newDbErr error
+					db, newDbErr = NewMockDB(&testCase.ToAddress, latestSnapshotBlock, prevBlock, quotaInfoList, pledgeBeneficialAmount, testCase.PreBalanceMap, testCase.PreStorage, testCase.PreContractMetaMap, code)
+					if newDbErr != nil {
+						t.Fatal("new mock db failed", "filename", testFile.Name(), "caseName", k, "err", newDbErr)
+					}
+					vm := NewVM(nil)
+					var status util.GlobalStatus
+					if testCase.NeedGlobalStatus {
+						status = NewTestGlobalStatus(0, latestSnapshotBlock)
+					}
+					vmBlock, isRetry, err = vm.RunV2(db, receiveBlock, sendBlock, status)
+				} else {
+					t.Fatal("invalid test case block type", "filename", testFile.Name(), "caseName", k, "blockType", testCase.BlockType)
+				}
 			}
 			if !errorEquals(testCase.Err, err) {
 				t.Fatal("invalid test case run result, err", "filename", testFile.Name(), "caseName", k, "expected", testCase.Err, "got", err)
@@ -248,6 +276,9 @@ func TestVM_RunV2(t *testing.T) {
 					} else if testCase.BlockData != nil && !bytes.Equal(vmBlock.AccountBlock.Data, stringToBytes(*testCase.BlockData)) {
 						t.Fatal("invalid test case run result, data", "filename", testFile.Name(), "caseName", k, "expected", testCase.BlockData, "got", bytesToString(vmBlock.AccountBlock.Data))
 					}
+				}
+				if vmBlock.AccountBlock.BlockType == ledger.BlockTypeReceiveTimer && vmBlock.AccountBlock.FromBlockHash != latestSnapshotBlock.Hash {
+					t.Fatal("invalid test case run result, fromBlockHash", "filename", testFile.Name(), "caseName", k, "expected", latestSnapshotBlock.Hash, "got", vmBlock.AccountBlock.FromBlockHash)
 				}
 			} else if vmBlock != nil {
 				t.Fatal("invalid test case run result, vmBlock", "filename", testFile.Name(), "caseName", k, "expected", "nil", "got", vmBlock.AccountBlock)

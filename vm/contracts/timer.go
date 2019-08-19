@@ -332,7 +332,7 @@ func ReceiveTaskTrigger(db vm_db.VmDb, sb *ledger.SnapshotBlock, vm vmEnvironmen
 	currentHeight := sb.Height
 	currentTime := uint64(sb.Timestamp.Unix())
 	if lastTriggerInfo.Height >= currentHeight || lastTriggerInfo.Timestamp >= currentTime {
-		panic("expired snapshot block")
+		return nil, util.ErrInvalidMethodParam
 	}
 
 	taskNum := 0
