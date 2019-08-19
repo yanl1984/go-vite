@@ -81,7 +81,7 @@ func (p *MethodTimerNewTask) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) e
 		return util.ErrInvalidMethodParam
 	}
 
-	block.Data, _ = abi.ABIMintage.PackMethod(
+	block.Data, _ = abi.ABITimer.PackMethod(
 		abi.MethodNameTimerNewTask,
 		param.TaskType,
 		param.Start,

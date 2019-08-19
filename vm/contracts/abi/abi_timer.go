@@ -36,17 +36,25 @@ const (
 	VariableNameTimerTaskInfo        = "taskInfo"
 	VariableNameTimerTaskTriggerInfo = "taskTriggerInfo"
 	VariableNameTimerLastTriggerInfo = "lastTriggerInfo"
-
+)
+const (
 	TimerTimeHeightTime uint8 = iota + 1
 	TimerTimeHeightHeight
+)
+const (
 	TimerEndTypeEndTimeHeight uint8 = iota + 1
 	TimerEndTypeTimes
 	TimerEndTypePermanent
+)
+const (
 	TimerGapTypePostpone uint8 = iota + 1
 	TimerGapTypeFixed
+)
+const (
 	TimerChargeTypeFree uint8 = iota + 1
 	TimerChargeTypeCharge
-
+)
+const (
 	timerIdLen              = types.AddressSize + 8
 	timerQueueKeyLen        = 2 + 1 + 8 + 8
 	timerStoppedQueueKeyLen = 2 + 8 + 8

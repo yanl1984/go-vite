@@ -43,18 +43,11 @@ type VMRunTestCase struct {
 	Success       bool
 	Quota         uint64
 	QuotaUsed     uint64
+	BlockData     *string
 	SendBlockList []*TestCaseSendBlock
 	LogList       []TestLog
 	Storage       map[string]string
 	BalanceMap    map[types.TokenTypeId]string
-}
-
-func TestInitVMConfig(t *testing.T) {
-	/*addr1, _, _ := types.CreateAddress()
-	addr2, _ := types.HexToAddress("vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a")
-	v, _ := abi.ABITimer.PackMethod(abi.MethodNameTimerNewTask, uint64(122), uint64(1565884800), uint64(3600), uint64(3600), uint64(1), addr1, addr2)
-	fmt.Println(hex.EncodeToString(v))*/
-	fmt.Println(new(big.Int).Mul(big.NewInt(1000), big.NewInt(1e18)).Text(16))
 }
 
 var (
@@ -236,8 +229,10 @@ func TestVM_RunV2(t *testing.T) {
 						t.Fatal("invalid test case run result, data", "filename", testFile.Name(), "caseName", k, "expected", "nil", "got", bytesToString(vmBlock.AccountBlock.Data))
 					}
 				} else {
-					if bytes.Equal(vmBlock.AccountBlock.Data, stringToBytes(testCase.Data)) {
+					if testCase.BlockData == nil && !bytes.Equal(vmBlock.AccountBlock.Data, stringToBytes(testCase.Data)) {
 						t.Fatal("invalid test case run result, data", "filename", testFile.Name(), "caseName", k, "expected", testCase.Data, "got", bytesToString(vmBlock.AccountBlock.Data))
+					} else if testCase.BlockData != nil && !bytes.Equal(vmBlock.AccountBlock.Data, stringToBytes(*testCase.BlockData)) {
+						t.Fatal("invalid test case run result, data", "filename", testFile.Name(), "caseName", k, "expected", testCase.BlockData, "got", bytesToString(vmBlock.AccountBlock.Data))
 					}
 				}
 			} else if vmBlock != nil {
