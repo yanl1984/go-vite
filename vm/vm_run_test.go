@@ -20,9 +20,11 @@ import (
 type VMRunTestCase struct {
 	// global status
 	SbHeight uint64
+	SbTime   int64
 	// block
 	BlockType        byte
 	SendBlockType    byte
+	SendBlockHash    string
 	FromAddress      types.Address
 	ToAddress        types.Address
 	Data             string
@@ -64,9 +66,6 @@ func TestVM_RunV2(t *testing.T) {
 		t.Fatalf("read dir failed, %v", ok)
 	}
 	for _, testFile := range testFiles {
-		if testFile.Name() != "timer_new_task.json" {
-			continue
-		}
 		if testFile.IsDir() {
 			continue
 		}
@@ -79,14 +78,23 @@ func TestVM_RunV2(t *testing.T) {
 			t.Fatalf("decode test file failed, %v", ok)
 		}
 		for k, testCase := range *testCaseMap {
-			currentTime := time.Now()
+			var currentTime time.Time
+			if testCase.SbTime > 0 {
+				currentTime = time.Unix(testCase.SbTime, 0)
+			} else {
+				currentTime = time.Now()
+			}
 			latestSnapshotBlock := &ledger.SnapshotBlock{
 				Height:    testCase.SbHeight,
 				Timestamp: &currentTime,
 			}
-			pledgeBeneficialAmount, ok := new(big.Int).SetString(testCase.PledgeBeneficialAmount, 16)
-			if !ok {
-				t.Fatal("invalid test case data", "filename", testFile.Name(), "caseName", k, "pledgeBeneficialAmount", testCase.PledgeBeneficialAmount)
+			var ok bool
+			pledgeBeneficialAmount := big.NewInt(0)
+			if len(testCase.PledgeBeneficialAmount) > 0 {
+				pledgeBeneficialAmount, ok = new(big.Int).SetString(testCase.PledgeBeneficialAmount, 16)
+				if !ok {
+					t.Fatal("invalid test case data", "filename", testFile.Name(), "caseName", k, "pledgeBeneficialAmount", testCase.PledgeBeneficialAmount)
+				}
 			}
 			code, parseErr := hex.DecodeString(testCase.Code)
 			if parseErr != nil {
@@ -145,6 +153,12 @@ func TestVM_RunV2(t *testing.T) {
 				sendBlock.BlockType = testCase.SendBlockType
 				sendBlock.AccountAddress = testCase.FromAddress
 				sendBlock.ToAddress = testCase.ToAddress
+				if len(testCase.SendBlockHash) > 0 {
+					sendBlock.Hash, parseErr = types.HexToHash(testCase.SendBlockHash)
+					if parseErr != nil {
+						t.Fatal("invalid test case send block hash", "filename", testFile.Name(), "caseName", k, "hash", testCase.SendBlockHash)
+					}
+				}
 				var prevBlock, receiveBlock *ledger.AccountBlock
 				if testCase.SendBlockType == ledger.BlockTypeSendCreate {
 					receiveBlock = &ledger.AccountBlock{
@@ -274,7 +288,7 @@ func checkBalanceMap(expected map[types.TokenTypeId]string, got map[types.TokenT
 		}
 		expectedV, ok := new(big.Int).SetString(expected[k], 16)
 		if !ok {
-			return "balanceMap amount, " + expected[k]
+			return k.String() + " token balance, expected" + expected[k] + ", got " + v.String()
 		}
 		if v.Cmp(expectedV) != 0 {
 			return k.String() + " token balance, expect " + expectedV.String() + ", got " + v.String()

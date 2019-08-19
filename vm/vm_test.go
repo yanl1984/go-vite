@@ -593,7 +593,7 @@ func checkSendBlockList(expected []*TestCaseSendBlock, got []*ledger.AccountBloc
 	for i, expectedSendBlock := range expected {
 		gotSendBlock := got[i]
 		if (expectedSendBlock.BlockType > 0 && gotSendBlock.BlockType != expectedSendBlock.BlockType) || (expectedSendBlock.BlockType == 0 && gotSendBlock.BlockType != ledger.BlockTypeSendCall) {
-			return strconv.Itoa(i) + "th, expected blockType " + strconv.Itoa(int(expectedSendBlock.BlockType)) + ", got toAddress " + strconv.Itoa(int(gotSendBlock.BlockType))
+			return strconv.Itoa(i) + "th, expected blockType " + strconv.Itoa(int(expectedSendBlock.BlockType)) + ", got blockType " + strconv.Itoa(int(gotSendBlock.BlockType))
 		} else if gotSendBlock.ToAddress != expectedSendBlock.ToAddress {
 			return strconv.Itoa(i) + "th, expected toAddress " + expectedSendBlock.ToAddress.String() + ", got toAddress " + gotSendBlock.ToAddress.String()
 		} else if gotAmount := hex.EncodeToString(gotSendBlock.Amount.Bytes()); gotAmount != expectedSendBlock.Amount {

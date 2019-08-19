@@ -239,7 +239,7 @@ func GetTimerLastTriggerInfo(db StorageDatabase) (*TimerLastTriggerInfo, error) 
 	}
 	if len(lastTriggerInfoValue) > 0 {
 		lastTriggerInfo := new(TimerLastTriggerInfo)
-		ABITimer.UnpackVariable(lastTriggerInfoValue, VariableNameTimerLastTriggerInfo, lastTriggerInfoValue)
+		ABITimer.UnpackVariable(lastTriggerInfo, VariableNameTimerLastTriggerInfo, lastTriggerInfoValue)
 		return lastTriggerInfo, nil
 	}
 	return nil, nil

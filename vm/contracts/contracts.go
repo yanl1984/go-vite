@@ -133,9 +133,10 @@ func newTimerContracts() map[types.Address]*builtinContract {
 	contracts := newDexContracts()
 	contracts[types.AddressTimer] = &builtinContract{
 		map[string]BuiltinContractMethod{
-			cabi.MethodNameTimerNewTask:    &MethodTimerNewTask{},
-			cabi.MethodNameTimerDeleteTask: &MethodTimerDeleteTask{},
-			cabi.MethodNameTimerRecharge:   &MethodTimerRecharge{},
+			cabi.MethodNameTimerNewTask:     &MethodTimerNewTask{},
+			cabi.MethodNameTimerDeleteTask:  &MethodTimerDeleteTask{},
+			cabi.MethodNameTimerRecharge:    &MethodTimerRecharge{},
+			cabi.MethodNameTimerUpdateOwner: &MethodTimerUpdateOwner{},
 		},
 		cabi.ABITimer,
 	}

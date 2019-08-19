@@ -58,7 +58,7 @@ type ContractsParams struct {
 
 var (
 	TimerOwnerAddressDefaultTest, _       = types.HexToAddress("vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a")
-	TimerOwnerAddressDefaultPreMainnet, _ = types.HexToAddress("")
+	TimerOwnerAddressDefaultPreMainnet, _ = types.HexToAddress("vite_6f4746c037e3cacff609a01c2ad6ef7dac130a4725ec94b55a")
 
 	ContractsParamsTest = ContractsParams{
 		RegisterMinPledgeHeight:          1,
