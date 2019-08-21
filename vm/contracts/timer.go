@@ -331,9 +331,13 @@ func ReceiveTaskTrigger(db vm_db.VmDb, sb *ledger.SnapshotBlock, vm vmEnvironmen
 	util.DealWithErr(err)
 	currentHeight := sb.Height
 	currentTime := uint64(sb.Timestamp.Unix())
-	if lastTriggerInfo.Height >= currentHeight || lastTriggerInfo.Timestamp >= currentTime {
+	if lastTriggerInfo != nil && (lastTriggerInfo.Height >= currentHeight || lastTriggerInfo.Timestamp >= currentTime) {
 		return nil, util.ErrInvalidMethodParam
 	}
+
+	lastTriggerInfoValue, _ := abi.ABITimer.PackVariable(abi.VariableNameTimerLastTriggerInfo, currentTime, currentHeight)
+	err = db.SetValue(abi.GetTimerLastTriggerInfoKey(), lastTriggerInfoValue)
+	util.DealWithErr(err)
 
 	taskNum := 0
 	returnBlocks := make([]*ledger.AccountBlock, 0)
@@ -356,13 +360,6 @@ func ReceiveTaskTrigger(db vm_db.VmDb, sb *ledger.SnapshotBlock, vm vmEnvironmen
 
 	// burn fee
 	returnBlocks = burnFee(db, returnBlocks)
-
-	// update last snapshot block
-	if len(returnBlocks) > 0 {
-		lastTriggerInfoValue, _ := abi.ABITimer.PackVariable(abi.VariableNameTimerLastTriggerInfo, currentTime, currentHeight)
-		err = db.SetValue(abi.GetTimerLastTriggerInfoKey(), lastTriggerInfoValue)
-		util.DealWithErr(err)
-	}
 	return returnBlocks, nil
 }
 
@@ -419,15 +416,18 @@ func trigger(db vm_db.VmDb, timerQueueKeyPrefix uint8, current, currentHeight ui
 			next = lastTrigger(next, current, taskInfo.Gap)
 			if next > current || next+taskInfo.Window <= current {
 				next = next + taskInfo.Gap
+				taskTriggerInfoKey, taskTriggerInfo, err := abi.GetTaskTriggerInfoByTimerId(db, timerId)
+				util.DealWithErr(err)
 				if taskFinish(endType, taskInfo.EndCondition, next) {
 					// next task finish
-					taskTriggerInfoKey, taskTriggerInfo, err := abi.GetTaskTriggerInfoByTimerId(db, timerId)
-					util.DealWithErr(err)
 					refundBlocks := deleteAndRefund(db, taskInfoKey, taskTriggerInfoKey, taskInfo, taskTriggerInfo, sb)
 					returnBlocks = append(returnBlocks, refundBlocks...)
 					continue
 				}
 				// prepare next trigger
+				taskTriggerInfoValue, _ := abi.ABITimer.PackVariable(abi.VariableNameTimerTaskTriggerInfo, taskTriggerInfo.Balance, taskTriggerInfo.TriggerTimes, next, taskTriggerInfo.Delete)
+				err = db.SetValue(taskTriggerInfoKey, taskTriggerInfoValue)
+				util.DealWithErr(err)
 				err = db.SetValue(abi.GetTimerNewQueueKey(iterator.Key(), next), iterator.Value())
 				continue
 			}
@@ -465,9 +465,9 @@ func trigger(db vm_db.VmDb, timerQueueKeyPrefix uint8, current, currentHeight ui
 			util.DealWithErr(err)
 		} else {
 			// arrearage task, put into stopped queue
-			err := db.SetValue(abi.GetTimerNewStoppedQueueKey(iterator.Key(), next), timerId)
-			util.DealWithErr(err)
 			taskTriggerInfo.Delete = currentHeight + TimerArrearageDeleteHeight
+			err := db.SetValue(abi.GetTimerStoppedQueueKey(timerId, taskTriggerInfo.Delete), timerId)
+			util.DealWithErr(err)
 		}
 		taskTriggerInfoValue, _ := abi.ABITimer.PackVariable(abi.VariableNameTimerTaskTriggerInfo, taskTriggerInfo.Balance, taskTriggerInfo.TriggerTimes+1, next, taskTriggerInfo.Delete)
 		err = db.SetValue(taskTriggerInfoKey, taskTriggerInfoValue)
@@ -519,7 +519,7 @@ func deleteAndRefund(db vm_db.VmDb, taskInfoKey, taskTriggerInfoKey []byte, task
 	err = db.SetValue(taskTriggerInfoKey, nil)
 	util.DealWithErr(err)
 	_, err = util.GetQuotaRatioBySnapshotBlock(db, taskInfo.RefundAddress, sb)
-	if err != nil {
+	if err == nil {
 		return refundTask(taskTriggerInfo, taskInfo.RefundAddress)
 	}
 	return nil
@@ -537,9 +537,9 @@ func burnFee(db vm_db.VmDb, returnBlocks []*ledger.AccountBlock) []*ledger.Accou
 			TokenId:        ledger.ViteTokenId,
 			Data:           burnData,
 		})
+		err := db.SetValue(feeKey, nil)
+		util.DealWithErr(err)
 	}
-	err := db.SetValue(feeKey, nil)
-	util.DealWithErr(err)
 	return returnBlocks
 }
 
@@ -584,14 +584,14 @@ func nextTrigger(start, current, gap uint64) uint64 {
 
 func nextTriggerByGapType(last, current, gap uint64, gapType uint8) uint64 {
 	if gapType == abi.TimerGapTypeFixed {
-		return last + (current-last+gap-1)/gap*gap
+		return last + (current-last)/gap*gap + gap
 	} else {
 		return current + gap
 	}
 }
 
 func lastTrigger(start, current, gap uint64) uint64 {
-	return start + (current-start+gap-1)/gap*gap - gap
+	return start + (current-start)/gap*gap
 }
 
 func checkTimerChargeAmount(amount *big.Int, tokenId types.TokenTypeId) error {
@@ -649,9 +649,9 @@ func getTimerOwner(db vm_db.VmDb) types.Address {
 	return nodeConfig.params.TimerOwnerAddressDefault
 }
 
-func taskFinish(endType uint8, endCondition, current uint64) bool {
+func taskFinish(endType uint8, endCondition, future uint64) bool {
 	if endType == abi.TimerEndTypeEndTimeHeight &&
-		current >= endCondition {
+		future > endCondition {
 		return true
 	}
 	return false

@@ -171,7 +171,7 @@ func GetTimerNewQueueKey(oldKey []byte, next uint64) []byte {
 	return helper.JoinBytes(oldKey[:3], helper.LeftPadBytes(new(big.Int).SetUint64(next).Bytes(), 8), oldKey[11:])
 }
 func GetTimerQueueKeyPrefix(timeHeight uint8) []byte {
-	return []byte{byte(timeHeight)}
+	return helper.JoinBytes(timerQueueKeyPrefix, []byte{byte(timeHeight)})
 }
 func IsTimerQueueKey(k []byte) bool {
 	return len(k) == timerQueueKeyLen && bytes.Equal(k[:2], timerQueueKeyPrefix)
@@ -184,9 +184,6 @@ func GetTimerStoppedQueueKey(timerId []byte, delete uint64) []byte {
 }
 func IsTimerStoppedQueueKey(k []byte) bool {
 	return len(k) == timerStoppedQueueKeyLen && bytes.Equal(k[:2], timerStoppedQueueKeyPrefix)
-}
-func GetTimerNewStoppedQueueKey(oldKey []byte, deleteHeight uint64) []byte {
-	return helper.JoinBytes(oldKey[:2], helper.LeftPadBytes(new(big.Int).SetUint64(deleteHeight).Bytes(), 8), oldKey[10:])
 }
 func GetTimerStoppedQueueKeyPrefix() []byte {
 	return timerStoppedQueueKeyPrefix

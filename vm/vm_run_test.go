@@ -76,7 +76,7 @@ func TestVM_RunV2(t *testing.T) {
 		}
 		testCaseMap := new(map[string]VMRunTestCase)
 		if ok := json.NewDecoder(file).Decode(testCaseMap); ok != nil {
-			t.Fatalf("decode test file failed, %v", ok)
+			t.Fatalf("decode test file %v failed, %v", testFile.Name(), ok)
 		}
 		for k, testCase := range *testCaseMap {
 			var currentTime time.Time
