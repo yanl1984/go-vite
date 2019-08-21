@@ -215,6 +215,7 @@ type GasTable struct {
 	DexFundPeriodJobGas            uint64
 	DexFundPledgeForVxGas          uint64
 	DexFundPledgeForVipGas         uint64
+	DexFundPledgeForSuperVipGas    uint64
 	DexFundPledgeCallbackGas       uint64
 	DexFundCancelPledgeCallbackGas uint64
 	DexFundGetTokenInfoCallbackGas uint64
@@ -231,13 +232,17 @@ type GasTable struct {
 	TimerDeleteTaskGas             uint64
 	TimerRechargeGas               uint64
 	TimerUpdateOwnerGas            uint64
+	DexFundConfigMarketsAgentGas   uint64
+	DexFundNewAgentOrderGas        uint64
 }
 
 func GasTableByHeight(sbHeight uint64) *GasTable {
 	if !fork.IsDexFork(sbHeight) {
 		return &initGasTable
-	} else if !fork.IsNewFork(sbHeight) {
+	} else if !fork.IsStemFork(sbHeight) {
 		return &viteGasTable
+	} else if !fork.IsNewFork(sbHeight) {
+		return &dexAgentGasTable
 	}
 	return &timerGasTable
 }
@@ -340,8 +345,9 @@ var (
 		GetTokenInfoGas:       63200,
 	}
 
-	viteGasTable  = newViteGasTable()
-	timerGasTable = newTimerGasTable()
+	viteGasTable     = newViteGasTable()
+	dexAgentGasTable = newDexAgentGasTable()
+	timerGasTable    = newTimerGasTable()
 )
 
 func newViteGasTable() GasTable {
@@ -465,8 +471,16 @@ func newViteGasTable() GasTable {
 	}
 }
 
-func newTimerGasTable() GasTable {
+func newDexAgentGasTable() GasTable {
 	gt := newViteGasTable()
+	gt.DexFundPledgeForSuperVipGas = 33600
+	gt.DexFundConfigMarketsAgentGas = 8400
+	gt.DexFundNewAgentOrderGas = 25200
+	return gt
+}
+
+func newTimerGasTable() GasTable {
+	gt := newDexAgentGasTable()
 	gt.SelfDestructGas = 7500
 	gt.TimerNewTaskGas = 1
 	gt.TimerDeleteTaskGas = 1
