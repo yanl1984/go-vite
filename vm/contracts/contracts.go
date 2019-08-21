@@ -50,9 +50,10 @@ type builtinContract struct {
 }
 
 var (
-	simpleContracts = newSimpleContracts()
-	dexContracts    = newDexContracts()
-	timerContracts  = newTimerContracts()
+	simpleContracts   = newSimpleContracts()
+	dexContracts      = newDexContracts()
+	dexAgentContracts = newDexAgentContracts()
+	timerContracts    = newTimerContracts()
 )
 
 func newSimpleContracts() map[types.Address]*builtinContract {
@@ -113,7 +114,7 @@ func newDexContracts() map[types.Address]*builtinContract {
 			cabi.MethodNameDexFundNewInviter:           &MethodDexFundNewInviter{},
 			cabi.MethodNameDexFundBindInviteCode:       &MethodDexFundBindInviteCode{},
 			cabi.MethodNameDexFundEndorseVxMinePool:    &MethodDexFundEndorseVxMinePool{},
-			cabi.MethodNameDexFunSettleMakerMinedVx:    &MethodDexFundSettleMakerMinedVx{},
+			cabi.MethodNameDexFundSettleMakerMinedVx:   &MethodDexFundSettleMakerMinedVx{},
 		},
 		cabi.ABIDexFund,
 	}
@@ -129,8 +130,17 @@ func newDexContracts() map[types.Address]*builtinContract {
 	return contracts
 }
 
-func newTimerContracts() map[types.Address]*builtinContract {
+func newDexAgentContracts() map[types.Address]*builtinContract {
 	contracts := newDexContracts()
+	contracts[types.AddressDexFund].m[cabi.MethodNameDexFundPledgeForSuperVip] = &MethodDexFundPledgeForSuperVip{}
+	contracts[types.AddressDexFund].m[cabi.MethodNameDexFundConfigMarketsAgent] = &MethodDexFundConfigMarketsAgent{}
+	contracts[types.AddressDexFund].m[cabi.MethodNameDexFundNewAgentOrder] = &MethodDexFundNewAgentOrder{}
+	contracts[types.AddressDexTrade].m[cabi.MethodNameDexTradeCancelOrderByHash] = &MethodDexTradeCancelOrderByHash{}
+	return contracts
+}
+
+func newTimerContracts() map[types.Address]*builtinContract {
+	contracts := newDexAgentContracts()
 	contracts[types.AddressTimer] = &builtinContract{
 		map[string]BuiltinContractMethod{
 			cabi.MethodNameTimerNewTask:     &MethodTimerNewTask{},
@@ -145,21 +155,24 @@ func newTimerContracts() map[types.Address]*builtinContract {
 
 func GetBuiltinContractMethod(addr types.Address, methodSelector []byte, sbHeight uint64) (BuiltinContractMethod, bool, error) {
 	var contractsMap map[types.Address]*builtinContract
-	if !fork.IsDexFork(sbHeight) {
-		contractsMap = simpleContracts
-	} else if !fork.IsNewFork(sbHeight) {
+	if fork.IsNewFork(sbHeight) {
+		contractsMap = timerContracts
+	} else if fork.IsStemFork(sbHeight) {
+		contractsMap = dexAgentContracts
+	} else if fork.IsDexFork(sbHeight) {
 		contractsMap = dexContracts
 	} else {
-		contractsMap = timerContracts
+		contractsMap = simpleContracts
 	}
-	p, ok := contractsMap[addr]
-	if ok {
+	p, addrExists := contractsMap[addr]
+	if addrExists {
 		if method, err := p.abi.MethodById(methodSelector); err == nil {
-			c, ok := p.m[method.Name]
-			return c, ok, nil
-		} else {
-			return nil, ok, util.ErrAbiMethodNotFound
+			c, methodExists := p.m[method.Name]
+			if methodExists {
+				return c, methodExists, nil
+			}
 		}
+		return nil, addrExists, util.ErrAbiMethodNotFound
 	}
-	return nil, ok, nil
+	return nil, addrExists, nil
 }
