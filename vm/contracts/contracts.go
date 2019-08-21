@@ -39,7 +39,7 @@ type BuiltinContractMethod interface {
 	// check status, update state
 	DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) ([]*ledger.AccountBlock, error)
 	// receive block quota
-	GetReceiveQuota() uint64
+	GetReceiveQuota(gasTable *util.GasTable) uint64
 	// refund data at receive error
 	GetRefundData(sendBlock *ledger.AccountBlock) ([]byte, bool)
 }
@@ -52,6 +52,7 @@ type builtinContract struct {
 var (
 	simpleContracts = newSimpleContracts()
 	dexContracts    = newDexContracts()
+	timerContracts  = newTimerContracts()
 )
 
 func newSimpleContracts() map[types.Address]*builtinContract {
@@ -90,6 +91,7 @@ func newDexContracts() map[types.Address]*builtinContract {
 	contracts := newSimpleContracts()
 	contracts[types.AddressPledge].m[cabi.MethodNameAgentPledge] = &MethodAgentPledge{}
 	contracts[types.AddressPledge].m[cabi.MethodNameAgentCancelPledge] = &MethodAgentCancelPledge{}
+	contracts[types.AddressMintage].m[cabi.MethodNameGetTokenInfo] = &MethodGetTokenInfo{}
 	contracts[types.AddressDexFund] = &builtinContract{
 		map[string]BuiltinContractMethod{
 			cabi.MethodNameDexFundUserDeposit:          &MethodDexFundUserDeposit{},
@@ -127,12 +129,28 @@ func newDexContracts() map[types.Address]*builtinContract {
 	return contracts
 }
 
+func newTimerContracts() map[types.Address]*builtinContract {
+	contracts := newDexContracts()
+	contracts[types.AddressTimer] = &builtinContract{
+		map[string]BuiltinContractMethod{
+			cabi.MethodNameTimerNewTask:     &MethodTimerNewTask{},
+			cabi.MethodNameTimerDeleteTask:  &MethodTimerDeleteTask{},
+			cabi.MethodNameTimerRecharge:    &MethodTimerRecharge{},
+			cabi.MethodNameTimerUpdateOwner: &MethodTimerUpdateOwner{},
+		},
+		cabi.ABITimer,
+	}
+	return contracts
+}
+
 func GetBuiltinContractMethod(addr types.Address, methodSelector []byte, sbHeight uint64) (BuiltinContractMethod, bool, error) {
 	var contractsMap map[types.Address]*builtinContract
 	if !fork.IsDexFork(sbHeight) {
 		contractsMap = simpleContracts
-	} else {
+	} else if !fork.IsNewFork(sbHeight) {
 		contractsMap = dexContracts
+	} else {
+		contractsMap = timerContracts
 	}
 	p, ok := contractsMap[addr]
 	if ok {

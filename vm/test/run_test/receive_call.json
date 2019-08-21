@@ -1,0 +1,1482 @@
+{
+  "receive_selfdestruct_before_hardfork": {
+    "sbHeight": 299,
+    "blockType": 4,
+    "sendBlockType": 2,
+    "fromAddress": "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+    "toAddress": "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86",
+    "data": "",
+    "amount": "0100",
+    "tokenId": "tti_5649544520544f4b454e6e40",
+    "code": "0174d15b6d885c50bcc1b540bdf97701d77e06401fc300ff",
+    "pledgeBeneficialAmount": "10000000000000000000000",
+    "err": "invalid opcode",
+    "success": true,
+    "quota": 21001,
+    "quotaUsed": 21001,
+    "preContractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10
+      }
+    },
+    "contractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10
+      }
+    },
+    "sendBlockList": [
+      {
+        "blockType": 6,
+        "toAddress": "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+        "amount": "0100",
+        "tokenID": "tti_5649544520544f4b454e6e40"
+      }
+    ]
+  },
+  "receive_selfdestruct_without_sendblock_without_balancemap_after_hardfork": {
+    "sbHeight": 300,
+    "blockType": 8,
+    "sendBlockType": 2,
+    "fromAddress": "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+    "toAddress": "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86",
+    "data": "",
+    "amount": "0",
+    "tokenId": "tti_5649544520544f4b454e6e40",
+    "code": "0174d15b6d885c50bcc1b540bdf97701d77e06401fc300ff",
+    "pledgeBeneficialAmount": "10000000000000000000000",
+    "err": "",
+    "success": true,
+    "quota": 28501,
+    "quotaUsed": 28501,
+    "preContractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10
+      }
+    },
+    "contractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10
+      }
+    }
+  },
+  "receive_selfdestruct_without_sendblock_with_balancemap_after_hardfork": {
+    "sbHeight": 300,
+    "blockType": 8,
+    "sendBlockType": 2,
+    "fromAddress": "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+    "toAddress": "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86",
+    "data": "",
+    "amount": "0100",
+    "tokenId": "tti_5649544520544f4b454e6e40",
+    "code": "0174d15b6d885c50bcc1b540bdf97701d77e06401fc300ff",
+    "pledgeBeneficialAmount": "10000000000000000000000",
+    "err": "",
+    "success": true,
+    "quota": 28501,
+    "quotaUsed": 28501,
+    "preContractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10
+      }
+    },
+    "contractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10
+      }
+    },
+    "preBalanceMap": {
+      "tti_5649544520544f4b454e6e40": "0100",
+      "tti_564954455820434f494e69b5": "1000",
+      "tti_251a3e67a41b5ea2373936c8": "2000"
+    },
+    "sendBlockList": [
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "2000",
+        "tokenID": "tti_251a3e67a41b5ea2373936c8"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "0200",
+        "tokenID": "tti_5649544520544f4b454e6e40"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "1000",
+        "tokenID": "tti_564954455820434f494e69b5"
+      }
+    ]
+  },
+  "receive_selfdestruct_without_sendblock_with_balancemap_too_large_after_hardfork": {
+    "sbHeight": 300,
+    "blockType": 4,
+    "sendBlockType": 2,
+    "fromAddress": "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+    "toAddress": "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86",
+    "data": "",
+    "amount": "0100",
+    "tokenId": "tti_5649544520544f4b454e6e40",
+    "code": "0174d15b6d885c50bcc1b540bdf97701d77e06401fc300ff",
+    "pledgeBeneficialAmount": "10000000000000000000000",
+    "err": "too many send blocks",
+    "success": true,
+    "quota": 28501,
+    "quotaUsed": 28501,
+    "preContractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10
+      }
+    },
+    "contractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10
+      }
+    },
+    "preBalanceMap": {
+      "tti_000000000000000000017c07": "01",
+      "tti_0000000000000000000214d9": "02",
+      "tti_00000000000000000003e94a": "03",
+      "tti_000000000000000000042335": "04",
+      "tti_0000000000000000000563bc": "05",
+      "tti_000000000000000000063cf7": "06",
+      "tti_000000000000000000071f09": "07",
+      "tti_0000000000000000000898dc": "08",
+      "tti_00000000000000000009e75a": "09",
+      "tti_0000000000000000000ad838": "0a",
+      "tti_0000000000000000000bda2d": "0b",
+      "tti_0000000000000000000c7621": "0c",
+      "tti_0000000000000000000d3eb2": "0d",
+      "tti_0000000000000000000e541a": "0e",
+      "tti_0000000000000000000ff10d": "0f",
+      "tti_000000000000000000102d52": "10",
+      "tti_000000000000000000114efa": "11",
+      "tti_000000000000000000127607": "12",
+      "tti_00000000000000000013011f": "13",
+      "tti_00000000000000000014c33c": "14",
+      "tti_00000000000000000015f5fc": "15",
+      "tti_00000000000000000016f72f": "16",
+      "tti_00000000000000000017b8db": "17",
+      "tti_000000000000000000182254": "18",
+      "tti_00000000000000000019923a": "19",
+      "tti_0000000000000000001ab4f8": "1a",
+      "tti_0000000000000000001bd504": "1b",
+      "tti_0000000000000000001c645e": "1c",
+      "tti_0000000000000000001dbb82": "1d",
+      "tti_0000000000000000001e588e": "1e",
+      "tti_0000000000000000001f40d3": "1f",
+      "tti_000000000000000000203512": "20",
+      "tti_000000000000000000211743": "21",
+      "tti_0000000000000000002276dc": "22",
+      "tti_000000000000000000234c77": "23",
+      "tti_0000000000000000002462b0": "24",
+      "tti_00000000000000000025830b": "25",
+      "tti_0000000000000000002671c9": "26",
+      "tti_000000000000000000275da1": "27",
+      "tti_000000000000000000284c76": "28",
+      "tti_00000000000000000029ac8b": "29",
+      "tti_0000000000000000002a44a7": "2a",
+      "tti_0000000000000000002b9e93": "2b",
+      "tti_0000000000000000002c58be": "2c",
+      "tti_0000000000000000002d1e0d": "2d",
+      "tti_0000000000000000002e7ed4": "2e",
+      "tti_0000000000000000002f1756": "2f",
+      "tti_00000000000000000030dc97": "30",
+      "tti_00000000000000000031c9fa": "31",
+      "tti_00000000000000000032b109": "32"
+    },
+    "balanceMap": {
+      "tti_000000000000000000017c07": "01",
+      "tti_0000000000000000000214d9": "02",
+      "tti_00000000000000000003e94a": "03",
+      "tti_000000000000000000042335": "04",
+      "tti_0000000000000000000563bc": "05",
+      "tti_000000000000000000063cf7": "06",
+      "tti_000000000000000000071f09": "07",
+      "tti_0000000000000000000898dc": "08",
+      "tti_00000000000000000009e75a": "09",
+      "tti_0000000000000000000ad838": "0a",
+      "tti_0000000000000000000bda2d": "0b",
+      "tti_0000000000000000000c7621": "0c",
+      "tti_0000000000000000000d3eb2": "0d",
+      "tti_0000000000000000000e541a": "0e",
+      "tti_0000000000000000000ff10d": "0f",
+      "tti_000000000000000000102d52": "10",
+      "tti_000000000000000000114efa": "11",
+      "tti_000000000000000000127607": "12",
+      "tti_00000000000000000013011f": "13",
+      "tti_00000000000000000014c33c": "14",
+      "tti_00000000000000000015f5fc": "15",
+      "tti_00000000000000000016f72f": "16",
+      "tti_00000000000000000017b8db": "17",
+      "tti_000000000000000000182254": "18",
+      "tti_00000000000000000019923a": "19",
+      "tti_0000000000000000001ab4f8": "1a",
+      "tti_0000000000000000001bd504": "1b",
+      "tti_0000000000000000001c645e": "1c",
+      "tti_0000000000000000001dbb82": "1d",
+      "tti_0000000000000000001e588e": "1e",
+      "tti_0000000000000000001f40d3": "1f",
+      "tti_000000000000000000203512": "20",
+      "tti_000000000000000000211743": "21",
+      "tti_0000000000000000002276dc": "22",
+      "tti_000000000000000000234c77": "23",
+      "tti_0000000000000000002462b0": "24",
+      "tti_00000000000000000025830b": "25",
+      "tti_0000000000000000002671c9": "26",
+      "tti_000000000000000000275da1": "27",
+      "tti_000000000000000000284c76": "28",
+      "tti_00000000000000000029ac8b": "29",
+      "tti_0000000000000000002a44a7": "2a",
+      "tti_0000000000000000002b9e93": "2b",
+      "tti_0000000000000000002c58be": "2c",
+      "tti_0000000000000000002d1e0d": "2d",
+      "tti_0000000000000000002e7ed4": "2e",
+      "tti_0000000000000000002f1756": "2f",
+      "tti_00000000000000000030dc97": "30",
+      "tti_00000000000000000031c9fa": "31",
+      "tti_00000000000000000032b109": "32"
+    },
+    "sendBlockList": [
+      {
+        "blockType": 6,
+        "toAddress": "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+        "amount": "0100",
+        "tokenID": "tti_5649544520544f4b454e6e40"
+      }
+    ]
+  },
+  "receive_selfdestruct_without_sendblock_with_balancemap_reaches_upperlimit_after_hardfork": {
+    "sbHeight": 300,
+    "blockType": 8,
+    "sendBlockType": 2,
+    "fromAddress": "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+    "toAddress": "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86",
+    "data": "",
+    "amount": "00",
+    "tokenId": "tti_5649544520544f4b454e6e40",
+    "code": "0174d15b6d885c50bcc1b540bdf97701d77e06401fc300ff",
+    "pledgeBeneficialAmount": "10000000000000000000000",
+    "err": "",
+    "success": true,
+    "quota": 28501,
+    "quotaUsed": 28501,
+    "preContractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10
+      }
+    },
+    "contractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10
+      }
+    },
+    "preBalanceMap": {
+      "tti_000000000000000000017c07": "01",
+      "tti_0000000000000000000214d9": "02",
+      "tti_00000000000000000003e94a": "03",
+      "tti_000000000000000000042335": "04",
+      "tti_0000000000000000000563bc": "05",
+      "tti_000000000000000000063cf7": "06",
+      "tti_000000000000000000071f09": "07",
+      "tti_0000000000000000000898dc": "08",
+      "tti_00000000000000000009e75a": "09",
+      "tti_0000000000000000000ad838": "0a",
+      "tti_0000000000000000000bda2d": "0b",
+      "tti_0000000000000000000c7621": "0c",
+      "tti_0000000000000000000d3eb2": "0d",
+      "tti_0000000000000000000e541a": "0e",
+      "tti_0000000000000000000ff10d": "0f",
+      "tti_000000000000000000102d52": "10",
+      "tti_000000000000000000114efa": "11",
+      "tti_000000000000000000127607": "12",
+      "tti_00000000000000000013011f": "13",
+      "tti_00000000000000000014c33c": "14",
+      "tti_00000000000000000015f5fc": "15",
+      "tti_00000000000000000016f72f": "16",
+      "tti_00000000000000000017b8db": "17",
+      "tti_000000000000000000182254": "18",
+      "tti_00000000000000000019923a": "19",
+      "tti_0000000000000000001ab4f8": "1a",
+      "tti_0000000000000000001bd504": "1b",
+      "tti_0000000000000000001c645e": "1c",
+      "tti_0000000000000000001dbb82": "1d",
+      "tti_0000000000000000001e588e": "1e",
+      "tti_0000000000000000001f40d3": "1f",
+      "tti_000000000000000000203512": "20",
+      "tti_000000000000000000211743": "21",
+      "tti_0000000000000000002276dc": "22",
+      "tti_000000000000000000234c77": "23",
+      "tti_0000000000000000002462b0": "24",
+      "tti_00000000000000000025830b": "25",
+      "tti_0000000000000000002671c9": "26",
+      "tti_000000000000000000275da1": "27",
+      "tti_000000000000000000284c76": "28",
+      "tti_00000000000000000029ac8b": "29",
+      "tti_0000000000000000002a44a7": "2a",
+      "tti_0000000000000000002b9e93": "2b",
+      "tti_0000000000000000002c58be": "2c",
+      "tti_0000000000000000002d1e0d": "2d",
+      "tti_0000000000000000002e7ed4": "2e",
+      "tti_0000000000000000002f1756": "2f",
+      "tti_00000000000000000030dc97": "30",
+      "tti_00000000000000000031c9fa": "31",
+      "tti_00000000000000000032b109": "32"
+    },
+    "sendBlockList": [
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "01",
+        "tokenID": "tti_000000000000000000017c07"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "02",
+        "tokenID": "tti_0000000000000000000214d9"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "03",
+        "tokenID": "tti_00000000000000000003e94a"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "04",
+        "tokenID": "tti_000000000000000000042335"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "05",
+        "tokenID": "tti_0000000000000000000563bc"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "06",
+        "tokenID": "tti_000000000000000000063cf7"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "07",
+        "tokenID": "tti_000000000000000000071f09"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "08",
+        "tokenID": "tti_0000000000000000000898dc"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "09",
+        "tokenID": "tti_00000000000000000009e75a"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "0a",
+        "tokenID": "tti_0000000000000000000ad838"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "0b",
+        "tokenID": "tti_0000000000000000000bda2d"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "0c",
+        "tokenID": "tti_0000000000000000000c7621"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "0d",
+        "tokenID": "tti_0000000000000000000d3eb2"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "0e",
+        "tokenID": "tti_0000000000000000000e541a"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "0f",
+        "tokenID": "tti_0000000000000000000ff10d"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "10",
+        "tokenID": "tti_000000000000000000102d52"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "11",
+        "tokenID": "tti_000000000000000000114efa"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "12",
+        "tokenID": "tti_000000000000000000127607"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "13",
+        "tokenID": "tti_00000000000000000013011f"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "14",
+        "tokenID": "tti_00000000000000000014c33c"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "15",
+        "tokenID": "tti_00000000000000000015f5fc"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "16",
+        "tokenID": "tti_00000000000000000016f72f"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "17",
+        "tokenID": "tti_00000000000000000017b8db"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "18",
+        "tokenID": "tti_000000000000000000182254"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "19",
+        "tokenID": "tti_00000000000000000019923a"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "1a",
+        "tokenID": "tti_0000000000000000001ab4f8"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "1b",
+        "tokenID": "tti_0000000000000000001bd504"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "1c",
+        "tokenID": "tti_0000000000000000001c645e"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "1d",
+        "tokenID": "tti_0000000000000000001dbb82"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "1e",
+        "tokenID": "tti_0000000000000000001e588e"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "1f",
+        "tokenID": "tti_0000000000000000001f40d3"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "20",
+        "tokenID": "tti_000000000000000000203512"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "21",
+        "tokenID": "tti_000000000000000000211743"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "22",
+        "tokenID": "tti_0000000000000000002276dc"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "23",
+        "tokenID": "tti_000000000000000000234c77"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "24",
+        "tokenID": "tti_0000000000000000002462b0"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "25",
+        "tokenID": "tti_00000000000000000025830b"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "26",
+        "tokenID": "tti_0000000000000000002671c9"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "27",
+        "tokenID": "tti_000000000000000000275da1"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "28",
+        "tokenID": "tti_000000000000000000284c76"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "29",
+        "tokenID": "tti_00000000000000000029ac8b"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "2a",
+        "tokenID": "tti_0000000000000000002a44a7"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "2b",
+        "tokenID": "tti_0000000000000000002b9e93"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "2c",
+        "tokenID": "tti_0000000000000000002c58be"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "2d",
+        "tokenID": "tti_0000000000000000002d1e0d"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "2e",
+        "tokenID": "tti_0000000000000000002e7ed4"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "2f",
+        "tokenID": "tti_0000000000000000002f1756"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "30",
+        "tokenID": "tti_00000000000000000030dc97"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "31",
+        "tokenID": "tti_00000000000000000031c9fa"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "32",
+        "tokenID": "tti_00000000000000000032b109"
+      }
+    ]
+  },
+  "receive_selfdestruct_with_sendblock_without_balancemap_after_hardfork": {
+    "sbHeight": 300,
+    "blockType": 8,
+    "sendBlockType": 2,
+    "fromAddress": "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+    "toAddress": "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86",
+    "data": "",
+    "amount": "0",
+    "tokenId": "tti_5649544520544f4b454e6e40",
+    "code": "0160006000610100695649544520544f4b454e74339a7c0e4f325014ec5bc11f7633ed32b2aa605900f174d15b6d885c50bcc1b540bdf97701d77e06401fc300ff",
+    "pledgeBeneficialAmount": "10000000000000000000000",
+    "err": "",
+    "success": true,
+    "quota": 36006,
+    "quotaUsed": 36006,
+    "preContractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10
+      }
+    },
+    "contractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10
+      }
+    },
+    "preBalanceMap": {
+      "tti_5649544520544f4b454e6e40": "0100"
+    },
+    "sendBlockList": [
+      {
+        "blockType": 2,
+        "toAddress": "vite_339a7c0e4f325014ec5bc11f7633ed32b2aa605959967a2b24",
+        "amount": "0100",
+        "tokenID": "tti_5649544520544f4b454e6e40"
+      }
+    ]
+  },
+  "receive_selfdestruct_with_sendblock_with_balancemap_after_hardfork": {
+    "sbHeight": 300,
+    "blockType": 8,
+    "sendBlockType": 2,
+    "fromAddress": "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+    "toAddress": "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86",
+    "data": "",
+    "amount": "0100",
+    "tokenId": "tti_5649544520544f4b454e6e40",
+    "code": "0160006000610100695649544520544f4b454e74339a7c0e4f325014ec5bc11f7633ed32b2aa605900f174d15b6d885c50bcc1b540bdf97701d77e06401fc300ff",
+    "pledgeBeneficialAmount": "10000000000000000000000",
+    "err": "",
+    "success": true,
+    "quota": 36006,
+    "quotaUsed": 36006,
+    "preContractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10
+      }
+    },
+    "contractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10
+      }
+    },
+    "preBalanceMap": {
+      "tti_5649544520544f4b454e6e40": "0100",
+      "tti_564954455820434f494e69b5": "1000",
+      "tti_251a3e67a41b5ea2373936c8": "2000"
+    },
+    "sendBlockList": [
+      {
+        "blockType": 2,
+        "toAddress": "vite_339a7c0e4f325014ec5bc11f7633ed32b2aa605959967a2b24",
+        "amount": "0100",
+        "tokenID": "tti_5649544520544f4b454e6e40"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "2000",
+        "tokenID": "tti_251a3e67a41b5ea2373936c8"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "0100",
+        "tokenID": "tti_5649544520544f4b454e6e40"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "1000",
+        "tokenID": "tti_564954455820434f494e69b5"
+      }
+    ]
+  },
+  "receive_selfdestruct_with_sendblock_with_balancemap_too_large_after_hardfork": {
+    "sbHeight": 300,
+    "blockType": 4,
+    "sendBlockType": 2,
+    "fromAddress": "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+    "toAddress": "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86",
+    "data": "",
+    "amount": "0200",
+    "tokenId": "tti_5649544520544f4b454e6e40",
+    "code": "0160006000610100695649544520544f4b454e74339a7c0e4f325014ec5bc11f7633ed32b2aa605900f174d15b6d885c50bcc1b540bdf97701d77e06401fc300ff",
+    "pledgeBeneficialAmount": "10000000000000000000000",
+    "err": "too many send blocks",
+    "success": true,
+    "quota": 36006,
+    "quotaUsed": 36006,
+    "preContractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10
+      }
+    },
+    "contractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10
+      }
+    },
+    "preBalanceMap": {
+      "tti_000000000000000000017c07": "01",
+      "tti_0000000000000000000214d9": "02",
+      "tti_00000000000000000003e94a": "03",
+      "tti_000000000000000000042335": "04",
+      "tti_0000000000000000000563bc": "05",
+      "tti_000000000000000000063cf7": "06",
+      "tti_000000000000000000071f09": "07",
+      "tti_0000000000000000000898dc": "08",
+      "tti_00000000000000000009e75a": "09",
+      "tti_0000000000000000000ad838": "0a",
+      "tti_0000000000000000000bda2d": "0b",
+      "tti_0000000000000000000c7621": "0c",
+      "tti_0000000000000000000d3eb2": "0d",
+      "tti_0000000000000000000e541a": "0e",
+      "tti_0000000000000000000ff10d": "0f",
+      "tti_000000000000000000102d52": "10",
+      "tti_000000000000000000114efa": "11",
+      "tti_000000000000000000127607": "12",
+      "tti_00000000000000000013011f": "13",
+      "tti_00000000000000000014c33c": "14",
+      "tti_00000000000000000015f5fc": "15",
+      "tti_00000000000000000016f72f": "16",
+      "tti_00000000000000000017b8db": "17",
+      "tti_000000000000000000182254": "18",
+      "tti_00000000000000000019923a": "19",
+      "tti_0000000000000000001ab4f8": "1a",
+      "tti_0000000000000000001bd504": "1b",
+      "tti_0000000000000000001c645e": "1c",
+      "tti_0000000000000000001dbb82": "1d",
+      "tti_0000000000000000001e588e": "1e",
+      "tti_0000000000000000001f40d3": "1f",
+      "tti_000000000000000000203512": "20",
+      "tti_000000000000000000211743": "21",
+      "tti_0000000000000000002276dc": "22",
+      "tti_000000000000000000234c77": "23",
+      "tti_0000000000000000002462b0": "24",
+      "tti_00000000000000000025830b": "25",
+      "tti_0000000000000000002671c9": "26",
+      "tti_000000000000000000275da1": "27",
+      "tti_000000000000000000284c76": "28",
+      "tti_00000000000000000029ac8b": "29",
+      "tti_0000000000000000002a44a7": "2a",
+      "tti_0000000000000000002b9e93": "2b",
+      "tti_0000000000000000002c58be": "2c",
+      "tti_0000000000000000002d1e0d": "2d",
+      "tti_0000000000000000002e7ed4": "2e",
+      "tti_0000000000000000002f1756": "2f",
+      "tti_00000000000000000030dc97": "30",
+      "tti_00000000000000000031c9fa": "31",
+      "tti_00000000000000000032b109": "32"
+    },
+    "balanceMap": {
+      "tti_000000000000000000017c07": "01",
+      "tti_0000000000000000000214d9": "02",
+      "tti_00000000000000000003e94a": "03",
+      "tti_000000000000000000042335": "04",
+      "tti_0000000000000000000563bc": "05",
+      "tti_000000000000000000063cf7": "06",
+      "tti_000000000000000000071f09": "07",
+      "tti_0000000000000000000898dc": "08",
+      "tti_00000000000000000009e75a": "09",
+      "tti_0000000000000000000ad838": "0a",
+      "tti_0000000000000000000bda2d": "0b",
+      "tti_0000000000000000000c7621": "0c",
+      "tti_0000000000000000000d3eb2": "0d",
+      "tti_0000000000000000000e541a": "0e",
+      "tti_0000000000000000000ff10d": "0f",
+      "tti_000000000000000000102d52": "10",
+      "tti_000000000000000000114efa": "11",
+      "tti_000000000000000000127607": "12",
+      "tti_00000000000000000013011f": "13",
+      "tti_00000000000000000014c33c": "14",
+      "tti_00000000000000000015f5fc": "15",
+      "tti_00000000000000000016f72f": "16",
+      "tti_00000000000000000017b8db": "17",
+      "tti_000000000000000000182254": "18",
+      "tti_00000000000000000019923a": "19",
+      "tti_0000000000000000001ab4f8": "1a",
+      "tti_0000000000000000001bd504": "1b",
+      "tti_0000000000000000001c645e": "1c",
+      "tti_0000000000000000001dbb82": "1d",
+      "tti_0000000000000000001e588e": "1e",
+      "tti_0000000000000000001f40d3": "1f",
+      "tti_000000000000000000203512": "20",
+      "tti_000000000000000000211743": "21",
+      "tti_0000000000000000002276dc": "22",
+      "tti_000000000000000000234c77": "23",
+      "tti_0000000000000000002462b0": "24",
+      "tti_00000000000000000025830b": "25",
+      "tti_0000000000000000002671c9": "26",
+      "tti_000000000000000000275da1": "27",
+      "tti_000000000000000000284c76": "28",
+      "tti_00000000000000000029ac8b": "29",
+      "tti_0000000000000000002a44a7": "2a",
+      "tti_0000000000000000002b9e93": "2b",
+      "tti_0000000000000000002c58be": "2c",
+      "tti_0000000000000000002d1e0d": "2d",
+      "tti_0000000000000000002e7ed4": "2e",
+      "tti_0000000000000000002f1756": "2f",
+      "tti_00000000000000000030dc97": "30",
+      "tti_00000000000000000031c9fa": "31",
+      "tti_00000000000000000032b109": "32"
+    },
+    "sendBlockList": [
+      {
+        "blockType": 6,
+        "toAddress": "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+        "amount": "0200",
+        "tokenID": "tti_5649544520544f4b454e6e40"
+      }
+    ]
+  },
+  "receive_selfdestruct_with_sendblock_with_balancemap_reaches_upperlimit_after_hardfork": {
+    "sbHeight": 300,
+    "blockType": 8,
+    "sendBlockType": 2,
+    "fromAddress": "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+    "toAddress": "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86",
+    "data": "",
+    "amount": "0100",
+    "tokenId": "tti_5649544520544f4b454e6e40",
+    "code": "0160006000610100695649544520544f4b454e74339a7c0e4f325014ec5bc11f7633ed32b2aa605900f174d15b6d885c50bcc1b540bdf97701d77e06401fc300ff",
+    "pledgeBeneficialAmount": "10000000000000000000000",
+    "err": "",
+    "success": true,
+    "quota": 36006,
+    "quotaUsed": 36006,
+    "preContractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10
+      }
+    },
+    "contractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10
+      }
+    },
+    "preBalanceMap": {
+      "tti_000000000000000000017c07": "01",
+      "tti_0000000000000000000214d9": "02",
+      "tti_00000000000000000003e94a": "03",
+      "tti_000000000000000000042335": "04",
+      "tti_0000000000000000000563bc": "05",
+      "tti_000000000000000000063cf7": "06",
+      "tti_000000000000000000071f09": "07",
+      "tti_0000000000000000000898dc": "08",
+      "tti_00000000000000000009e75a": "09",
+      "tti_0000000000000000000ad838": "0a",
+      "tti_0000000000000000000bda2d": "0b",
+      "tti_0000000000000000000c7621": "0c",
+      "tti_0000000000000000000d3eb2": "0d",
+      "tti_0000000000000000000e541a": "0e",
+      "tti_0000000000000000000ff10d": "0f",
+      "tti_000000000000000000102d52": "10",
+      "tti_000000000000000000114efa": "11",
+      "tti_000000000000000000127607": "12",
+      "tti_00000000000000000013011f": "13",
+      "tti_00000000000000000014c33c": "14",
+      "tti_00000000000000000015f5fc": "15",
+      "tti_00000000000000000016f72f": "16",
+      "tti_00000000000000000017b8db": "17",
+      "tti_000000000000000000182254": "18",
+      "tti_00000000000000000019923a": "19",
+      "tti_0000000000000000001ab4f8": "1a",
+      "tti_0000000000000000001bd504": "1b",
+      "tti_0000000000000000001c645e": "1c",
+      "tti_0000000000000000001dbb82": "1d",
+      "tti_0000000000000000001e588e": "1e",
+      "tti_0000000000000000001f40d3": "1f",
+      "tti_000000000000000000203512": "20",
+      "tti_000000000000000000211743": "21",
+      "tti_0000000000000000002276dc": "22",
+      "tti_000000000000000000234c77": "23",
+      "tti_0000000000000000002462b0": "24",
+      "tti_00000000000000000025830b": "25",
+      "tti_0000000000000000002671c9": "26",
+      "tti_000000000000000000275da1": "27",
+      "tti_000000000000000000284c76": "28",
+      "tti_00000000000000000029ac8b": "29",
+      "tti_0000000000000000002a44a7": "2a",
+      "tti_0000000000000000002b9e93": "2b",
+      "tti_0000000000000000002c58be": "2c",
+      "tti_0000000000000000002d1e0d": "2d",
+      "tti_0000000000000000002e7ed4": "2e",
+      "tti_0000000000000000002f1756": "2f",
+      "tti_00000000000000000030dc97": "30",
+      "tti_00000000000000000031c9fa": "31",
+      "tti_00000000000000000032b109": "32"
+    },
+    "sendBlockList": [
+      {
+        "blockType": 2,
+        "toAddress": "vite_339a7c0e4f325014ec5bc11f7633ed32b2aa605959967a2b24",
+        "amount": "0100",
+        "tokenID": "tti_5649544520544f4b454e6e40"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "01",
+        "tokenID": "tti_000000000000000000017c07"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "02",
+        "tokenID": "tti_0000000000000000000214d9"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "03",
+        "tokenID": "tti_00000000000000000003e94a"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "04",
+        "tokenID": "tti_000000000000000000042335"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "05",
+        "tokenID": "tti_0000000000000000000563bc"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "06",
+        "tokenID": "tti_000000000000000000063cf7"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "07",
+        "tokenID": "tti_000000000000000000071f09"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "08",
+        "tokenID": "tti_0000000000000000000898dc"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "09",
+        "tokenID": "tti_00000000000000000009e75a"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "0a",
+        "tokenID": "tti_0000000000000000000ad838"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "0b",
+        "tokenID": "tti_0000000000000000000bda2d"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "0c",
+        "tokenID": "tti_0000000000000000000c7621"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "0d",
+        "tokenID": "tti_0000000000000000000d3eb2"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "0e",
+        "tokenID": "tti_0000000000000000000e541a"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "0f",
+        "tokenID": "tti_0000000000000000000ff10d"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "10",
+        "tokenID": "tti_000000000000000000102d52"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "11",
+        "tokenID": "tti_000000000000000000114efa"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "12",
+        "tokenID": "tti_000000000000000000127607"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "13",
+        "tokenID": "tti_00000000000000000013011f"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "14",
+        "tokenID": "tti_00000000000000000014c33c"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "15",
+        "tokenID": "tti_00000000000000000015f5fc"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "16",
+        "tokenID": "tti_00000000000000000016f72f"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "17",
+        "tokenID": "tti_00000000000000000017b8db"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "18",
+        "tokenID": "tti_000000000000000000182254"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "19",
+        "tokenID": "tti_00000000000000000019923a"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "1a",
+        "tokenID": "tti_0000000000000000001ab4f8"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "1b",
+        "tokenID": "tti_0000000000000000001bd504"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "1c",
+        "tokenID": "tti_0000000000000000001c645e"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "1d",
+        "tokenID": "tti_0000000000000000001dbb82"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "1e",
+        "tokenID": "tti_0000000000000000001e588e"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "1f",
+        "tokenID": "tti_0000000000000000001f40d3"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "20",
+        "tokenID": "tti_000000000000000000203512"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "21",
+        "tokenID": "tti_000000000000000000211743"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "22",
+        "tokenID": "tti_0000000000000000002276dc"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "23",
+        "tokenID": "tti_000000000000000000234c77"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "24",
+        "tokenID": "tti_0000000000000000002462b0"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "25",
+        "tokenID": "tti_00000000000000000025830b"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "26",
+        "tokenID": "tti_0000000000000000002671c9"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "27",
+        "tokenID": "tti_000000000000000000275da1"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "28",
+        "tokenID": "tti_000000000000000000284c76"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "29",
+        "tokenID": "tti_00000000000000000029ac8b"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "2a",
+        "tokenID": "tti_0000000000000000002a44a7"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "2b",
+        "tokenID": "tti_0000000000000000002b9e93"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "2c",
+        "tokenID": "tti_0000000000000000002c58be"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "2d",
+        "tokenID": "tti_0000000000000000002d1e0d"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "2e",
+        "tokenID": "tti_0000000000000000002e7ed4"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "2f",
+        "tokenID": "tti_0000000000000000002f1756"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "30",
+        "tokenID": "tti_00000000000000000030dc97"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "31",
+        "tokenID": "tti_00000000000000000031c9fa"
+      },
+      {
+        "blockType": 6,
+        "toAddress": "vite_d15b6d885c50bcc1b540bdf97701d77e06401fc3e93beec502",
+        "amount": "32",
+        "tokenID": "tti_00000000000000000032b109"
+      }
+    ]
+  },
+  "receive_send_call_to_non_exist_contract_before_hardfork": {
+    "sbHeight": 299,
+    "blockType": 4,
+    "sendBlockType": 2,
+    "fromAddress": "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+    "toAddress": "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86",
+    "data": "",
+    "amount": "00",
+    "tokenId": "tti_5649544520544f4b454e6e40",
+    "code": "01600060006000695649544520544f4b454e74339a7c0e4f325014ec5bc11f7633ed32b2aa605901f1",
+    "needGlobalStatus":true,
+    "pledgeBeneficialAmount": "10000000000000000000000",
+    "err": "contract not exists",
+    "success": true,
+    "quota": 21005,
+    "quotaUsed": 21005,
+    "preContractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10
+      }
+    },
+    "contractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10
+      }
+    }
+  },
+  "receive_send_call_to_non_exist_contract_after_hardfork": {
+    "sbHeight": 300,
+    "blockType": 4,
+    "sendBlockType": 2,
+    "fromAddress": "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+    "toAddress": "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86",
+    "data": "",
+    "amount": "00",
+    "tokenId": "tti_5649544520544f4b454e6e40",
+    "code": "01600060006000695649544520544f4b454e74339a7c0e4f325014ec5bc11f7633ed32b2aa605901f1",
+    "needGlobalStatus":true,
+    "pledgeBeneficialAmount": "10000000000000000000000",
+    "err": "contract not exists",
+    "success": true,
+    "quota": 21005,
+    "quotaUsed": 21005,
+    "preContractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10
+      }
+    },
+    "contractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10
+      }
+    }
+  },
+  "receive_send_call_to_deleted_contract_after_hardfork": {
+    "sbHeight": 300,
+    "blockType": 4,
+    "sendBlockType": 2,
+    "fromAddress": "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+    "toAddress": "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86",
+    "data": "",
+    "amount": "00",
+    "tokenId": "tti_5649544520544f4b454e6e40",
+    "code": "01600060006000695649544520544f4b454e74339a7c0e4f325014ec5bc11f7633ed32b2aa605901f1",
+    "needGlobalStatus":true,
+    "pledgeBeneficialAmount": "10000000000000000000000",
+    "err": "contract not exists",
+    "success": true,
+    "quota": 21005,
+    "quotaUsed": 21005,
+    "preContractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10
+      },
+      "vite_339a7c0e4f325014ec5bc11f7633ed32b2aa6059a66985d4db": {
+        "quotaRatio": 10,
+        "isDelete":1
+      }
+    },
+    "contractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10
+      },
+      "vite_339a7c0e4f325014ec5bc11f7633ed32b2aa6059a66985d4db": {
+        "quotaRatio": 10,
+        "isDelete":1
+      }
+    }
+  },
+  "destructed_contract_receive_without_transfer_after_hardfork": {
+    "sbHeight": 300,
+    "blockType": 4,
+    "sendBlockType": 2,
+    "fromAddress": "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+    "toAddress": "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86",
+    "data": "",
+    "amount": "00",
+    "tokenId": "tti_5649544520544f4b454e6e40",
+    "code": "01",
+    "needGlobalStatus":true,
+    "pledgeBeneficialAmount": "10000000000000000000000",
+    "err": "contract deleted",
+    "success": true,
+    "quota": 0,
+    "quotaUsed": 0,
+    "preContractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10,
+        "isDelete":1
+      }
+    },
+    "contractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10,
+        "isDelete":1
+      }
+    }
+  },
+  "destructed_contract_receive_with_transfer_after_hardfork": {
+    "sbHeight": 300,
+    "blockType": 4,
+    "sendBlockType": 2,
+    "fromAddress": "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+    "toAddress": "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86",
+    "data": "",
+    "amount": "0100",
+    "tokenId": "tti_5649544520544f4b454e6e40",
+    "code": "01",
+    "needGlobalStatus":true,
+    "pledgeBeneficialAmount": "10000000000000000000000",
+    "err": "contract deleted",
+    "success": true,
+    "quota": 0,
+    "quotaUsed": 0,
+    "preContractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10,
+        "isDelete":1
+      }
+    },
+    "contractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10,
+        "isDelete":1
+      }
+    },
+    "sendBlockList": [
+      {
+        "blockType": 6,
+        "toAddress": "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+        "amount": "0100",
+        "tokenID": "tti_5649544520544f4b454e6e40"
+      }
+    ]
+  },
+  "receive_destructed_contract_call_destructed_contract_after_hardfork": {
+    "sbHeight": 300,
+    "blockType": 4,
+    "sendBlockType": 2,
+    "fromAddress": "vite_e5a70ff20e7c01db293c0f82236b4a8a4b8bef87805c8c6c8b",
+    "toAddress": "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86",
+    "data": "",
+    "amount": "0100",
+    "tokenId": "tti_5649544520544f4b454e6e40",
+    "code": "01",
+    "needGlobalStatus":true,
+    "pledgeBeneficialAmount": "10000000000000000000000",
+    "err": "contract deleted",
+    "success": true,
+    "quota": 0,
+    "quotaUsed": 0,
+    "preContractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10,
+        "isDelete":1
+      },
+      "vite_e5a70ff20e7c01db293c0f82236b4a8a4b8bef87805c8c6c8b": {
+        "quotaRatio": 10,
+        "isDelete":1
+      }
+    },
+    "contractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10,
+        "isDelete":1
+      },
+      "vite_e5a70ff20e7c01db293c0f82236b4a8a4b8bef87805c8c6c8b": {
+        "quotaRatio": 10,
+        "isDelete":1
+      }
+    },
+    "balanceMap": {
+      "tti_5649544520544f4b454e6e40": "0100"
+    }
+  },
+  "destructed_contract_receive_refund_after_hardfork": {
+    "sbHeight": 300,
+    "blockType": 4,
+    "sendBlockType": 6,
+    "fromAddress": "vite_e5a70ff20e7c01db293c0f82236b4a8a4b8bef87805c8c6c8b",
+    "toAddress": "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86",
+    "data": "",
+    "amount": "0100",
+    "tokenId": "tti_5649544520544f4b454e6e40",
+    "code": "01",
+    "needGlobalStatus":true,
+    "pledgeBeneficialAmount": "10000000000000000000000",
+    "err": "",
+    "success": true,
+    "quota": 0,
+    "quotaUsed": 0,
+    "preContractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10,
+        "isDelete":1
+      },
+      "vite_e5a70ff20e7c01db293c0f82236b4a8a4b8bef87805c8c6c8b": {
+        "quotaRatio": 10
+      }
+    },
+    "contractMetaMap": {
+      "vite_a3ab3f8ce81936636af4c6f4da41612f11136d71f53bf8fa86": {
+        "quotaRatio": 10,
+        "isDelete":1
+      },
+      "vite_e5a70ff20e7c01db293c0f82236b4a8a4b8bef87805c8c6c8b": {
+        "quotaRatio": 10
+      }
+    },
+    "balanceMap": {
+      "tti_5649544520544f4b454e6e40": "0100"
+    }
+  }
+}

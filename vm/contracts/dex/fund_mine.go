@@ -220,7 +220,7 @@ func DoMineVxForMakerMineAndMaintainer(db vm_db.VmDb, periodId uint64, reader ut
 	return nil
 }
 
-func GetVxAmountsForEqualItems(db vm_db.VmDb, periodId uint64, vxPool *big.Int, rateSum string, begin, end int)(amountForItems map[int32]*big.Int, vxAmtLeaved *big.Int, success bool) {
+func GetVxAmountsForEqualItems(db vm_db.VmDb, periodId uint64, vxPool *big.Int, rateSum string, begin, end int) (amountForItems map[int32]*big.Int, vxAmtLeaved *big.Int, success bool) {
 	if vxPool.Sign() > 0 {
 		success = true
 		toDivideTotal := GetVxToMineByPeriodId(db, periodId)
@@ -232,7 +232,7 @@ func GetVxAmountsForEqualItems(db vm_db.VmDb, periodId uint64, vxPool *big.Int, 
 			amountSum.Set(vxPool)
 			notEnough = true
 		}
-		amount := new(big.Int).Div(amountSum, big.NewInt(int64(end - begin + 1)))
+		amount := new(big.Int).Div(amountSum, big.NewInt(int64(end-begin+1)))
 		amountForItems = make(map[int32]*big.Int)
 		vxAmtLeaved = new(big.Int).Set(vxPool)
 		for i := begin; i <= end; i++ {
@@ -247,8 +247,6 @@ func GetVxAmountsForEqualItems(db vm_db.VmDb, periodId uint64, vxPool *big.Int, 
 			amountForItems[int32(begin)].Add(amountForItems[int32(begin)], vxAmtLeaved)
 			vxAmtLeaved.SetInt64(0)
 		}
-	} else {
-		success = false
 	}
 	return
 }
@@ -264,8 +262,10 @@ func GetVxAmountToMine(db vm_db.VmDb, periodId uint64, vxPool *big.Int, rate str
 			amount.Set(vxPool)
 		}
 		vxAmtLeaved = new(big.Int).Sub(vxPool, amount)
-	} else {
-		success = false
+		if vxAmtLeaved.Sign() > 0 && vxAmtLeaved.Cmp(vxMineDust) <= 0 {
+			amount.Add(amount, vxAmtLeaved)
+			vxAmtLeaved.SetInt64(0)
+		}
 	}
 	return
 }

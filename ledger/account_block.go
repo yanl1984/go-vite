@@ -15,14 +15,15 @@ import (
 var accountBlockLog = log15.New("module", "ledger/account_block")
 
 const (
-	BlockTypeSendCreate   = byte(1) // send
-	BlockTypeSendCall     = byte(2) // send
-	BlockTypeSendReward   = byte(3) // send
-	BlockTypeReceive      = byte(4) // receive
-	BlockTypeReceiveError = byte(5) // receive
-	BlockTypeSendRefund   = byte(6) // send
-
-	BlockTypeGenesisReceive = byte(7) // receive
+	BlockTypeSendCreate      = byte(1) // send
+	BlockTypeSendCall        = byte(2) // send
+	BlockTypeSendReward      = byte(3) // send
+	BlockTypeReceive         = byte(4) // receive
+	BlockTypeReceiveError    = byte(5) // receive
+	BlockTypeSendRefund      = byte(6) // send
+	BlockTypeGenesisReceive  = byte(7) // receive
+	BlockTypeReceiveDestruct = byte(8) // receive destruct
+	BlockTypeReceiveTimer    = byte(9) // receive
 )
 
 type AccountBlock struct {
@@ -424,5 +425,7 @@ func (ab *AccountBlock) IsReceiveBlock() bool {
 func IsReceiveBlock(blockType byte) bool {
 	return blockType == BlockTypeReceive ||
 		blockType == BlockTypeReceiveError ||
-		blockType == BlockTypeGenesisReceive
+		blockType == BlockTypeGenesisReceive ||
+		blockType == BlockTypeReceiveDestruct ||
+		blockType == BlockTypeReceiveTimer
 }

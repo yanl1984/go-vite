@@ -7,6 +7,7 @@ import (
 	"github.com/vitelabs/go-vite/interfaces"
 	"github.com/vitelabs/go-vite/ledger"
 	"math/big"
+	"strings"
 )
 
 var (
@@ -16,6 +17,17 @@ var (
 
 func getBalanceKey(tokenID *types.TokenTypeId) string {
 	return balanceKey + tokenID.String()
+}
+func isBalanceKey(k string) (bool, *types.TokenTypeId) {
+	ok := len(k) == 36 && strings.HasPrefix(k, balanceKey)
+	if ok {
+		tid, err := types.HexToTokenTypeId(balanceKey[8:])
+		if err != nil {
+			return false, nil
+		}
+		return true, &tid
+	}
+	return false, nil
 }
 
 func getCodeKey(addr types.Address) string {
@@ -52,6 +64,15 @@ func (db *memoryDatabase) SetBalance(tokenTypeID *types.TokenTypeId, amount *big
 	} else {
 		db.storage[getBalanceKey(tokenTypeID)] = amount.Bytes()
 	}
+}
+func (db *memoryDatabase) GetBalanceMap() (map[types.TokenTypeId]*big.Int, error) {
+	balanceMap := make(map[types.TokenTypeId]*big.Int)
+	for k, v := range db.storage {
+		if ok, tid := isBalanceKey(k); ok {
+			balanceMap[*tid] = new(big.Int).SetBytes(v)
+		}
+	}
+	return balanceMap, nil
 }
 func (db *memoryDatabase) GetSnapshotBlockByHeight(height uint64) (*ledger.SnapshotBlock, error) {
 	return nil, nil

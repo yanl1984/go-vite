@@ -31,7 +31,6 @@ const (
 		{"type":"event","name":"changeTokenType","inputs":[{"name":"tokenId","type":"tokenId","indexed":true}]}
 	]`
 
-	MethodNameCancelMintPledge = "CancelMintPledge"
 	MethodNameMint             = "Mint"
 	MethodNameIssue            = "Issue"
 	MethodNameBurn             = "Burn"

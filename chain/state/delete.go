@@ -17,40 +17,47 @@ import (
 func (sDB *StateDB) RollbackSnapshotBlocks(deletedSnapshotSegments []*ledger.SnapshotChunk, newUnconfirmedBlocks []*ledger.AccountBlock) error {
 	sDB.disableCache()
 	defer sDB.enableCache()
+	if err := sDB.rollbackRoundCache(deletedSnapshotSegments); err != nil {
+		return err
+	}
 
 	batch := sDB.store.NewBatch()
 
-	latestHeight := sDB.chain.GetLatestSnapshotBlock().Height
-	newUnconfirmedLog, hasRedo, err := sDB.redo.QueryLog(latestHeight + 1)
+	latestSnapshotBlock := sDB.chain.GetLatestSnapshotBlock()
+	newUnconfirmedLog, hasRedo, err := sDB.redo.QueryLog(latestSnapshotBlock.Height + 1)
 
 	if err != nil {
-		return errors.New(fmt.Sprintf("1. sDB.redo.QueryLog failed, height is %d. Error: %s", latestHeight+1, err.Error()))
+		return errors.New(fmt.Sprintf("1. sDB.redo.QueryLog failed, height is %d. Error: %s", latestSnapshotBlock.Height+1, err.Error()))
 	}
 
-	snapshotHeight := latestHeight
+	snapshotHeight := latestSnapshotBlock.Height
 
-	hasBuiltInContract := true
+	hasBuiltinCoreContract := false
 
 	if hasRedo {
 		rollbackKeySet := make(map[types.Address]map[string]struct{})
 		rollbackTokenSet := make(map[types.Address]map[types.TokenTypeId]struct{})
 
-		for index, seg := range deletedSnapshotSegments {
-			snapshotHeight += 1
+		for index := len(deletedSnapshotSegments) - 1; index >= 0; index-- {
+
+			seg := deletedSnapshotSegments[index]
+
+			currentSnapshotHeight := snapshotHeight + uint64(index+1)
 
 			for _, accountBlock := range seg.AccountBlocks {
-				if !hasBuiltInContract && types.IsBuiltinContractAddr(accountBlock.AccountAddress) {
-					hasBuiltInContract = true
+				if types.IsBuiltinCoreContract(accountBlock.AccountAddress) {
+					hasBuiltinCoreContract = true
 				}
 			}
+
 			// query currentSnapshotLog
 			var currentSnapshotLog map[types.Address][]LogItem
 			if index <= 0 {
 				currentSnapshotLog = newUnconfirmedLog
 			} else {
-				currentSnapshotLog, _, err = sDB.redo.QueryLog(snapshotHeight)
+				currentSnapshotLog, _, err = sDB.redo.QueryLog(currentSnapshotHeight)
 				if err != nil {
-					return errors.New(fmt.Sprintf("2. sDB.redo.QueryLog failed, height is %d. Error: %s", snapshotHeight, err.Error()))
+					return errors.New(fmt.Sprintf("2. sDB.redo.QueryLog failed, height is %d. Error: %s", currentSnapshotHeight, err.Error()))
 				}
 			}
 
@@ -61,7 +68,10 @@ func (sDB *StateDB) RollbackSnapshotBlocks(deletedSnapshotSegments []*ledger.Sna
 		}
 
 		// recover latest index
-		if err := sDB.recoverLatestIndexToSnapshot(batch, latestHeight, rollbackKeySet, rollbackTokenSet); err != nil {
+		if err := sDB.recoverLatestIndexToSnapshot(batch, ledger.HashHeight{
+			Height: latestSnapshotBlock.Height,
+			Hash:   latestSnapshotBlock.Hash,
+		}, rollbackKeySet, rollbackTokenSet); err != nil {
 			return err
 		}
 
@@ -75,26 +85,27 @@ func (sDB *StateDB) RollbackSnapshotBlocks(deletedSnapshotSegments []*ledger.Sna
 
 			// get old unconfirmed Log
 			if index == len(deletedSnapshotSegments)-1 && seg.SnapshotBlock == nil {
-				if oldUnconfirmedLog, _, err = sDB.redo.QueryLog(latestHeight + uint64(len(deletedSnapshotSegments))); err != nil {
-					return errors.New(fmt.Sprintf("3. sDB.redo.QueryLog failed, height is %d. Error: %s", latestHeight+uint64(len(deletedSnapshotSegments)), err.Error()))
+				if oldUnconfirmedLog, _, err = sDB.redo.QueryLog(latestSnapshotBlock.Height + uint64(len(deletedSnapshotSegments))); err != nil {
+					return errors.New(fmt.Sprintf("3. sDB.redo.QueryLog failed, height is %d. Error: %s", latestSnapshotBlock.Height+uint64(len(deletedSnapshotSegments)), err.Error()))
 				}
 			}
 
 			for _, accountBlock := range seg.AccountBlocks {
 				addrMap[accountBlock.AccountAddress] = struct{}{}
 
-				if !hasBuiltInContract && types.IsBuiltinContractAddr(accountBlock.AccountAddress) {
-					hasBuiltInContract = true
+				if types.IsBuiltinCoreContract(accountBlock.AccountAddress) {
+					hasBuiltinCoreContract = true
 				}
 
 				// rollback code, contract meta, log hash, call depth
-				sDB.rollbackAccountBlock(batch, accountBlock)
+				if err := sDB.rollbackAccountBlock(batch, accountBlock); err != nil {
+					return err
+				}
 			}
-
 		}
 
 		// recover latest and history index
-		if err := sDB.recoverToSnapshot(batch, latestHeight, oldUnconfirmedLog, addrMap); err != nil {
+		if err := sDB.recoverToSnapshot(batch, latestSnapshotBlock.Height, oldUnconfirmedLog, addrMap); err != nil {
 			return err
 		}
 
@@ -107,10 +118,10 @@ func (sDB *StateDB) RollbackSnapshotBlocks(deletedSnapshotSegments []*ledger.Sna
 	sDB.redo.Rollback(deletedSnapshotSegments)
 
 	// recover redo
-	sDB.redo.SetCurrentSnapshot(latestHeight+1, newUnconfirmedLog)
+	sDB.redo.SetCurrentSnapshot(latestSnapshotBlock.Height+1, newUnconfirmedLog)
 
 	// recover cache
-	if hasBuiltInContract {
+	if hasBuiltinCoreContract {
 		if err := sDB.initSnapshotValueCache(); err != nil {
 			return err
 		}
@@ -134,9 +145,9 @@ func (sDB *StateDB) RollbackSnapshotBlocks(deletedSnapshotSegments []*ledger.Sna
 func (sDB *StateDB) RollbackAccountBlocks(accountBlocks []*ledger.AccountBlock) error {
 	batch := sDB.store.NewBatch()
 
-	latestHeight := sDB.chain.GetLatestSnapshotBlock().Height
+	latestSnapshotBlock := sDB.chain.GetLatestSnapshotBlock()
 
-	unconfirmedLog, hasRedo, err := sDB.redo.QueryLog(latestHeight + 1)
+	unconfirmedLog, hasRedo, err := sDB.redo.QueryLog(latestSnapshotBlock.Height + 1)
 	if err != nil {
 		return err
 	}
@@ -171,12 +182,15 @@ func (sDB *StateDB) RollbackAccountBlocks(accountBlocks []*ledger.AccountBlock) 
 	sDB.recoverLatestIndexByRedo(batch, addrMap, unconfirmedLog, rollbackKeySet, rollbackTokenSet)
 
 	// recover other latest
-	if err := sDB.recoverLatestIndexToSnapshot(batch, latestHeight, rollbackKeySet, rollbackTokenSet); err != nil {
+	if err := sDB.recoverLatestIndexToSnapshot(batch, ledger.HashHeight{
+		Height: latestSnapshotBlock.Height,
+		Hash:   latestSnapshotBlock.Hash,
+	}, rollbackKeySet, rollbackTokenSet); err != nil {
 		return err
 	}
 
 	// set redo log
-	sDB.redo.SetCurrentSnapshot(latestHeight+1, unconfirmedLog)
+	sDB.redo.SetCurrentSnapshot(latestSnapshotBlock.Height+1, unconfirmedLog)
 
 	// write
 	sDB.store.RollbackAccountBlocks(batch, accountBlocks)
@@ -218,8 +232,9 @@ func (sDB *StateDB) rollbackByRedo(batch *leveldb.Batch, snapshotBlock *ledger.S
 			tokenSet = make(map[types.TokenTypeId]struct{})
 		}
 
-		for _, redoLog := range redoLogList {
-			// delete snapshot storage
+		for i := len(redoLogList) - 1; i >= 0; i-- {
+			redoLog := redoLogList[i]
+
 			for _, kv := range redoLog.Storage {
 
 				keySet[string(kv[0])] = struct{}{}
@@ -250,8 +265,23 @@ func (sDB *StateDB) rollbackByRedo(batch *leveldb.Batch, snapshotBlock *ledger.S
 			}
 
 			// delete contract meta
-			for contractAddr := range redoLog.ContractMeta {
-				sDB.deleteContractMeta(batch, chain_utils.CreateContractMetaKey(contractAddr))
+			for contractAddr, metaBytes := range redoLog.ContractMeta {
+				meta := &ledger.ContractMeta{}
+
+				if err := meta.Deserialize(metaBytes); err != nil {
+					return err
+				}
+
+				contractKey := chain_utils.CreateContractMetaKey(contractAddr)
+
+				if meta.IsDelete > 0 {
+					meta.IsDelete = 0
+					meta.DeleteSnapshotHeight = 0
+
+					sDB.writeContractMeta(batch, contractKey, meta.Serialize())
+				} else {
+					sDB.deleteContractMeta(batch, contractKey)
+				}
 			}
 
 			// delete code
@@ -287,11 +317,11 @@ func (sDB *StateDB) rollbackByRedo(batch *leveldb.Batch, snapshotBlock *ledger.S
 }
 
 // only recover latest index
-func (sDB *StateDB) recoverLatestIndexToSnapshot(batch *leveldb.Batch, latestSnapshotHeight uint64, keySetMap map[types.Address]map[string]struct{}, tokenSetMap map[types.Address]map[types.TokenTypeId]struct{}) error {
+func (sDB *StateDB) recoverLatestIndexToSnapshot(batch *leveldb.Batch, hashHeight ledger.HashHeight, keySetMap map[types.Address]map[string]struct{}, tokenSetMap map[types.Address]map[types.TokenTypeId]struct{}) error {
 
 	// recover kv latest index
 	for addr, keySet := range keySetMap {
-		storage := NewStorageDatabase(sDB, latestSnapshotHeight, addr)
+		storage := NewStorageDatabase(sDB, hashHeight, addr)
 
 		for keyStr := range keySet {
 
@@ -320,7 +350,7 @@ func (sDB *StateDB) recoverLatestIndexToSnapshot(batch *leveldb.Batch, latestSna
 
 	balanceTemplateKey := chain_utils.CreateBalanceKey(types.Address{}, types.TokenTypeId{})
 
-	seekKey := chain_utils.CreateHistoryBalanceKey(types.Address{}, types.TokenTypeId{}, latestSnapshotHeight+1)
+	seekKey := chain_utils.CreateHistoryBalanceKey(types.Address{}, types.TokenTypeId{}, hashHeight.Height+1)
 
 	for addr, tokenSet := range tokenSetMap {
 		// copy addr
@@ -375,15 +405,25 @@ func (sDB *StateDB) recoverLatestIndexByRedo(batch *leveldb.Batch, addrMap map[t
 
 }
 
-func (sDB *StateDB) rollbackAccountBlock(batch *leveldb.Batch, accountBlock *ledger.AccountBlock) {
+func (sDB *StateDB) rollbackAccountBlock(batch *leveldb.Batch, accountBlock *ledger.AccountBlock) error {
 	// delete code
 	if accountBlock.Height <= 1 {
 		batch.Delete(chain_utils.CreateCodeKey(accountBlock.AccountAddress))
 	}
 
-	// delete contract meta
+	// contract meta
 	if accountBlock.BlockType == ledger.BlockTypeSendCreate {
 		sDB.deleteContractMeta(batch, chain_utils.CreateContractMetaKey(accountBlock.ToAddress))
+	} else if accountBlock.BlockType == ledger.BlockTypeReceiveDestruct {
+		meta, err := sDB.GetContractMeta(accountBlock.AccountAddress)
+		if err != nil {
+			return err
+		}
+		if meta != nil {
+			meta.IsDelete = 0
+			meta.DeleteSnapshotHeight = 0
+			sDB.writeContractMeta(batch, chain_utils.CreateContractMetaKey(accountBlock.AccountAddress), meta.Serialize())
+		}
 	}
 
 	// delete log hash
@@ -399,6 +439,7 @@ func (sDB *StateDB) rollbackAccountBlock(batch *leveldb.Batch, accountBlock *led
 			sDB.deleteContractMeta(batch, chain_utils.CreateContractMetaKey(sendBlock.ToAddress))
 		}
 	}
+	return nil
 
 }
 
@@ -451,7 +492,11 @@ func (sDB *StateDB) recoverStorageToSnapshot(batch *leveldb.Batch, height uint64
 		iter.Seek(seekTemplateKey)
 
 		if iter.Prev() && bytes.Equal(seekTemplateKey[keyStartIndex:keyEndIndex], iter.Key()[keyStartIndex:keyEndIndex]) {
-			batch.Put(storageTemplateKey, iter.Value())
+			if len(iter.Value()) > 0 {
+				batch.Put(storageTemplateKey, iter.Value())
+			} else {
+				batch.Delete(storageTemplateKey)
+			}
 		} else {
 			batch.Delete(storageTemplateKey)
 		}
@@ -477,7 +522,7 @@ func (sDB *StateDB) recoverStorageToSnapshot(batch *leveldb.Batch, height uint64
 		return err
 	}
 
-	// delete unconfirmed balance
+	// delete unconfirmed key
 	for keyStr := range keySet {
 		key := []byte(keyStr)
 		copy(storageTemplateKey[keyStartIndex:], common.RightPadBytes(key, types.HashSize))
@@ -585,7 +630,18 @@ func (sDB *StateDB) deleteHistoryKey(batch interfaces.Batch, key []byte) {
 	if err != nil {
 		panic(err)
 	}
-	if types.IsBuiltinContractAddr(addr) {
+	if types.IsBuiltinCoreContract(addr) {
 		sDB.cache.Delete(snapshotValuePrefix + string(addrBytes) + string(sDB.parseStorageKey(key)))
 	}
+}
+
+func (sDB *StateDB) rollbackRoundCache(deletedSnapshotSegments []*ledger.SnapshotChunk) error {
+	// delete round cache
+	deletedSnapshotBlocks := make([]*ledger.SnapshotBlock, 0, len(deletedSnapshotSegments))
+	for _, chunk := range deletedSnapshotSegments {
+		if chunk.SnapshotBlock != nil {
+			deletedSnapshotBlocks = append(deletedSnapshotBlocks, chunk.SnapshotBlock)
+		}
+	}
+	return sDB.roundCache.DeleteSnapshotBlocks(deletedSnapshotBlocks)
 }

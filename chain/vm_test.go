@@ -12,7 +12,6 @@ import (
 	"github.com/vitelabs/go-vite/crypto/ed25519"
 	"github.com/vitelabs/go-vite/generator"
 	"github.com/vitelabs/go-vite/ledger"
-	"github.com/vitelabs/go-vite/vite/net/message"
 	"github.com/vitelabs/go-vite/vm"
 	"github.com/vitelabs/go-vite/vm/contracts/abi"
 	"github.com/vitelabs/go-vite/vm/util"
@@ -24,7 +23,7 @@ import (
 )
 
 func initVMEnvironment() {
-	vm.InitVMConfig(false, true, false, "")
+	vm.InitVMConfig(false, true, false, false, "")
 	chainInstance, err := NewChainInstance("unit_test/devdata", false)
 	if err != nil {
 		panic(err)

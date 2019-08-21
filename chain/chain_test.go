@@ -36,6 +36,10 @@ var GenesisJson = `{
       "Height":2,
       "Version":2
     }
+	"NewFork":{
+      "Height":3,
+      "Version":3
+    }
   },
   "ConsensusGroupInfo": {
     "ConsensusGroupInfoMap":{
@@ -50,7 +54,7 @@ var GenesisJson = `{
         "CountingTokenId":"tti_5649544520544f4b454e6e40",
         "RegisterConditionId":1,
         "RegisterConditionParam":{
-          "PledgeAmount": 500000000000000000000000,
+          "PledgeAmount": 100000000000000000000000,
           "PledgeHeight": 1,
           "PledgeToken": "tti_5649544520544f4b454e6e40"
         },
@@ -71,7 +75,7 @@ var GenesisJson = `{
         "CountingTokenId":"tti_5649544520544f4b454e6e40",
         "RegisterConditionId":1,
         "RegisterConditionParam":{
-          "PledgeAmount": 500000000000000000000000,
+          "PledgeAmount": 100000000000000000000000,
           "PledgeHeight": 1,
           "PledgeToken": "tti_5649544520544f4b454e6e40"
         },
@@ -85,11 +89,11 @@ var GenesisJson = `{
 
     "RegistrationInfoMap":{
       "00000000000000000001":{
-        "vite super snapshot producer for test 01":{
+        "s1":{
           "NodeAddr":"vite_360232b0378111b122685a15e612143dc9a89cfa7e803f4b5a",
-          "PledgeAddr":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
-          "Amount":500000000000000000000000,
-          "WithdrawHeight":1,
+          "PledgeAddr":"vite_360232b0378111b122685a15e612143dc9a89cfa7e803f4b5a",
+          "Amount":100000000000000000000000,
+          "WithdrawHeight":7776000,
           "RewardTime":1,
           "CancelTime":0,
           "HisAddrList":["vite_360232b0378111b122685a15e612143dc9a89cfa7e803f4b5a"]
@@ -104,17 +108,10 @@ var GenesisJson = `{
         "TokenSymbol":"VITE",
         "TotalSupply":1000000000000000000000000000,
         "Decimals":18,
-        "Owner":"vite_0000000000000000000000000000000000000004d28108e76b",
-        "MaxSupply":115792089237316195423570985008687907853269984665640564039457584007913129639935,
-        "OwnerBurnOnly":false,
-        "IsReIssuable":true
-      },
-      "tti_045e6ca837c143cd477b32f3":{
-        "TokenName":"Test Token",
-        "TokenSymbol":"TEST",
-        "TotalSupply":1000000000000000000000000000,
-        "Decimals":18,
         "Owner":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+        "PledgeAmount":0,
+        "PledgeAddr":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+        "WithdrawHeight":0,
         "MaxSupply":115792089237316195423570985008687907853269984665640564039457584007913129639935,
         "OwnerBurnOnly":false,
         "IsReIssuable":true
@@ -135,22 +132,22 @@ var GenesisJson = `{
       "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a": [
         {
           "Amount": 1000000000000000000000,
-          "WithdrawHeight": 1,
+          "WithdrawHeight": 259200,
           "BeneficialAddr": "vite_360232b0378111b122685a15e612143dc9a89cfa7e803f4b5a"
         },
         {
           "Amount": 1000000000000000000000,
-          "WithdrawHeight": 1,
+          "WithdrawHeight": 259200,
           "BeneficialAddr": "vite_ce18b99b46c70c8e6bf34177d0c5db956a8c3ea7040a1c1e25"
         },
         {
           "Amount": 1000000000000000000000,
-          "WithdrawHeight": 1,
+          "WithdrawHeight": 259200,
           "BeneficialAddr": "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a"
         },
         {
           "Amount": 1000000000000000000000,
-          "WithdrawHeight": 1,
+          "WithdrawHeight": 259200,
           "BeneficialAddr": "vite_56fd05b23ff26cd7b0a40957fb77bde60c9fd6ebc35f809c23"
         },
 		{
@@ -185,12 +182,6 @@ var GenesisJson = `{
     },
     "vite_847e1672c9a775ca0f3c3a2d3bf389ca466e5501cbecdb7107": {
       "tti_5649544520544f4b454e6e40":100000000000000000000000000
-    },
-    "vite_0000000000000000000000000000000000000003f6af7459b9": {
-      "tti_5649544520544f4b454e6e40":4000000000000000000000
-    },
-	"vite_0000000000000000000000000000000000000004d28108e76b": {
-      "tti_5649544520544f4b454e6e40":500000000000000000000000
     }
   }
 }
@@ -210,12 +201,7 @@ func NewChainInstance(dirName string, clear bool) (*chain, error) {
 	}
 	genesisConfig := &config.Genesis{}
 
-	err := json.Unmarshal([]byte(GenesisJson), genesisConfig)
-	if err != nil {
-		panic(err)
-	}
-
-	fork.SetForkPoints(genesisConfig.ForkPoints)
+	json.Unmarshal([]byte(GenesisJson), genesisConfig)
 
 	chainInstance := NewChain(dataDir, &config.Chain{}, genesisConfig)
 

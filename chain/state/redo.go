@@ -22,7 +22,7 @@ type LogItem struct {
 	ContractMeta map[types.Address][]byte
 	VmLogList    map[types.Hash][]byte
 	CallDepth    map[types.Hash]uint16
-	Height       uint64
+	Height       uint64 // account block height
 }
 
 type SnapshotLog map[types.Address][]LogItem
@@ -70,8 +70,7 @@ type Redo struct {
 	log log15.Logger
 }
 
-
-func NewStorageRedoWithStore(chain Chain, store * chain_db.Store) (*Redo, error) {
+func NewStorageRedoWithStore(chain Chain, store *chain_db.Store) (*Redo, error) {
 	redo := &Redo{
 		store:        store,
 		chain:        chain,

@@ -13,10 +13,12 @@ type interpreter struct {
 }
 
 var (
-	simpleInterpreter         = &interpreter{simpleInstructionSet}
-	offchainSimpleInterpreter = &interpreter{offchainSimpleInstructionSet}
-	randInterpreter           = &interpreter{randInstructionSet}
-	offchainRandInterpreter   = &interpreter{offchainRandInstructionSet}
+	simpleInterpreter         = &interpreter{newSimpleInstructionSet()}
+	offchainSimpleInterpreter = &interpreter{newOffchainSimpleInstructionSet()}
+	randInterpreter           = &interpreter{newRandInstructionSet()}
+	offchainRandInterpreter   = &interpreter{newRandOffchainInstructionSet()}
+	timerInterpreter          = &interpreter{newTimerInstructionSet()}
+	offchainTimerInterpreter  = &interpreter{newTimerOffchainInstructionSet()}
 )
 
 func newInterpreter(blockHeight uint64, offChain bool) *interpreter {
@@ -25,11 +27,16 @@ func newInterpreter(blockHeight uint64, offChain bool) *interpreter {
 			return offchainSimpleInterpreter
 		}
 		return simpleInterpreter
+	} else if !fork.IsNewFork(blockHeight) {
+		if offChain {
+			return offchainRandInterpreter
+		}
+		return randInterpreter
 	}
 	if offChain {
-		return offchainRandInterpreter
+		return offchainTimerInterpreter
 	}
-	return randInterpreter
+	return timerInterpreter
 }
 
 func (i *interpreter) runLoop(vm *VM, c *contract) (ret []byte, err error) {

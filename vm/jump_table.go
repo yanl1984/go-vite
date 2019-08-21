@@ -29,12 +29,21 @@ type operation struct {
 	returns bool // determines whether the operations sets the return data content
 }
 
-var (
-	simpleInstructionSet         = newSimpleInstructionSet()
-	offchainSimpleInstructionSet = newOffchainSimpleInstructionSet()
-	randInstructionSet           = newRandInstructionSet()
-	offchainRandInstructionSet   = newRandOffchainInstructionSet()
-)
+func newTimerInstructionSet() [256]operation {
+	instructionSet := newSimpleInstructionSet()
+	instructionSet[SELFDESTRUCT] = operation{
+		execute:       opSelfDestruct,
+		gasCost:       gasSelfDestruct,
+		validateStack: makeStackFunc(1, 0),
+		valid:         true,
+		halts:         true,
+	}
+	return instructionSet
+}
+
+func newTimerOffchainInstructionSet() [256]operation {
+	return newOffchainSimpleInstructionSet()
+}
 
 func newRandInstructionSet() [256]operation {
 	instructionSet := newSimpleInstructionSet()

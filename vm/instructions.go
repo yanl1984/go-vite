@@ -568,6 +568,20 @@ func opOffchainRandom(pc *uint64, vm *VM, c *contract, mem *memory, stack *stack
 	return nil, nil
 }
 
+func opSelfDestruct(pc *uint64, vm *VM, c *contract, mem *memory, stack *stack) ([]byte, error) {
+	bigAddr := stack.pop()
+	addr, _ := types.BigToAddress(bigAddr)
+	// addr is user address or
+	// addr is contract address and contract exists
+	_, err := util.GetQuotaRatioForRS(c.db, addr, c.sendBlock.Hash, vm.GlobalStatus())
+	if err != nil {
+		return nil, err
+	}
+	vm.destructBeneficialAddress = &addr
+	vm.isDestructed = true
+	return nil, nil
+}
+
 func opPop(pc *uint64, vm *VM, c *contract, mem *memory, stack *stack) ([]byte, error) {
 	c.intPool.put(stack.pop())
 	return nil, nil

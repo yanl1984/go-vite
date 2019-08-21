@@ -2,11 +2,13 @@
 package vm
 
 import (
+	"bytes"
 	"encoding/hex"
 	"errors"
 	"github.com/vitelabs/go-vite/common/fork"
 	"github.com/vitelabs/go-vite/vm/abi"
 	"runtime/debug"
+	"sort"
 	"sync"
 
 	"github.com/vitelabs/go-vite/common"
@@ -76,7 +78,7 @@ func IsTest() bool {
 //   isTestParam: use test params for built-in contracts.
 //   isDebug: print debug log.
 //   datadir: print debug log under this directory.
-func InitVMConfig(isTest bool, isTestParam bool, isDebug bool, datadir string) {
+func InitVMConfig(isTest bool, isTestParam bool, isQuotaTestParam bool, isDebug bool, datadir string) {
 	if isTest {
 		nodeConfig = NodeConfig{
 			isTest: isTest,
@@ -110,7 +112,7 @@ func InitVMConfig(isTest bool, isTestParam bool, isDebug bool, datadir string) {
 	nodeConfig.log = log15.New("module", "vm")
 	nodeConfig.interpreterLog = log15.New("module", "vm")
 	contracts.InitContractsConfig(isTestParam)
-	quota.InitQuotaConfig(isTest, isTestParam)
+	quota.InitQuotaConfig(isTest, isQuotaTestParam)
 	nodeConfig.IsDebug = isDebug
 	if isDebug {
 		initLog(datadir, "dbug")
@@ -134,7 +136,9 @@ func initLog(dir, lvl string) {
 }
 
 type vmContext struct {
-	sendBlockList []*ledger.AccountBlock
+	sendBlockList             []*ledger.AccountBlock
+	isDestructed              bool
+	destructBeneficialAddress *types.Address
 }
 
 // VM holds the runtime information of vite vm and provides the necessary tools
@@ -254,7 +258,18 @@ func (vm *VM) RunV2(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger
 		vm.globalStatus = status
 		blockCopy.Data = nil
 		contractMeta := getContractMeta(db)
-		if sendBlock.BlockType == ledger.BlockTypeSendCreate {
+		destructed := checkContractDestructed(blockCopy.AccountAddress, contractMeta)
+		if blockCopy.BlockType == ledger.BlockTypeReceiveTimer {
+			if fork.IsNewFork(sb.Height) {
+				return vm.receiveTimer(db, blockCopy, contractMeta)
+			}
+			return nil, noRetry, util.ErrTransactionTypeNotSupport
+		}
+		if sendBlock.BlockType == ledger.BlockTypeSendRefund {
+			return vm.receiveRefund(db, blockCopy, sendBlock, contractMeta, !destructed)
+		} else if destructed {
+			return vm.receiveDestructedCall(db, blockCopy, sendBlock)
+		} else if sendBlock.BlockType == ledger.BlockTypeSendCreate {
 			return vm.receiveCreate(db, blockCopy, sendBlock, contractMeta)
 		} else if sendBlock.BlockType == ledger.BlockTypeSendCall {
 			return vm.receiveCall(db, blockCopy, sendBlock, contractMeta)
@@ -263,8 +278,6 @@ func (vm *VM) RunV2(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger
 				return vm.receiveCall(db, blockCopy, sendBlock, contractMeta)
 			}
 			return vm.receiveReward(db, blockCopy, sendBlock, contractMeta)
-		} else if sendBlock.BlockType == ledger.BlockTypeSendRefund {
-			return vm.receiveRefund(db, blockCopy, sendBlock, contractMeta)
 		}
 	}
 	// Notice that send reward and send refund type is not supposed to be
@@ -275,6 +288,32 @@ func (vm *VM) RunV2(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger
 // Cancel method stops the running contract receive
 func (vm *VM) Cancel() {
 	atomic.StoreInt32(&vm.abort, 1)
+}
+
+func (vm *VM) receiveDestructedCall(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock) (*vm_db.VmAccountBlock, bool, error) {
+	if sendBlock.Amount.Sign() > 0 {
+		util.AddBalance(db, &sendBlock.TokenId, sendBlock.Amount)
+		if _, err := util.GetQuotaRatioForRS(db, sendBlock.AccountAddress, sendBlock.Hash, vm.GlobalStatus()); err == nil {
+			vm.vmContext.AppendBlock(
+				util.MakeSendBlock(
+					block.AccountAddress,
+					sendBlock.AccountAddress,
+					ledger.BlockTypeSendRefund,
+					sendBlock.Amount,
+					sendBlock.TokenId,
+					nil))
+			var refundErr error
+			if db, refundErr = vm.doSendBlockList(db, 0); refundErr != nil {
+				monitor.LogEvent("vm", "impossibleReceiveError")
+				nodeConfig.log.Error("Impossible receive error", "err", refundErr, "fromhash", sendBlock.Hash)
+				return nil, retry, refundErr
+			}
+		}
+	}
+	err := util.ErrContractDeleted
+	vm.updateBlock(db, block, err, 0, 0)
+	block.Data = getReceiveCallData(db, err)
+	return mergeReceiveBlock(db, block, vm.sendBlockList), noRetry, err
 }
 
 // sendCreate executes a send transaction to create a contract.
@@ -420,7 +459,7 @@ func (vm *VM) receiveCreate(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock
 		if err == nil {
 			db.SetContractCode(code)
 			vm.updateBlock(db, block, err, 0, 0)
-			db, err = vm.doSendBlockList(db)
+			db, err = vm.doSendBlockList(db, 0)
 			if err == nil {
 				block.Data = getReceiveCallData(db, err)
 				return mergeReceiveBlock(db, block, vm.sendBlockList), noRetry, nil
@@ -428,6 +467,9 @@ func (vm *VM) receiveCreate(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock
 		}
 	}
 	vm.revert(db)
+	if fork.IsNewFork(vm.latestSnapshotHeight) {
+		vm.isDestructed = true
+	}
 
 	// try refund
 	vm.updateBlock(db, block, err, 0, 0)
@@ -442,7 +484,7 @@ func (vm *VM) receiveCreate(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock
 				[]byte{}))
 		util.AddBalance(db, &sendBlock.TokenId, sendBlock.Amount)
 		var refundErr error
-		if db, refundErr = vm.doSendBlockList(db); refundErr == nil {
+		if db, refundErr = vm.doSendBlockList(db, 0); refundErr == nil {
 			block.Data = getReceiveCallData(db, err)
 			return mergeReceiveBlock(db, block, vm.sendBlockList), noRetry, err
 		}
@@ -534,51 +576,59 @@ func (vm *VM) receiveCall(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *
 		return &vm_db.VmAccountBlock{block, db}, noRetry, util.ErrDepth
 	}
 	if p, ok, _ := contracts.GetBuiltinContractMethod(block.AccountAddress, sendBlock.Data, vm.latestSnapshotHeight); ok {
-		// check quota
-		quotaUsed := p.GetReceiveQuota()
-		if quotaUsed > 0 {
-			quotaTotal, _, err := quota.CalcQuotaForBlock(
-				db,
-				block.AccountAddress,
-				getPledgeAmount(db),
-				block.Difficulty,
-				vm.latestSnapshotHeight)
-			if err != nil {
-				return nil, noRetry, err
-			}
-			_, err = util.UseQuota(quotaTotal, quotaUsed)
-			if err != nil {
-				return nil, retry, err
-			}
+		return builtinContractReceiveCall(vm, db, block, sendBlock, p)
+	}
+	return normalReceiveCall(vm, db, block, sendBlock, meta)
+}
+
+func builtinContractReceiveCall(vm *VM, db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, p contracts.BuiltinContractMethod) (*vm_db.VmAccountBlock, bool, error) {
+	// check quota
+	quotaUsed := p.GetReceiveQuota(vm.gasTable)
+	if quotaUsed > 0 {
+		quotaTotal, _, err := quota.CalcQuotaForBlock(
+			db,
+			block.AccountAddress,
+			getPledgeAmount(db),
+			block.Difficulty,
+			vm.latestSnapshotHeight)
+		if err != nil {
+			return nil, noRetry, err
 		}
-		util.AddBalance(db, &sendBlock.TokenId, sendBlock.Amount)
-		blockListToSend, err := p.DoReceive(db, block, sendBlock, vm)
-		if err == nil {
-			vm.updateBlock(db, block, err, quotaUsed, quotaUsed)
-			vm.vmContext.sendBlockList = blockListToSend
-			if db, err = vm.doSendBlockList(db); err == nil {
-				block.Data = getReceiveCallData(db, err)
-				return mergeReceiveBlock(db, block, vm.sendBlockList), noRetry, nil
-			}
+		_, err = util.UseQuota(quotaTotal, quotaUsed)
+		if err != nil {
+			return nil, retry, err
 		}
-		vm.revert(db)
-		refundFlag := false
-		refundData, needRefund := p.GetRefundData(sendBlock)
-		refundFlag = doRefund(vm, db, block, sendBlock, refundData, needRefund, ledger.BlockTypeSendCall)
+	}
+	util.AddBalance(db, &sendBlock.TokenId, sendBlock.Amount)
+	blockListToSend, err := p.DoReceive(db, block, sendBlock, vm)
+	if err == nil {
 		vm.updateBlock(db, block, err, quotaUsed, quotaUsed)
-		if refundFlag {
-			var refundErr error
-			if db, refundErr = vm.doSendBlockList(db); refundErr != nil {
-				monitor.LogEvent("vm", "impossibleReceiveError")
-				nodeConfig.log.Error("Impossible receive error", "err", refundErr, "fromhash", sendBlock.Hash)
-				return nil, retry, err
-			}
+		vm.vmContext.sendBlockList = blockListToSend
+		if db, err = vm.doSendBlockList(db, 0); err == nil {
 			block.Data = getReceiveCallData(db, err)
-			return mergeReceiveBlock(db, block, vm.sendBlockList), noRetry, err
+			return mergeReceiveBlock(db, block, vm.sendBlockList), noRetry, nil
+		}
+	}
+	vm.revert(db)
+	refundFlag := false
+	refundData, needRefund := p.GetRefundData(sendBlock)
+	refundFlag = doRefund(vm, db, block, sendBlock, refundData, needRefund, ledger.BlockTypeSendCall)
+	vm.updateBlock(db, block, err, quotaUsed, quotaUsed)
+	if refundFlag {
+		var refundErr error
+		if db, refundErr = vm.doSendBlockList(db, 0); refundErr != nil {
+			monitor.LogEvent("vm", "impossibleReceiveError")
+			nodeConfig.log.Error("Impossible receive error", "err", refundErr, "fromhash", sendBlock.Hash)
+			return nil, retry, err
 		}
 		block.Data = getReceiveCallData(db, err)
-		return &vm_db.VmAccountBlock{block, db}, noRetry, err
+		return mergeReceiveBlock(db, block, vm.sendBlockList), noRetry, err
 	}
+	block.Data = getReceiveCallData(db, err)
+	return &vm_db.VmAccountBlock{block, db}, noRetry, err
+}
+
+func normalReceiveCall(vm *VM, db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, meta *ledger.ContractMeta) (*vm_db.VmAccountBlock, bool, error) {
 	// check can make transaction
 	quotaTotal, quotaAddition, err := quota.CalcQuotaForBlock(
 		db,
@@ -612,10 +662,13 @@ func (vm *VM) receiveCall(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *
 	if err == nil {
 		q, qUsed := util.CalcQuotaUsed(true, quotaTotal, quotaAddition, c.quotaLeft, nil)
 		vm.updateBlock(db, block, err, q, qUsed)
-		db, err = vm.doSendBlockList(db)
+		db, err = vm.doSendBlockList(db, 0)
 		if err == nil {
-			block.Data = getReceiveCallData(db, err)
-			return mergeReceiveBlock(db, block, vm.sendBlockList), noRetry, nil
+			db, err = selfDestruct(vm, db, block)
+			if err == nil {
+				block.Data = getReceiveCallData(db, err)
+				return mergeReceiveBlock(db, block, vm.sendBlockList), noRetry, nil
+			}
 		}
 	}
 
@@ -637,7 +690,7 @@ func (vm *VM) receiveCall(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *
 		vm.updateBlock(db, block, err, q, qUsed)
 		if refundFlag {
 			var refundErr error
-			if db, refundErr = vm.doSendBlockList(db); refundErr != nil {
+			if db, refundErr = vm.doSendBlockList(db, 0); refundErr != nil {
 				monitor.LogEvent("vm", "impossibleReceiveError")
 				nodeConfig.log.Error("Impossible receive error", "err", refundErr, "fromhash", sendBlock.Hash)
 				return nil, retry, err
@@ -654,7 +707,7 @@ func (vm *VM) receiveCall(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *
 	vm.updateBlock(db, block, err, q, qUsed)
 	if refundFlag {
 		var refundErr error
-		if db, refundErr = vm.doSendBlockList(db); refundErr != nil {
+		if db, refundErr = vm.doSendBlockList(db, 0); refundErr != nil {
 			monitor.LogEvent("vm", "impossibleReceiveError")
 			nodeConfig.log.Error("Impossible receive error", "err", refundErr, "fromhash", sendBlock.Hash)
 			return nil, retry, err
@@ -664,6 +717,48 @@ func (vm *VM) receiveCall(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *
 	}
 	block.Data = getReceiveCallData(db, err)
 	return &vm_db.VmAccountBlock{block, db}, noRetry, err
+}
+
+type balanceInfo struct {
+	tokenId types.TokenTypeId
+	amount  *big.Int
+}
+type byTokenId []*balanceInfo
+
+func (a byTokenId) Len() int      { return len(a) }
+func (a byTokenId) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a byTokenId) Less(i, j int) bool {
+	return bytes.Compare(a[i].tokenId.Bytes(), a[j].tokenId.Bytes()) < 0
+}
+
+func selfDestruct(vm *VM, db vm_db.VmDb, block *ledger.AccountBlock) (vm_db.VmDb, error) {
+	if !vm.isDestructed {
+		return db, nil
+	}
+	offset := len(vm.sendBlockList)
+	balanceMap, err := db.GetBalanceMap()
+	util.DealWithErr(err)
+	balanceList := make([]*balanceInfo, 0, len(balanceMap))
+	for tid, amount := range balanceMap {
+		if amount.Sign() == 0 {
+			continue
+		}
+		if len(balanceList) >= selfDestructBalanceListMax {
+			return db, util.ErrSendBlockListLimitReached
+		}
+		balanceList = append(balanceList, &balanceInfo{tid, amount})
+	}
+	sort.Sort(byTokenId(balanceList))
+	for _, info := range balanceList {
+		vm.AppendBlock(util.MakeSendBlock(
+			block.AccountAddress,
+			*vm.destructBeneficialAddress,
+			ledger.BlockTypeSendRefund,
+			info.amount,
+			info.tokenId,
+			nil))
+	}
+	return vm.doSendBlockList(db, offset)
 }
 
 func doRefund(vm *VM, db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, refundData []byte, needRefund bool, refundBlockType byte) bool {
@@ -791,29 +886,51 @@ func (vm *VM) receiveReward(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock
 	return &vm_db.VmAccountBlock{block, db}, noRetry, nil
 }
 
-func (vm *VM) receiveRefund(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, meta *ledger.ContractMeta) (*vm_db.VmAccountBlock, bool, error) {
+func (vm *VM) receiveRefund(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, meta *ledger.ContractMeta, useQuota bool) (*vm_db.VmAccountBlock, bool, error) {
 	defer monitor.LogTimerConsuming([]string{"vm", "receiveRefund"}, time.Now())
-	// check can make transaction
-	quotaTotal, quotaAddition, err := quota.CalcQuotaForBlock(
-		db,
-		block.AccountAddress,
-		getPledgeAmount(db),
-		block.Difficulty,
-		vm.latestSnapshotHeight)
-	util.DealWithErr(err)
-	quotaLeft := quotaTotal
-	cost, err := gasReceive(block, meta, vm.gasTable)
-	if err != nil {
-		return nil, noRetry, err
-	}
-	quotaLeft, err = util.UseQuota(quotaLeft, cost)
-	if err != nil {
-		return nil, retry, err
+	q := uint64(0)
+	qUsed := uint64(0)
+	if useQuota && (!fork.IsNewFork(vm.latestSnapshotHeight) || !types.IsBuiltinContractAddrInUse(block.AccountAddress)) {
+		quotaTotal, quotaAddition, err := quota.CalcQuotaForBlock(
+			db,
+			block.AccountAddress,
+			getPledgeAmount(db),
+			block.Difficulty,
+			vm.latestSnapshotHeight)
+		util.DealWithErr(err)
+		quotaLeft := quotaTotal
+		cost, err := gasReceive(block, meta, vm.gasTable)
+		if err != nil {
+			return nil, noRetry, err
+		}
+		quotaLeft, err = util.UseQuota(quotaLeft, cost)
+		if err != nil {
+			return nil, retry, err
+		}
+		q, qUsed = util.CalcQuotaUsed(true, quotaTotal, quotaAddition, quotaLeft, nil)
 	}
 	util.AddBalance(db, &sendBlock.TokenId, sendBlock.Amount)
-	q, qUsed := util.CalcQuotaUsed(true, quotaTotal, quotaAddition, quotaLeft, nil)
 	vm.updateBlock(db, block, nil, q, qUsed)
 	return &vm_db.VmAccountBlock{block, db}, noRetry, nil
+}
+
+func (vm *VM) receiveTimer(db vm_db.VmDb, block *ledger.AccountBlock, meta *ledger.ContractMeta) (*vm_db.VmAccountBlock, bool, error) {
+	defer monitor.LogTimerConsuming([]string{"vm", "receiveTimer"}, time.Now())
+	sb := vm.GlobalStatus().SnapshotBlock()
+	block.FromBlockHash = sb.Hash
+	blockListToSend, err := contracts.ReceiveTaskTrigger(db, sb, vm)
+	if err == nil {
+		if len(blockListToSend) == 0 {
+			return nil, noRetry, util.ErrNoTaskDue
+		}
+		vm.updateBlock(db, block, err, 0, 0)
+		vm.vmContext.sendBlockList = blockListToSend
+		if db, err = vm.doSendBlockList(db, 0); err == nil {
+			block.Data = getReceiveCallData(db, err)
+			return mergeReceiveBlock(db, block, vm.sendBlockList), noRetry, nil
+		}
+	}
+	return nil, noRetry, err
 }
 
 func (vm *VM) delegateCall(contractAddr types.Address, data []byte, c *contract) (ret []byte, err error) {
@@ -833,19 +950,23 @@ func (vm *VM) updateBlock(db vm_db.VmDb, block *ledger.AccountBlock, err error, 
 	block.QuotaUsed = qUsed
 	if block.IsReceiveBlock() {
 		block.LogHash = db.GetLogListHash()
-		if err == util.ErrOutOfQuota {
-			block.BlockType = ledger.BlockTypeReceiveError
-		} else {
-			block.BlockType = ledger.BlockTypeReceive
+		if block.BlockType != ledger.BlockTypeReceiveTimer {
+			if err == util.ErrOutOfQuota {
+				block.BlockType = ledger.BlockTypeReceiveError
+			} else if vm.isDestructed {
+				block.BlockType = ledger.BlockTypeReceiveDestruct
+			} else {
+				block.BlockType = ledger.BlockTypeReceive
+			}
 		}
 	}
 }
 
-func (vm *VM) doSendBlockList(db vm_db.VmDb) (newDb vm_db.VmDb, err error) {
-	if len(vm.sendBlockList) == 0 {
+func (vm *VM) doSendBlockList(db vm_db.VmDb, startIndex int) (newDb vm_db.VmDb, err error) {
+	if len(vm.sendBlockList) <= startIndex {
 		return db, nil
 	}
-	for i, block := range vm.sendBlockList {
+	for i, block := range vm.sendBlockList[startIndex:] {
 		var sendBlock *vm_db.VmAccountBlock
 		switch block.BlockType {
 		case ledger.BlockTypeSendCall:
@@ -864,7 +985,7 @@ func (vm *VM) doSendBlockList(db vm_db.VmDb) (newDb vm_db.VmDb, err error) {
 				return db, err
 			}
 		}
-		vm.sendBlockList[i] = sendBlock.AccountBlock
+		vm.sendBlockList[i+startIndex] = sendBlock.AccountBlock
 		db = sendBlock.VmDb
 	}
 	return db, nil
@@ -872,6 +993,8 @@ func (vm *VM) doSendBlockList(db vm_db.VmDb) (newDb vm_db.VmDb, err error) {
 
 func (vm *VM) revert(db vm_db.VmDb) {
 	vm.sendBlockList = nil
+	vm.isDestructed = false
+	vm.destructBeneficialAddress = nil
 	db.Reset()
 }
 
@@ -881,7 +1004,7 @@ func (context *vmContext) AppendBlock(block *ledger.AccountBlock) {
 }
 
 func calcContractFee(data []byte) (*big.Int, error) {
-	return createContractFee, nil
+	return new(big.Int).Set(createContractFee), nil
 }
 
 func checkDepth(db vm_db.VmDb, sendBlock *ledger.AccountBlock) bool {
@@ -904,6 +1027,13 @@ func (vm *VM) OffChainReader(db vm_db.VmDb, code []byte, data []byte) (result []
 			err = errors.New("offchain reader panic")
 		}
 	}()
+	meta, err := db.GetContractMeta()
+	if err != nil {
+		return nil, err
+	}
+	if meta == nil || meta.IsDeleted() {
+		return nil, util.ErrContractNotExists
+	}
 	sb, err := db.LatestSnapshotBlock()
 	if err != nil {
 		return nil, err
@@ -926,7 +1056,7 @@ func useQuotaForSend(block *ledger.AccountBlock, db vm_db.VmDb, quotaLeft uint64
 	if err != nil {
 		return quotaLeft, err
 	}
-	quotaRatio, err := getQuotaRatioForS(db, block.ToAddress)
+	quotaRatio, err := util.GetQuotaRatioForS(db, block.ToAddress)
 	if err != nil {
 		return quotaLeft, err
 	}
@@ -948,6 +1078,13 @@ func getContractMeta(db vm_db.VmDb) *ledger.ContractMeta {
 		util.DealWithErr(util.ErrContractNotExists)
 	}
 	return meta
+}
+
+func checkContractDestructed(addr types.Address, meta *ledger.ContractMeta) bool {
+	if !types.IsContractAddr(addr) {
+		return false
+	}
+	return meta == nil || meta.IsDeleted()
 }
 
 // printDebugBlockInfo prints block info after execution.

@@ -21,14 +21,15 @@ import (
 )
 
 func init() {
-	InitVMConfig(false, false, false, common.HomeDir())
+	InitVMConfig(false, false, false, false, common.HomeDir())
 	initFork()
 }
 
 func initFork() {
 	fork.SetForkPoints(&config.ForkPoints{
 		SeedFork: &config.ForkPoint{Height: 100, Version: 1},
-		DexFork:  &config.ForkPoint{Height: 200, Version: 1}})
+		DexFork:  &config.ForkPoint{Height: 200, Version: 1},
+		NewFork:  &config.ForkPoint{Height: 300, Version: 1}})
 }
 
 func TestVmRun(t *testing.T) {
@@ -236,49 +237,6 @@ func TestVmRun(t *testing.T) {
 	db.accountBlockMap[addr2][hash23] = receiveCallBlock2.AccountBlock
 }
 
-/*func TestDelegateCall(t *testing.T) {
-	// prepare db, add account1, add account2 with code, add account3 with code
-	db := newNoDatabase()
-	// code1 return 1+2
-	addr1, _, _ := types.CreateAddress()
-	code1 := []byte{1, byte(PUSH1), 1, byte(PUSH1), 2, byte(ADD), byte(PUSH1), 32, byte(DUP1), byte(SWAP2), byte(SWAP1), byte(MSTORE), byte(PUSH1), 32, byte(SWAP1), byte(RETURN)}
-	db.codeMap = make(map[types.Address][]byte)
-	db.codeMap[addr1] = code1
-
-	addr2, _, _ := types.CreateAddress()
-	code2 := helper.JoinBytes([]byte{1, byte(PUSH1), 32, byte(PUSH1), 0, byte(PUSH1), 0, byte(PUSH1), 0, byte(PUSH20)}, addr1.Bytes(), []byte{byte(DELEGATECALL), byte(PUSH1), 32, byte(PUSH1), 0, byte(RETURN)})
-	db.codeMap[addr2] = code2
-
-	vm := NewVM(nil)
-	vm.globalStatus = &util.GlobalStatus{0, &ledger.SnapshotBlock{}}
-	vm.i = newInterpreter(1, false)
-	//vm.Debug = true
-	sendCallBlock := ledger.AccountBlock{
-		AccountAddress: addr1,
-		ToAddress:      addr2,
-		BlockType:      ledger.BlockTypeSendCall,
-		Amount:         big.NewInt(10),
-		Fee:            big.NewInt(0),
-		TokenId:        ledger.ViteTokenId,
-	}
-	receiveCallBlock := &ledger.AccountBlock{
-		AccountAddress: addr2,
-		BlockType:      ledger.BlockTypeReceive,
-	}
-	c := newContract(
-		receiveCallBlock,
-		db,
-		&sendCallBlock,
-		nil,
-		1000000,
-		0)
-	c.setCallCode(addr2, code2[1:])
-	ret, err := c.run(vm)
-	if err != nil || !bytes.Equal(ret, helper.LeftPadBytes([]byte{3}, 32)) {
-		t.Fatalf("delegate call error")
-	}
-}*/
-
 func TestCall(t *testing.T) {
 	// prepare db, add account1, add account2 with code, add account3 with code
 	viteTotalSupply := new(big.Int).Mul(big.NewInt(1e9), util.AttovPerVite)
@@ -432,7 +390,7 @@ func BenchmarkVMTransfer(b *testing.B) {
 }
 
 func TestVmForTest(t *testing.T) {
-	InitVMConfig(true, true, false, "")
+	InitVMConfig(true, true, true, false, "")
 	db, _, _, _, _, _ := prepareDb(big.NewInt(0))
 
 	addr1, _, _ := types.CreateAddress()
@@ -457,6 +415,7 @@ func TestVmForTest(t *testing.T) {
 type TestCaseMap map[string]TestCase
 
 type TestCaseSendBlock struct {
+	BlockType byte
 	ToAddress types.Address
 	Amount    string
 	TokenID   types.TokenTypeId
@@ -488,7 +447,7 @@ type TestCase struct {
 }
 
 func TestVm(t *testing.T) {
-	testDir := "./test/"
+	testDir := "./test/interpreter_test/"
 	testFiles, ok := ioutil.ReadDir(testDir)
 	if ok != nil {
 		t.Fatalf("read dir failed, %v", ok)
@@ -522,7 +481,7 @@ func TestVm(t *testing.T) {
 				Hash:      types.DataHash([]byte{1, 1}),
 			}
 			vm := NewVM(nil)
-			vm.i = newInterpreter(1, false)
+			vm.i = newInterpreter(testCase.SBHeight, false)
 			vm.gasTable = util.GasTableByHeight(1)
 			vm.globalStatus = NewTestGlobalStatus(testCase.Seed, &sb)
 			//fmt.Printf("testcase %v: %v\n", testFile.Name(), k)
@@ -575,7 +534,7 @@ func TestVm(t *testing.T) {
 						t.Fatalf("%v: %v failed, log hash error, expected\n%v,\ngot\n%v", testFile.Name(), k, testCase.LogHash, logHash)
 					}
 				} else if len(testCase.LogList) > 0 {
-					if checkLogListResult := checkLogList(testCase.LogList, db); checkLogListResult != "" {
+					if checkLogListResult := checkLogList(testCase.LogList, db.logList); checkLogListResult != "" {
 						t.Fatalf("%v: %v failed, log list error, %v", testFile.Name(), k, checkLogListResult)
 					}
 				} else if checkSendBlockListResult := checkSendBlockList(testCase.SendBlockList, vm.sendBlockList); checkSendBlockListResult != "" {
@@ -585,11 +544,11 @@ func TestVm(t *testing.T) {
 		}
 	}
 }
-func checkLogList(expected []TestLog, got *memoryDatabase) string {
-	if len(expected) != len(got.logList) {
-		return "expected len " + strconv.Itoa(len(expected)) + ", got len" + strconv.Itoa(len(got.logList))
+func checkLogList(expected []TestLog, got []*ledger.VmLog) string {
+	if len(expected) != len(got) {
+		return "expected len " + strconv.Itoa(len(expected)) + ", got len" + strconv.Itoa(len(got))
 	}
-	for index, lGot := range got.logList {
+	for index, lGot := range got {
 		lexpected := expected[index]
 		if len(lexpected.Topics) != len(lGot.Topics) {
 			return strconv.Itoa(index) + "th log topic len not match, expected " + strconv.Itoa(len(lexpected.Topics)) + ", got " + strconv.Itoa(len(lGot.Topics))
@@ -633,14 +592,16 @@ func checkSendBlockList(expected []*TestCaseSendBlock, got []*ledger.AccountBloc
 	}
 	for i, expectedSendBlock := range expected {
 		gotSendBlock := got[i]
-		if gotSendBlock.ToAddress != expectedSendBlock.ToAddress {
-			return "expected toAddress " + expectedSendBlock.ToAddress.String() + ", got toAddress " + gotSendBlock.ToAddress.String()
+		if (expectedSendBlock.BlockType > 0 && gotSendBlock.BlockType != expectedSendBlock.BlockType) || (expectedSendBlock.BlockType == 0 && gotSendBlock.BlockType != ledger.BlockTypeSendCall) {
+			return strconv.Itoa(i) + "th, expected blockType " + strconv.Itoa(int(expectedSendBlock.BlockType)) + ", got blockType " + strconv.Itoa(int(gotSendBlock.BlockType))
+		} else if gotSendBlock.ToAddress != expectedSendBlock.ToAddress {
+			return strconv.Itoa(i) + "th, expected toAddress " + expectedSendBlock.ToAddress.String() + ", got toAddress " + gotSendBlock.ToAddress.String()
 		} else if gotAmount := hex.EncodeToString(gotSendBlock.Amount.Bytes()); gotAmount != expectedSendBlock.Amount {
-			return "expected amount " + expectedSendBlock.Amount + ", got amount " + gotAmount
+			return strconv.Itoa(i) + "th, expected amount " + expectedSendBlock.Amount + ", got amount " + gotAmount
 		} else if gotSendBlock.TokenId != expectedSendBlock.TokenID {
-			return "expected tokenId " + expectedSendBlock.TokenID.String() + ", got tokenId " + gotSendBlock.TokenId.String()
+			return strconv.Itoa(i) + "th, expected tokenId " + expectedSendBlock.TokenID.String() + ", got tokenId " + gotSendBlock.TokenId.String()
 		} else if gotData := hex.EncodeToString(gotSendBlock.Data); gotData != expectedSendBlock.Data {
-			return "expected data " + expectedSendBlock.Data + ", got data " + gotData
+			return strconv.Itoa(i) + "th, expected data " + expectedSendBlock.Data + ", got data " + gotData
 		}
 	}
 	return ""

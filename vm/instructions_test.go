@@ -4,10 +4,8 @@ import (
 	"encoding/hex"
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/ledger"
-	"github.com/vitelabs/go-vite/vm_db"
 	"math/big"
 	"testing"
-	"time"
 )
 
 type twoOperandTest struct {
@@ -17,9 +15,8 @@ type twoOperandTest struct {
 }
 
 func opBenchmark(bench *testing.B, op func(pc *uint64, vm *VM, contract *contract, memory *memory, stack *stack) ([]byte, error), args ...string) {
-	ts := time.Now()
 	vm := &VM{
-		globalStatus: NewTestGlobalStatus(100, &ledger.SnapshotBlock{Timestamp: &ts, Height: 1, Hash: types.Hash{}}),
+		globalStatus: NewTestGlobalStatus(100, nil),
 	}
 	//vm.Debug = true
 	sendCallBlock := &ledger.AccountBlock{
@@ -38,17 +35,8 @@ func opBenchmark(bench *testing.B, op func(pc *uint64, vm *VM, contract *contrac
 		BlockType:  ledger.BlockTypeReceive,
 		Difficulty: big.NewInt(67108863),
 	}
-	c := &contract{intPool: poolOfIntPools.get(), db: newNoDatabase(), block: receiveCallBlock, sendBlock: sendCallBlock, jumpdests: make(destinations)}
-	code, _ := hex.DecodeString("608060405234801561001057600080fd5b50610141806100206000396000f3fe608060405260043610610041576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff16806391a6cb4b14610046575b600080fd5b6100896004803603602081101561005c57600080fd5b81019080803574ffffffffffffffffffffffffffffffffffffffffff16906020019092919050505061008b565b005b8074ffffffffffffffffffffffffffffffffffffffffff164669ffffffffffffffffffff163460405160405180820390838587f1505050508074ffffffffffffffffffffffffffffffffffffffffff167faa65281f5df4b4bd3c71f2ba25905b907205fce0809a816ef8e04b4d496a85bb346040518082815260200191505060405180910390a25056fea165627a7a7230582036a610e43120f537e367e329d2835ba4369e3fe2755c8a32f675fe81f4a971db0029")
-	c.setCallCode(sendCallBlock.ToAddress, code)
-	c.returnData, _ = hex.DecodeString("000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000e00000000000000000000000000000000000000000000000000000000000000120000000000000000000000000000000000000000000000000000000174876e80000000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000002e90edd0000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000001052654973737561626c6520546f6b656e0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000027274000000000000000000000000000000000000000000000000000000000000")
+	c := &contract{intPool: poolOfIntPools.get(), db: newNoDatabase(), block: receiveCallBlock, sendBlock: sendCallBlock}
 	stack := newStack()
-	mem := newMemory()
-	mem.resize(1024 * 1024)
-	memVal := big.NewInt(1)
-	for i := 0; i < mem.len(); i = i + 32 {
-		mem.set32(uint64(i), memVal)
-	}
 
 	// convert args
 	byteArgs := make([][]byte, len(args))
@@ -62,10 +50,8 @@ func opBenchmark(bench *testing.B, op func(pc *uint64, vm *VM, contract *contrac
 			a := new(big.Int).SetBytes(arg)
 			stack.push(a)
 		}
-		op(&pc, vm, c, mem, stack)
-		for i := stack.len(); i > 0; i-- {
-			stack.pop()
-		}
+		op(&pc, vm, c, nil, stack)
+		stack.pop()
 	}
 	poolOfIntPools.put(c.intPool)
 }
@@ -473,58 +459,13 @@ func BenchmarkOpMstore(bench *testing.B) {
 	}
 	poolOfIntPools.put(c.intPool)
 }
-func BenchmarkOpMstore8(bench *testing.B) {
-	vm := &VM{}
-	//vm.Debug = true
-	c := &contract{intPool: poolOfIntPools.get(), db: newNoDatabase()}
-	stack := newStack()
-	mem := newMemory()
-	mem.resize(64)
-	pc := uint64(0)
-	memStart := big.NewInt(0)
-	value := big.NewInt(0x13)
-
-	bench.ResetTimer()
-	for i := 0; i < bench.N; i++ {
-		stack.push(value)
-		stack.push(memStart)
-		opMstore8(&pc, vm, c, mem, stack)
-	}
-	poolOfIntPools.put(c.intPool)
-}
 
 func BenchmarkRandom(b *testing.B) {
-	vm := &VM{}
-	c := &contract{intPool: poolOfIntPools.get(), db: newNoDatabase()}
-	stack := newStack()
-	pc := uint64(0)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		vm.globalStatus = NewTestGlobalStatus(100, nil)
-		opRandom(&pc, vm, c, nil, stack)
-		for i := stack.len(); i > 0; i-- {
-			stack.pop()
-		}
-	}
-	poolOfIntPools.put(c.intPool)
+	opBenchmark(b, opRandom)
 }
 
 func BenchmarkSeed(b *testing.B) {
-	vm := &VM{}
-	c := &contract{intPool: poolOfIntPools.get(), db: newNoDatabase()}
-	stack := newStack()
-	pc := uint64(0)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		vm.globalStatus = NewTestGlobalStatus(100, nil)
-		opSeed(&pc, vm, c, nil, stack)
-		for i := stack.len(); i > 0; i-- {
-			stack.pop()
-		}
-	}
-	poolOfIntPools.put(c.intPool)
+	opBenchmark(b, opSeed)
 }
 func BenchmarkNot(b *testing.B) {
 	x := "ABCDEF090807060504030201ffffffffffffffffffffffffffffffffffffffff"
@@ -540,210 +481,11 @@ func BenchmarkCallValue(b *testing.B) {
 	opBenchmark(b, opCallValue)
 }
 func BenchmarkCallDataLoad(b *testing.B) {
-	x := "0000000000000000000000000000000000000000000000000000000000000000"
-	opBenchmark(b, opCallDataLoad, x)
+	opBenchmark(b, opCallDataLoad)
 }
 func BenchmarkCallDataSize(b *testing.B) {
 	opBenchmark(b, opCallDataSize)
 }
 func BenchmarkCallDataCopy(b *testing.B) {
-	x := "0000000000000000000000000000000000000000000000000000000000000000"
-	y := "0000000000000000000000000000000000000000000000000000000000000000"
-	z := "000000000000000000000000000000000000000000000000000000000000000a"
-	opBenchmark(b, opCallDataCopy, x, y, z)
-}
-func BenchmarkReturnDataSize(b *testing.B) {
-	opBenchmark(b, opReturnDataSize)
-}
-func BenchmarkReturnDataCopy(b *testing.B) {
-	x := "0000000000000000000000000000000000000000000000000000000000000000"
-	y := "0000000000000000000000000000000000000000000000000000000000000000"
-	z := "0000000000000000000000000000000000000000000000000000000000000020"
-	opBenchmark(b, opReturnDataCopy, x, y, z)
-}
-func BenchmarkCodeSize(b *testing.B) {
-	opBenchmark(b, opCodeSize)
-}
-func BenchmarkCodeCopy(b *testing.B) {
-	x := "0000000000000000000000000000000000000000000000000000000000000000"
-	y := "0000000000000000000000000000000000000000000000000000000000000000"
-	z := "000000000000000000000000000000000000000000000000000000000000000a"
-	opBenchmark(b, opCodeCopy, x, y, z)
-}
-func BenchmarkBlake2b(b *testing.B) {
-	x := "0000000000000000000000000000000000000000000000000000000000002000"
-	y := "0000000000000000000000000000000000000000000000000000000000000000"
-	opBenchmark(b, opBlake2b, x, y)
-}
-func BenchmarkTimestamp(b *testing.B) {
-	opBenchmark(b, opTimestamp)
-}
-func BenchmarkHeight(b *testing.B) {
-	opBenchmark(b, opHeight)
-}
-func BenchmarkTokenId(b *testing.B) {
-	opBenchmark(b, opTokenID)
-}
-func BenchmarkAccountHeight(b *testing.B) {
-	opBenchmark(b, opAccountHeight)
-}
-func BenchmarkPrevHash(b *testing.B) {
-	opBenchmark(b, opAccountHash)
-}
-func BenchmarkFromHash(b *testing.B) {
-	opBenchmark(b, opFromHash)
-}
-func BenchmarkPop(b *testing.B) {
-	x := "0000000000000000000000000000000000000000000000000000000000000000"
-	opBenchmark(b, opPop, x)
-}
-func BenchmarkJump(b *testing.B) {
-	vm := &VM{}
-	addr, _ := types.HexToAddress("vite_098dfae02679a4ca05a4c8bf5dd00a8757f0c622bfccce7d68")
-
-	c := &contract{intPool: poolOfIntPools.get(), db: newNoDatabase()}
-	code, _ := hex.DecodeString("608060405234801561001057600080fd5b50610141806100206000396000f3fe608060405260043610610041576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff16806391a6cb4b14610046575b600080fd5b6100896004803603602081101561005c57600080fd5b81019080803574ffffffffffffffffffffffffffffffffffffffffff16906020019092919050505061008b565b005b8074ffffffffffffffffffffffffffffffffffffffffff164669ffffffffffffffffffff163460405160405180820390838587f1505050508074ffffffffffffffffffffffffffffffffffffffffff167faa65281f5df4b4bd3c71f2ba25905b907205fce0809a816ef8e04b4d496a85bb346040518082815260200191505060405180910390a25056fea165627a7a7230582036a610e43120f537e367e329d2835ba4369e3fe2755c8a32f675fe81f4a971db0029")
-	c.setCallCode(addr, code)
-	stack := newStack()
-	mem := newMemory()
-	mem.resize(1024)
-	dest, _ := new(big.Int).SetString("0000000000000000000000000000000000000000000000000000000000000010", 16)
-	pc := uint64(0)
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		stack.push(new(big.Int).Set(dest))
-		c.jumpdests = make(destinations)
-		_, err := opJump(&pc, vm, c, mem, stack)
-		if err != nil {
-			b.Fatalf("invalid jump destination")
-		}
-		for i := stack.len(); i > 0; i-- {
-			stack.pop()
-		}
-	}
-	poolOfIntPools.put(c.intPool)
-}
-func BenchmarkJumpi(b *testing.B) {
-	vm := &VM{}
-	addr, _ := types.HexToAddress("vite_098dfae02679a4ca05a4c8bf5dd00a8757f0c622bfccce7d68")
-	c := &contract{intPool: poolOfIntPools.get(), db: newNoDatabase()}
-	code, _ := hex.DecodeString("608060405234801561001057600080fd5b50610141806100206000396000f3fe608060405260043610610041576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff16806391a6cb4b14610046575b600080fd5b6100896004803603602081101561005c57600080fd5b81019080803574ffffffffffffffffffffffffffffffffffffffffff16906020019092919050505061008b565b005b8074ffffffffffffffffffffffffffffffffffffffffff164669ffffffffffffffffffff163460405160405180820390838587f1505050508074ffffffffffffffffffffffffffffffffffffffffff167faa65281f5df4b4bd3c71f2ba25905b907205fce0809a816ef8e04b4d496a85bb346040518082815260200191505060405180910390a25056fea165627a7a7230582036a610e43120f537e367e329d2835ba4369e3fe2755c8a32f675fe81f4a971db0029")
-	c.setCallCode(addr, code)
-	stack := newStack()
-	mem := newMemory()
-	mem.resize(1024)
-	condition, _ := new(big.Int).SetString("0000000000000000000000000000000000000000000000000000000000000001", 16)
-	dest, _ := new(big.Int).SetString("0000000000000000000000000000000000000000000000000000000000000010", 16)
-	pc := uint64(0)
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		stack.push(new(big.Int).Set(condition))
-		stack.push(new(big.Int).Set(dest))
-		c.jumpdests = make(destinations)
-		_, err := opJumpi(&pc, vm, c, mem, stack)
-		if err != nil {
-			b.Fatalf("invalid jump destination")
-		}
-		for i := stack.len(); i > 0; i-- {
-			stack.pop()
-		}
-	}
-	poolOfIntPools.put(c.intPool)
-}
-func BenchmarkPc(b *testing.B) {
-	opBenchmark(b, opPc)
-}
-func BenchmarkMSize(b *testing.B) {
-	opBenchmark(b, opMsize)
-}
-func BenchmarkJumpDest(b *testing.B) {
-	opBenchmark(b, opJumpdest)
-}
-func BenchmarkPush(b *testing.B) {
-	opBenchmark(b, makePush(32, 32))
-}
-func BenchmarkDup(b *testing.B) {
-	x := "0000000000000000000000000000000000000000000000000000000000000000"
-	opBenchmark(b, makeDup(1), x)
-}
-func BenchmarkSwap(b *testing.B) {
-	x := "0000000000000000000000000000000000000000000000000000000000000000"
-	y := "0000000000000000000000000000000000000000000000000000000000000000"
-	opBenchmark(b, makeSwap(1), x, y)
-}
-func BenchmarkReturn(b *testing.B) {
-	x := "0000000000000000000000000000000000000000000000000000000000000000"
-	y := "0000000000000000000000000000000000000000000000000000000000000020"
-	opBenchmark(b, opReturn, x, y)
-}
-func BenchmarkRevert(b *testing.B) {
-	x := "0000000000000000000000000000000000000000000000000000000000000000"
-	y := "0000000000000000000000000000000000000000000000000000000000000020"
-	opBenchmark(b, opRevert, x, y)
-}
-func BenchmarkMLoad(b *testing.B) {
-	x := "0000000000000000000000000000000000000000000000000000000000000000"
-	opBenchmark(b, opMload, x)
-}
-func BenchmarkLog0(b *testing.B) {
-	start := "0000000000000000000000000000000000000000000000000000000000000000"
-	size := "0000000000000000000000000000000000000000000000000000000000000020"
-	opBenchmark(b, makeLog(0), start, size)
-}
-func BenchmarkLog1(b *testing.B) {
-	start := "0000000000000000000000000000000000000000000000000000000000000000"
-	size := "0000000000000000000000000000000000000000000000000000000000000020"
-	topic1 := "0000000000000000000000000000000000000000000000000000000000000000"
-	opBenchmark(b, makeLog(1), start, size, topic1)
-}
-func BenchmarkLog2(b *testing.B) {
-	start := "0000000000000000000000000000000000000000000000000000000000000000"
-	size := "0000000000000000000000000000000000000000000000000000000000000020"
-	topic1 := "0000000000000000000000000000000000000000000000000000000000000000"
-	topic2 := "0000000000000000000000000000000000000000000000000000000000000000"
-	opBenchmark(b, makeLog(2), start, size, topic1, topic2)
-}
-func BenchmarkLog3(b *testing.B) {
-	start := "0000000000000000000000000000000000000000000000000000000000000000"
-	size := "0000000000000000000000000000000000000000000000000000000000000020"
-	topic1 := "0000000000000000000000000000000000000000000000000000000000000000"
-	topic2 := "0000000000000000000000000000000000000000000000000000000000000000"
-	topic3 := "0000000000000000000000000000000000000000000000000000000000000000"
-	opBenchmark(b, makeLog(3), start, size, topic1, topic2, topic3)
-}
-func BenchmarkLog4(b *testing.B) {
-	start := "0000000000000000000000000000000000000000000000000000000000000000"
-	size := "0000000000000000000000000000000000000000000000000000000000000020"
-	topic1 := "0000000000000000000000000000000000000000000000000000000000000000"
-	topic2 := "0000000000000000000000000000000000000000000000000000000000000000"
-	topic3 := "0000000000000000000000000000000000000000000000000000000000000000"
-	topic4 := "0000000000000000000000000000000000000000000000000000000000000000"
-	opBenchmark(b, makeLog(4), start, size, topic1, topic2, topic3, topic4)
-}
-func BenchmarkCall(b *testing.B) {
-	addr := "0000000000000000000000e41be57d38c796984952fad618a9bc91637329b500"
-	tokenID := "000000000000000000000000000000000000000000001949754100b9b491e7d3"
-	amount := "0000000000000000000000000000000000000000000000000000000000000010"
-	offset := "0000000000000000000000000000000000000000000000000000000000000000"
-	size := "0000000000000000000000000000000000000000000000000000000000000020"
-	opBenchmark(b, opCall, addr, tokenID, amount, offset, size)
-}
-func BenchmarkSstore(b *testing.B) {
-	vm := &VM{}
-	addr, _, _ := types.CreateAddress()
-	c := &contract{intPool: poolOfIntPools.get(), db: vm_db.NewGenesisVmDB(&addr)}
-	stack := newStack()
-	mem := newMemory()
-	mem.resize(64)
-	pc := uint64(0)
-	loc := big.NewInt(0)
-	value := big.NewInt(0x13)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		stack.push(value)
-		stack.push(loc)
-		opSStore(&pc, vm, c, mem, stack)
-	}
-	poolOfIntPools.put(c.intPool)
+	opBenchmark(b, opCallDataCopy)
 }

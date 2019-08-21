@@ -8,6 +8,7 @@ import (
 	"github.com/vitelabs/go-vite/vite"
 	"github.com/vitelabs/go-vite/vm/contracts/abi"
 	"github.com/vitelabs/go-vite/vm/quota"
+	"github.com/vitelabs/go-vite/vm/util"
 	"sort"
 )
 
@@ -68,15 +69,24 @@ func (p *PledgeApi) GetAgentCancelPledgeData(param AgentPledgeParam) ([]byte, er
 type QuotaAndTxNum struct {
 	QuotaPerSnapshotBlock string `json:"quotaPerSnapshotBlock"`
 	CurrentQuota          string `json:"current"`
-	CurrentTxNumPerSec    string `json:"utps"`
+	CurrentTxNumPerSec    string `json:"utps"` // Deprecated: use currentUt instead
+	CurrentUt             string `json:"currentUt"`
+	Utpe                  string `json:"utpe"`
+	PledgeAmount          string `json:"pledgeAmount"`
 }
 
 func (p *PledgeApi) GetPledgeQuota(addr types.Address) (*QuotaAndTxNum, error) {
-	q, err := p.chain.GetPledgeQuota(addr)
+	amount, q, err := p.chain.GetPledgeQuota(addr)
 	if err != nil {
 		return nil, err
 	}
-	return &QuotaAndTxNum{Uint64ToString(q.PledgeQuotaPerSnapshotBlock()), Uint64ToString(q.Current()), Uint64ToString(q.Current() / quota.QuotaForUtps)}, nil
+	return &QuotaAndTxNum{
+		Uint64ToString(q.PledgeQuotaPerSnapshotBlock()),
+		Uint64ToString(q.Current()),
+		Uint64ToString(q.Current() / quota.QuotaForUtps),
+		Float64ToString(float64(q.Current())/float64(quota.QuotaForUtps), 4),
+		Float64ToString(float64(q.PledgeQuotaPerSnapshotBlock()*util.OneRound)/float64(quota.QuotaForUtps), 4),
+		*bigIntToString(amount)}, nil
 }
 
 type PledgeInfoList struct {
@@ -199,12 +209,12 @@ func (p *PledgeApi) GetAgentPledgeInfo(params PledgeQueryParams) (*PledgeInfo, e
 }
 
 type QuotaCoefficientInfo struct {
-	Qc           string `json:"qc"`
-	GlobalQuota  string `json:"globalQuota"`
-	IsCongestion bool   `json:"isCongestion"`
+	Qc           *string `json:"qc"`
+	GlobalQuota  string  `json:"globalQuota"`
+	IsCongestion bool    `json:"isCongestion"`
 }
 
 func (p *PledgeApi) GetQuotaCoefficient() (*QuotaCoefficientInfo, error) {
 	qc, globalQuota, isCongestion := quota.CalcQc(p.chain, p.chain.GetLatestSnapshotBlock().Height)
-	return &QuotaCoefficientInfo{Float64ToString(qc, 18), Uint64ToString(globalQuota), isCongestion}, nil
+	return &QuotaCoefficientInfo{bigIntToString(qc), Uint64ToString(globalQuota), isCongestion}, nil
 }

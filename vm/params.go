@@ -7,10 +7,11 @@ import (
 )
 
 const (
+	retry   = true
+	noRetry = false
+
 	callDepth  uint16 = 512  // Maximum Depth of call.
 	stackLimit uint64 = 1024 // Maximum size of VM stack allowed.
-
-	getAccountBlockByHeightLimit uint64 = 256
 
 	maxCodeSize       = 24575 // Maximum bytecode to permit for a contract
 	offChainReaderGas = 1000000
@@ -19,6 +20,8 @@ const (
 	confirmTimeMax = 75
 	seedCountMin   = 0
 	seedCountMax   = 75
+
+	selfDestructBalanceListMax = 50
 )
 
 var (
