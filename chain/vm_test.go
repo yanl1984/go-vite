@@ -46,7 +46,7 @@ var (
 
 	mockConsensus = &test_tools.MockConsensus{
 		Cr: &test_tools.MockConsensusReader{
-			DayTimeIndex: test_tools.MockTimeIndex{
+			DayTimeIndex: &test_tools.MockTimeIndex{
 				GenesisTime: time.Unix(1558411200, 0),
 				Interval:    3 * time.Second,
 			},
@@ -381,7 +381,7 @@ func makeGetTokenInfoBlock(addr types.Address) *ledger.AccountBlock {
 
 func benchmarkSend(b *testing.B, sendBlock *ledger.AccountBlock) {
 	initVMEnvironment()
-	chainInstance, _, _ := SetUp(3, 1, 1)
+	chainInstance, _, _ := SetUp(4, 1, 1)
 	defer TearDown(chainInstance)
 	prevBlock, err := chainInstance.GetLatestAccountBlock(sendBlock.AccountAddress)
 	if err != nil {
@@ -427,8 +427,7 @@ func benchmarkReceive(b *testing.B, sendBlock *ledger.AccountBlock, receiveBlock
 			panic(err)
 		}
 		receiveBlock.AccountAddress = sendVMBlock.AccountBlock.ToAddress
-		pubKey := ed25519.PublicKey(randomByte32())
-		_, _, err = InsertSnapshotBlock(chainInstance, false, &pubKey)
+		_, _, err = InsertSnapshotBlock(chainInstance, false)
 		if err != nil {
 			panic(err)
 		}
@@ -550,7 +549,7 @@ func BenchmarkVMGetValue(b *testing.B) {
 	if err := chainInstance.InsertAccountBlock(vmBlock); err != nil {
 		panic(err)
 	}
-	snapshotBlock, _, err := InsertSnapshotBlock(chainInstance, true, nil)
+	snapshotBlock, _, err := InsertSnapshotBlock(chainInstance, true)
 	if err != nil {
 		panic(err)
 	}
@@ -652,7 +651,7 @@ func BenchmarkVMCheckConfirmTime(b *testing.B) {
 		panic(err)
 	}
 	for i := 0; i < 100; i++ {
-		snapshotBlock, _, err := InsertSnapshotBlock(chainInstance, true, nil)
+		snapshotBlock, _, err := InsertSnapshotBlock(chainInstance, true)
 		if err != nil {
 			panic(err)
 		}
@@ -762,7 +761,7 @@ func printBlockSize(name string, sendBlock, receiveBlock *ledger.AccountBlock) {
 	initVMEnvironment()
 	chainInstance, _, _ := SetUp(1, 100, 1)
 	defer TearDown(chainInstance)
-	sb := createSnapshotBlock(chainInstance, createSbOption{SnapshotAll: false, Seed: 1, PublicKey: ed25519.PublicKey(randomByte32())})
+	sb := createSnapshotBlock(chainInstance, createSbOption{SnapshotAll: false, Seed: 1})
 	ts := time.Now()
 	sb.Timestamp = &ts
 	sb.Hash = sb.ComputeHash()
@@ -770,6 +769,7 @@ func printBlockSize(name string, sendBlock, receiveBlock *ledger.AccountBlock) {
 	if err != nil {
 		panic(err)
 	}
+
 	prevBlock, err := chainInstance.GetLatestAccountBlock(receiveBlock.AccountAddress)
 	if err != nil {
 		panic(err)
@@ -797,17 +797,13 @@ func printBlockSize(name string, sendBlock, receiveBlock *ledger.AccountBlock) {
 
 func printSendBlock(name string, sendBlock *ledger.AccountBlock) {
 	bs, _ := sendBlock.Serialize()
-	netB := &message.NewAccountBlock{Block: sendBlock, TTL: 32}
-	netBs, _ := netB.Serialize()
-	fmt.Printf("blocksize: send %v block, chain block size %v, net block size %v\n", name, len(bs), len(netBs))
+	fmt.Printf("blocksize: send %v block, chain block size %v, net block size %v, data size %v\n", name, len(bs), len(bs)+5, len(sendBlock.Data))
 }
 
 func printReceiveBlock(name string, receiveBlock *ledger.AccountBlock) {
 	if len(receiveBlock.SendBlockList) == 0 {
 		bs, _ := receiveBlock.Serialize()
-		netB := &message.NewAccountBlock{Block: receiveBlock, TTL: 32}
-		netBs, _ := netB.Serialize()
-		fmt.Printf("blocksize: receive %v block without send block, chain block size %v, net block size %v\n", name, len(bs), len(netBs))
+		fmt.Printf("blocksize: receive %v block without send block, chain block size %v, net block size %v\n", name, len(bs), len(bs)+5)
 		return
 	}
 	for i, _ := range receiveBlock.SendBlockList {
@@ -817,7 +813,5 @@ func printReceiveBlock(name string, receiveBlock *ledger.AccountBlock) {
 		receiveBlock.SendBlockList[i].Hash, _ = types.HexToHash("8f85502f81fc544cb6700ad9ecc44f3eace065ae8e34d2269d7ff8d7c94ac920")
 	}
 	rsbs, _ := receiveBlock.Serialize()
-	netRb := &message.NewAccountBlock{Block: receiveBlock, TTL: 32}
-	netRbs, _ := netRb.Serialize()
-	fmt.Printf("blocksize: receive %v block with send block, chain block size %v, net block size %v\n", name, len(rsbs), len(netRbs))
+	fmt.Printf("blocksize: receive %v block with send block, chain block size %v, net block size %v\n", name, len(rsbs), len(rsbs)+5)
 }

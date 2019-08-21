@@ -1544,6 +1544,10 @@ func GetTimestampInt64(db vm_db.VmDb) int64 {
 	}
 }
 
+func GenesisSetTimestamp(db vm_db.VmDb, timestamp int64) {
+	setValueToDb(db, timestampKey, Uint64ToBytes(uint64(timestamp)))
+}
+
 func SetTimerTimestamp(db vm_db.VmDb, timestamp int64, reader util.ConsensusReader) error {
 	oldTime := GetTimerTimestamp(db)
 	if timestamp > oldTime {

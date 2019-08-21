@@ -35,10 +35,14 @@ var GenesisJson = `{
 	"DexFork":{
       "Height":2,
       "Version":2
-    }
-	"NewFork":{
+    },
+	"StemFork":{
       "Height":3,
       "Version":3
+    },
+	"NewFork":{
+      "Height":4,
+      "Version":4
     }
   },
   "ConsensusGroupInfo": {
@@ -54,7 +58,7 @@ var GenesisJson = `{
         "CountingTokenId":"tti_5649544520544f4b454e6e40",
         "RegisterConditionId":1,
         "RegisterConditionParam":{
-          "PledgeAmount": 100000000000000000000000,
+          "PledgeAmount": 500000000000000000000000,
           "PledgeHeight": 1,
           "PledgeToken": "tti_5649544520544f4b454e6e40"
         },
@@ -75,7 +79,7 @@ var GenesisJson = `{
         "CountingTokenId":"tti_5649544520544f4b454e6e40",
         "RegisterConditionId":1,
         "RegisterConditionParam":{
-          "PledgeAmount": 100000000000000000000000,
+          "PledgeAmount": 500000000000000000000000,
           "PledgeHeight": 1,
           "PledgeToken": "tti_5649544520544f4b454e6e40"
         },
@@ -89,11 +93,11 @@ var GenesisJson = `{
 
     "RegistrationInfoMap":{
       "00000000000000000001":{
-        "s1":{
+        "vite super snapshot producer for test 01":{
           "NodeAddr":"vite_360232b0378111b122685a15e612143dc9a89cfa7e803f4b5a",
-          "PledgeAddr":"vite_360232b0378111b122685a15e612143dc9a89cfa7e803f4b5a",
-          "Amount":100000000000000000000000,
-          "WithdrawHeight":7776000,
+          "PledgeAddr":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+          "Amount":500000000000000000000000,
+          "WithdrawHeight":1,
           "RewardTime":1,
           "CancelTime":0,
           "HisAddrList":["vite_360232b0378111b122685a15e612143dc9a89cfa7e803f4b5a"]
@@ -108,10 +112,27 @@ var GenesisJson = `{
         "TokenSymbol":"VITE",
         "TotalSupply":1000000000000000000000000000,
         "Decimals":18,
+        "Owner":"vite_0000000000000000000000000000000000000004d28108e76b",
+        "MaxSupply":115792089237316195423570985008687907853269984665640564039457584007913129639935,
+        "OwnerBurnOnly":false,
+        "IsReIssuable":true
+      },
+      "tti_045e6ca837c143cd477b32f3":{
+        "TokenName":"Test Token",
+        "TokenSymbol":"TEST",
+        "TotalSupply":1000000000000000000000000000,
+        "Decimals":18,
         "Owner":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
-        "PledgeAmount":0,
-        "PledgeAddr":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
-        "WithdrawHeight":0,
+        "MaxSupply":115792089237316195423570985008687907853269984665640564039457584007913129639935,
+        "OwnerBurnOnly":false,
+        "IsReIssuable":true
+      },
+      "tti_340b335ce06aa2a0a6db3c0a":{
+        "TokenName":"ViteX Token",
+        "TokenSymbol":"ViteX",
+        "TotalSupply":100000000000000000000000000,
+        "Decimals":18,
+        "Owner":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
         "MaxSupply":115792089237316195423570985008687907853269984665640564039457584007913129639935,
         "OwnerBurnOnly":false,
         "IsReIssuable":true
@@ -132,22 +153,22 @@ var GenesisJson = `{
       "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a": [
         {
           "Amount": 1000000000000000000000,
-          "WithdrawHeight": 259200,
+          "WithdrawHeight": 1,
           "BeneficialAddr": "vite_360232b0378111b122685a15e612143dc9a89cfa7e803f4b5a"
         },
         {
           "Amount": 1000000000000000000000,
-          "WithdrawHeight": 259200,
+          "WithdrawHeight": 1,
           "BeneficialAddr": "vite_ce18b99b46c70c8e6bf34177d0c5db956a8c3ea7040a1c1e25"
         },
         {
           "Amount": 1000000000000000000000,
-          "WithdrawHeight": 259200,
+          "WithdrawHeight": 1,
           "BeneficialAddr": "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a"
         },
         {
           "Amount": 1000000000000000000000,
-          "WithdrawHeight": 259200,
+          "WithdrawHeight": 1,
           "BeneficialAddr": "vite_56fd05b23ff26cd7b0a40957fb77bde60c9fd6ebc35f809c23"
         },
 		{
@@ -169,10 +190,13 @@ var GenesisJson = `{
   },
   "AccountBalanceMap": {
     "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a": {
-      "tti_5649544520544f4b454e6e40":99996000000000000000000000
+      "tti_5649544520544f4b454e6e40":99996000000000000000000000,
+      "tti_045e6ca837c143cd477b32f3":1000000000000000000000000,
+      "tti_340b335ce06aa2a0a6db3c0a":100000000000000000000000000
     },
     "vite_56fd05b23ff26cd7b0a40957fb77bde60c9fd6ebc35f809c23": {
-      "tti_5649544520544f4b454e6e40":100000000000000000000000000
+      "tti_5649544520544f4b454e6e40":100000000000000000000000000,
+      "tti_045e6ca837c143cd477b32f3":1000000000000000000000000
     },
     "vite_360232b0378111b122685a15e612143dc9a89cfa7e803f4b5a": {
       "tti_5649544520544f4b454e6e40":600000000000000000000000000
@@ -182,7 +206,199 @@ var GenesisJson = `{
     },
     "vite_847e1672c9a775ca0f3c3a2d3bf389ca466e5501cbecdb7107": {
       "tti_5649544520544f4b454e6e40":100000000000000000000000000
+    },
+    "vite_0000000000000000000000000000000000000003f6af7459b9": {
+      "tti_5649544520544f4b454e6e40":4000000000000000000000
+    },
+	"vite_0000000000000000000000000000000000000004d28108e76b": {
+      "tti_5649544520544f4b454e6e40":500000000000000000000000
     }
+  },
+  "DexFundInfo": {
+      "Owner":"vite_56fd05b23ff26cd7b0a40957fb77bde60c9fd6ebc35f809c23",
+      "Timer":"vite_56fd05b23ff26cd7b0a40957fb77bde60c9fd6ebc35f809c23",
+      "Trigger":"vite_56fd05b23ff26cd7b0a40957fb77bde60c9fd6ebc35f809c23",
+      "Maintainer":"vite_56fd05b23ff26cd7b0a40957fb77bde60c9fd6ebc35f809c23",
+      "MakerMineProxy":"vite_56fd05b23ff26cd7b0a40957fb77bde60c9fd6ebc35f809c23",
+      "NotifiedTimestamp":1563187466,
+      "EndorseVxAmount":100000000000000000000000000,
+      "AccountBalanceMap": {
+        "tti_5649544520544f4b454e6e40":100000000000000000000000000,
+        "tti_2736f320d7ed1c2871af1d9d":100000000000000000000000000,
+        "tti_045e6ca837c143cd477b32f3":100000000000000000000000000
+      },
+	  "Tokens": [
+	    {
+	      "TokenId":"tti_045e6ca837c143cd477b32f3",
+	      "Decimals":18,
+	      "Symbol":"TEST",
+	      "Index":1,
+	      "Owner":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+	      "QuoteTokenType":0
+	  	},
+	    {
+	      "TokenId":"tti_4d3a69b12962332e8df52701",
+	      "Decimals":18,
+	      "Symbol":"VCP",
+	      "Index":1,
+	      "Owner":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+	      "QuoteTokenType":0
+	  	},
+	    {
+	      "TokenId":"tti_2736f320d7ed1c2871af1d9d",
+	      "Decimals":18,
+	      "Symbol":"VTT",
+	      "Index":1,
+	      "Owner":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+	      "QuoteTokenType":0
+	  	},
+	    {
+	      "TokenId":"tti_5649544520544f4b454e6e40",
+	      "Decimals":18,
+	      "Symbol":"VITE",
+	      "Index":1,
+	      "Owner":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+	      "QuoteTokenType":1
+	  	}
+	  ],
+	  "PendingTransferTokens": [
+	    {
+	      "TokenId":"tti_060e61a9f5222c0fcc0c7ff5",
+	      "Origin":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+	      "New":"vite_56fd05b23ff26cd7b0a40957fb77bde60c9fd6ebc35f809c23"
+	  	}
+	  ],
+	  "Markets": [
+	    {
+	      "MarketId":1,
+	      "MarketSymbol":"TEST_001-VITE",
+	      "TradeToken":"tti_045e6ca837c143cd477b32f3",
+	      "QuoteToken":"tti_5649544520544f4b454e6e40",
+	      "QuoteTokenType":1,
+	      "TradeTokenDecimals":18,
+	      "QuoteTokenDecimals":18,
+	      "TakerBrokerFeeRate":100,
+	      "MakerBrokerFeeRate":150,
+	      "AllowMine":true,
+	      "Valid":true,
+	      "Owner":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+	      "Creator":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+	      "Stopped":false,
+	      "Timestamp":1563187466
+	  	},
+	    {
+	      "MarketId":2,
+	      "MarketSymbol":"VCP_001-VITE",
+	      "TradeToken":"tti_4d3a69b12962332e8df52701",
+	      "QuoteToken":"tti_5649544520544f4b454e6e40",
+	      "QuoteTokenType":1,
+	      "TradeTokenDecimals":18,
+	      "QuoteTokenDecimals":18,
+	      "TakerBrokerFeeRate":100,
+	      "MakerBrokerFeeRate":150,
+	      "AllowMine":true,
+	      "Valid":true,
+	      "Owner":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+	      "Creator":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+	      "Stopped":false,
+	      "Timestamp":1563187466
+	  	}
+	  ],
+      "UserFunds": [
+		{
+			"Address":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+			"Accounts": [
+				{
+					"Token":"tti_045e6ca837c143cd477b32f3",
+					"Available":1000000000000000000000000,
+					"Locked":1000000000000000000000000
+				},
+				{
+					"Token":"tti_5649544520544f4b454e6e40",
+					"Available":1000000000000000000000000,
+					"Locked":1000000000000000000000000
+				}
+			]
+		},
+		{
+			"Address":"vite_56fd05b23ff26cd7b0a40957fb77bde60c9fd6ebc35f809c23",
+			"Accounts": [
+				{
+					"Token":"tti_045e6ca837c143cd477b32f3",
+					"Available":1000000000000000000000000,
+					"Locked":1000000000000000000000000
+				},
+				{
+					"Token":"tti_5649544520544f4b454e6e40",
+					"Available":1000000000000000000000000,
+					"Locked":1000000000000000000000000
+				}
+			]
+		}
+	  ],
+      "PledgeVxs": {
+			"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a":10000000000000000000000,
+			"vite_56fd05b23ff26cd7b0a40957fb77bde60c9fd6ebc35f809c23":10000000000000000000000
+      },
+      "PledgeVips": [
+		"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a"
+	  ],
+      "MakerMinedVxs": {
+		   "1":1000000000000000000000000
+      },
+      "Inviters": {
+		   "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a":123
+      },
+      "MarketAgents": {
+		   "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a":"vite_56fd05b23ff26cd7b0a40957fb77bde60c9fd6ebc35f809c23"
+      }
+  },
+  "DexTradeInfo": {
+      "Timestamp":1563187466,
+      "Markets": [
+         {
+	      "MarketId":1,
+	      "MarketSymbol":"TEST_001-VITE",
+	      "TradeToken":"tti_045e6ca837c143cd477b32f3",
+	      "QuoteToken":"tti_5649544520544f4b454e6e40",
+	      "QuoteTokenType":1,
+	      "TradeTokenDecimals":18,
+	      "QuoteTokenDecimals":18,
+	      "TakerBrokerFeeRate":100,
+	      "MakerBrokerFeeRate":150,
+	      "AllowMine":true,
+	      "Valid":true,
+	      "Owner":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+	      "Creator":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+	      "Stopped":false,
+	      "Timestamp":1563187466
+	  	}
+      ],
+      "Orders": [
+		{
+     		"Id": "AAABAP/////h//////8AXSoSsgAADw==",
+            "Address": "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+            "MarketId": 1,
+            "Side": false,
+            "Type": 0,
+            "Price": "30",
+            "TakerFeeRate": 200,
+            "MakerFeeRate": 200,
+            "TakerBrokerFeeRate": 150,
+            "MakerBrokerFeeRate": 100,
+            "Quantity": 7651481276870000000000,
+            "Amount": 229544438306100000000000,
+            "LockedBuyFee": 803405534071350000000,
+            "Status": 1,
+            "ExecutedQuantity": 789743262420000000000,
+            "ExecutedAmount": 23692297872600000000000,
+            "ExecutedBaseFee": 47384595745200000000,
+            "ExecutedBrokerFee": 23692297872600000000,
+            "Timestamp": 1563038386,
+            "Agent": "vite_56fd05b23ff26cd7b0a40957fb77bde60c9fd6ebc35f809c23",
+            "SendHash": "ba5520be6bbc1b8a77ab83af14f2a14c86a6abbcf380d314b4c9d8e440b5ff3b"
+         }
+      ]
   }
 }
 `
@@ -201,7 +417,12 @@ func NewChainInstance(dirName string, clear bool) (*chain, error) {
 	}
 	genesisConfig := &config.Genesis{}
 
-	json.Unmarshal([]byte(GenesisJson), genesisConfig)
+	err := json.Unmarshal([]byte(GenesisJson), genesisConfig)
+	if err != nil {
+		panic(err)
+	}
+
+	fork.SetForkPoints(genesisConfig.ForkPoints)
 
 	chainInstance := NewChain(dataDir, &config.Chain{}, genesisConfig)
 
@@ -209,7 +430,16 @@ func NewChainInstance(dirName string, clear bool) (*chain, error) {
 		return nil, err
 	}
 	// mock consensus
-	chainInstance.SetConsensus(&test_tools.MockConsensus{})
+	chainInstance.SetConsensus(&test_tools.MockConsensus{Cr: &test_tools.MockConsensusReader{
+		DayTimeIndex: &test_tools.MockTimeIndex{
+			GenesisTime: *chainInstance.genesisSnapshotBlock.Timestamp,
+			Interval:    24 * 3600 * time.Second,
+		},
+		PeriodTimeIndex: &test_tools.MockTimeIndex{
+			GenesisTime: *chainInstance.genesisSnapshotBlock.Timestamp,
+			Interval:    75 * time.Second,
+		},
+	}})
 
 	chainInstance.Start()
 	return chainInstance, nil
@@ -226,6 +456,10 @@ func SetUp(accountNum, txCount, snapshotPerBlockNum int) (*chain, map[types.Addr
 		fork.SetForkPoints(&config.ForkPoints{
 			SeedFork: &config.ForkPoint{
 				Version: 1,
+				Height:  10000000,
+			},
+			DexFork: &config.ForkPoint{
+				Version: 2,
 				Height:  10000000,
 			},
 		})

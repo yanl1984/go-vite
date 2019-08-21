@@ -207,12 +207,20 @@ func (c *chain) Destroy() error {
 	}
 	c.log.Info("Close syncCache", "method", "Close")
 
+	if err := c.metaDB.Close(); err != nil {
+		cErr := errors.New(fmt.Sprintf("c.metaDB.Close failed, error is %s", err))
+		c.log.Error(cErr.Error(), "method", "Close")
+		return cErr
+	}
+	c.log.Info("Close metaDB", "method", "Close")
+
 	c.flusher = nil
 	c.cache = nil
 	c.stateDB = nil
 	c.indexDB = nil
 	c.blockDB = nil
 	c.syncCache = nil
+	c.metaDB = nil
 
 	c.log.Info("Complete destruction", "method", "Close")
 

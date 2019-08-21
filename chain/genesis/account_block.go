@@ -1,11 +1,16 @@
 package chain_genesis
 
 import (
+	"encoding/base64"
 	"encoding/hex"
+	"fmt"
 	"github.com/vitelabs/go-vite/vm/contracts/abi"
+	"github.com/vitelabs/go-vite/vm/contracts/dex"
+	dexproto "github.com/vitelabs/go-vite/vm/contracts/dex/proto"
 	"github.com/vitelabs/go-vite/vm/util"
 	"math/big"
 	"sort"
+	"strconv"
 
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/config"
@@ -20,6 +25,8 @@ func NewGenesisAccountBlocks(cfg *config.Genesis) []*vm_db.VmAccountBlock {
 	list, addrSet = newGenesisMintageContractBlocks(cfg, list, addrSet)
 	list, addrSet = newGenesisPledgeContractBlocks(cfg, list, addrSet)
 	list = newGenesisNormalAccountBlocks(cfg, list, addrSet)
+	list, addrSet = newDexFundContractBlocks(cfg, list, addrSet)
+	list, addrSet = newDexTradeContractBlocks(cfg, list, addrSet)
 	return list
 }
 
@@ -275,6 +282,178 @@ func newGenesisNormalAccountBlocks(cfg *config.Genesis, list []*vm_db.VmAccountB
 	}
 
 	return list
+}
+
+func newDexFundContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock, addrSet map[types.Address]interface{}) ([]*vm_db.VmAccountBlock, map[types.Address]interface{}) {
+	if cfg.DexFundInfo != nil {
+		contractAddr := types.AddressDexFund
+		block := ledger.AccountBlock{
+			BlockType:      ledger.BlockTypeGenesisReceive,
+			Height:         1,
+			AccountAddress: contractAddr,
+			Amount:         big.NewInt(0),
+			Fee:            big.NewInt(0),
+		}
+		vmdb := vm_db.NewGenesisVmDB(&contractAddr)
+		dex.SetOwner(vmdb, cfg.DexFundInfo.Owner)
+		dex.SetTimerAddress(vmdb, cfg.DexFundInfo.Timer)
+		dex.SetTriggerAddress(vmdb, cfg.DexFundInfo.Trigger)
+		dex.SaveMaintainer(vmdb, cfg.DexFundInfo.Maintainer)
+		dex.SaveMakerMineProxy(vmdb, cfg.DexFundInfo.MakerMineProxy)
+		dex.GenesisSetTimestamp(vmdb, cfg.DexFundInfo.NotifiedTimestamp)
+		dex.SaveVxMinePool(vmdb, cfg.DexFundInfo.EndorseVxAmount)
+		for tk, amt := range cfg.DexFundInfo.AccountBalanceMap {
+			vmdb.SetBalance(&tk, amt)
+		}
+		for _, tk := range cfg.DexFundInfo.Tokens {
+			tokenInfo := &dex.TokenInfo{}
+			tokenInfo.TokenId = tk.TokenId.Bytes()
+			tokenInfo.Decimals = tk.Decimals
+			tokenInfo.Symbol = tk.Symbol
+			tokenInfo.Index = tk.Index
+			tokenInfo.Owner = tk.Owner.Bytes()
+			tokenInfo.QuoteTokenType = tk.QuoteTokenType
+			tokenInfo.TokenId = tk.TokenId.Bytes()
+			dex.SaveTokenInfo(vmdb, tk.TokenId, tokenInfo)
+		}
+		pendings := &dex.PendingTransferTokenOwners{}
+		for _, ttk := range cfg.DexFundInfo.PendingTransferTokens {
+			action := &dexproto.TransferTokenOwnerAction{}
+			action.Token = ttk.TokenId.Bytes()
+			action.Origin = ttk.Origin.Bytes()
+			action.New = ttk.New.Bytes()
+			pendings.PendingActions = append(pendings.PendingActions, action)
+		}
+		if len(cfg.DexFundInfo.Markets) > 0 {
+			for _, mkif := range cfg.DexFundInfo.Markets {
+				mkInfo := &dex.MarketInfo{}
+				mkInfo.MarketId = mkif.MarketId
+				mkInfo.MarketSymbol = mkif.MarketSymbol
+				mkInfo.TradeToken = mkif.TradeToken.Bytes()
+				mkInfo.QuoteToken = mkif.QuoteToken.Bytes()
+				mkInfo.QuoteTokenType = mkif.QuoteTokenType
+				mkInfo.TradeTokenDecimals = mkif.TradeTokenDecimals
+				mkInfo.QuoteTokenDecimals = mkif.QuoteTokenDecimals
+				mkInfo.TakerBrokerFeeRate = mkif.TakerBrokerFeeRate
+				mkInfo.MakerBrokerFeeRate = mkif.MakerBrokerFeeRate
+				mkInfo.AllowMine = mkif.AllowMine
+				mkInfo.Valid = mkif.Valid
+				mkInfo.Owner = mkif.Owner.Bytes()
+				mkInfo.Creator = mkif.Creator.Bytes()
+				mkInfo.Stopped = mkif.Stopped
+				mkInfo.Timestamp = mkif.Timestamp
+				dex.SaveMarketInfo(vmdb, mkInfo, mkif.TradeToken, mkif.QuoteToken)
+			}
+		}
+		dex.SavePendingTransferTokenOwners(vmdb, pendings)
+		for _, fund := range cfg.DexFundInfo.UserFunds {
+			userFund := &dex.UserFund{}
+			userFund.Address = fund.Address.Bytes()
+			for _, acc := range fund.Accounts {
+				userAcc := &dexproto.Account{}
+				userAcc.Token = acc.Token.Bytes()
+				userAcc.Available = acc.Available.Bytes()
+				userAcc.Locked = acc.Locked.Bytes()
+				userFund.Accounts = append(userFund.Accounts, userAcc)
+			}
+			dex.SaveUserFund(vmdb, fund.Address, userFund)
+		}
+		for addr, amount := range cfg.DexFundInfo.PledgeVxs {
+			dex.SavePledgeForVx(vmdb, addr, amount)
+		}
+		for _, addr := range cfg.DexFundInfo.PledgeVips {
+			pledgeInfo := &dex.PledgeVip{}
+			pledgeInfo.PledgeTimes = 1
+			pledgeInfo.Timestamp = cfg.DexFundInfo.NotifiedTimestamp
+			dex.SavePledgeForVip(vmdb, addr, pledgeInfo)
+		}
+		for pid, amt := range cfg.DexFundInfo.MakerMinedVxs {
+			period, _ := strconv.Atoi(pid)
+			dex.SaveMakerProxyAmountByPeriodId(vmdb, uint64(period), amt)
+		}
+		for addr, code := range cfg.DexFundInfo.Inviters {
+			dex.SaveInviterByCode(vmdb, addr, code)
+			dex.SaveCodeByInviter(vmdb, addr, code)
+		}
+		for principal, agent := range cfg.DexFundInfo.MarketAgents {
+			vmdb.SetValue(dex.GetGrantedMarketToAgentKey(principal, 1), agent.Bytes())
+		}
+		block.Hash = block.ComputeHash()
+		fmt.Printf("fund block.hash %s\n", block.Hash.String())
+		list = append(list, &vm_db.VmAccountBlock{&block, vmdb})
+		addrSet[contractAddr] = struct{}{}
+	}
+	return list, addrSet
+}
+
+func newDexTradeContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock, addrSet map[types.Address]interface{}) ([]*vm_db.VmAccountBlock, map[types.Address]interface{}) {
+	if cfg.DexTradeInfo != nil {
+		contractAddr := types.AddressDexTrade
+		block := ledger.AccountBlock{
+			BlockType:      ledger.BlockTypeGenesisReceive,
+			Height:         1,
+			AccountAddress: contractAddr,
+			Amount:         big.NewInt(0),
+			Fee:            big.NewInt(0),
+		}
+		vmdb := vm_db.NewGenesisVmDB(&contractAddr)
+		dex.SetTradeTimestamp(vmdb, cfg.DexTradeInfo.Timestamp)
+		for _, mkif := range cfg.DexTradeInfo.Markets {
+			mkInfo := &dex.MarketInfo{}
+			mkInfo.MarketId = mkif.MarketId
+			mkInfo.MarketSymbol = mkif.MarketSymbol
+			mkInfo.TradeToken = mkif.TradeToken.Bytes()
+			mkInfo.QuoteToken = mkif.QuoteToken.Bytes()
+			mkInfo.QuoteTokenType = mkif.QuoteTokenType
+			mkInfo.TradeTokenDecimals = mkif.TradeTokenDecimals
+			mkInfo.QuoteTokenDecimals = mkif.QuoteTokenDecimals
+			mkInfo.TakerBrokerFeeRate = mkif.TakerBrokerFeeRate
+			mkInfo.MakerBrokerFeeRate = mkif.MakerBrokerFeeRate
+			mkInfo.AllowMine = mkif.AllowMine
+			mkInfo.Valid = mkif.Valid
+			mkInfo.Owner = mkif.Owner.Bytes()
+			mkInfo.Creator = mkif.Creator.Bytes()
+			mkInfo.Stopped = mkif.Stopped
+			mkInfo.Timestamp = mkif.Timestamp
+			dex.SaveMarketInfoById(vmdb, mkInfo)
+		}
+		for _, od := range cfg.DexTradeInfo.Orders {
+			order := &dex.Order{}
+			order.Id, _ = base64.StdEncoding.DecodeString(od.Id)
+			order.Address = od.Address.Bytes()
+			order.MarketId = od.MarketId
+			order.Side = od.Side
+			order.Type = od.Type
+			order.Price = dex.PriceToBytes(od.Price)
+			order.TakerFeeRate = od.TakerFeeRate
+			order.MakerFeeRate = od.MakerFeeRate
+			order.TakerBrokerFeeRate = od.TakerBrokerFeeRate
+			order.MakerBrokerFeeRate = od.MakerBrokerFeeRate
+			order.Quantity = od.Quantity.Bytes()
+			order.Amount = od.Amount.Bytes()
+			order.LockedBuyFee = od.LockedBuyFee.Bytes()
+			order.Status = od.Status
+			order.ExecutedQuantity = od.ExecutedQuantity.Bytes()
+			order.ExecutedAmount = od.ExecutedAmount.Bytes()
+			order.ExecutedBaseFee = od.ExecutedBaseFee.Bytes()
+			order.ExecutedBrokerFee = od.ExecutedBrokerFee.Bytes()
+			order.Timestamp = cfg.DexTradeInfo.Timestamp
+			order.Agent = od.Agent.Bytes()
+			order.SendHash = od.SendHash.Bytes()
+			orderId := order.Id
+			if data, err := order.SerializeCompact(); err != nil {
+				panic(err)
+			} else {
+				vmdb.SetValue(orderId, data)
+			}
+			dex.SaveHashMapOrderId(vmdb, order.SendHash, orderId)
+		}
+		block.Hash = block.ComputeHash()
+		fmt.Printf("trade block.hash %s\n", block.Hash.String())
+		list = append(list, &vm_db.VmAccountBlock{&block, vmdb})
+		addrSet[contractAddr] = struct{}{}
+	}
+	return list, addrSet
 }
 
 func dealWithError(err error) {

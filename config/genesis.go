@@ -13,6 +13,8 @@ type Genesis struct {
 	MintageInfo           *MintageContractInfo
 	PledgeInfo            *PledgeContractInfo
 	AccountBalanceMap     map[string]map[string]*big.Int // address - tokenId - balanceAmount
+	DexFundInfo           *DexFundContractInfo
+	DexTradeInfo          *DexTradeContractInfo
 }
 
 func IsCompleteGenesisConfig(genesisConfig *Genesis) bool {
@@ -113,4 +115,92 @@ type PledgeInfo struct {
 	AgentAddr      types.Address
 	Bid            uint8
 	Agent          bool
+}
+
+type DexFundContractInfo struct {
+	Owner                 types.Address
+	Timer                 types.Address
+	Trigger               types.Address
+	Maintainer            types.Address
+	MakerMineProxy        types.Address
+	NotifiedTimestamp     int64
+	EndorseVxAmount       *big.Int
+	AccountBalanceMap     map[types.TokenTypeId]*big.Int
+	Tokens                []DexTokenInfo
+	PendingTransferTokens []DexPendingTransferToken
+	Markets               []DexMarketInfo
+	UserFunds             []DexUserFund
+	PledgeVxs             map[types.Address]*big.Int
+	PledgeVips            []types.Address
+	MakerMinedVxs         map[string]*big.Int
+	Inviters              map[types.Address]uint32
+	MarketAgents          map[types.Address]types.Address
+}
+type DexTokenInfo struct {
+	TokenId        types.TokenTypeId
+	Decimals       int32
+	Symbol         string
+	Index          int32
+	Owner          types.Address
+	QuoteTokenType int32
+}
+type DexPendingTransferToken struct {
+	TokenId types.TokenTypeId
+	Origin  types.Address
+	New     types.Address
+}
+type DexMarketInfo struct {
+	MarketId           int32
+	MarketSymbol       string
+	TradeToken         types.TokenTypeId
+	QuoteToken         types.TokenTypeId
+	QuoteTokenType     int32
+	TradeTokenDecimals int32
+	QuoteTokenDecimals int32
+	TakerBrokerFeeRate int32
+	MakerBrokerFeeRate int32
+	AllowMine          bool
+	Valid              bool
+	Owner              types.Address
+	Creator            types.Address
+	Stopped            bool
+	Timestamp          int64
+}
+type DexUserFund struct {
+	Address  types.Address
+	Accounts []DexFundUserAcc
+}
+type DexFundUserAcc struct {
+	Token     types.TokenTypeId
+	Available *big.Int
+	Locked    *big.Int
+}
+
+type DexTradeContractInfo struct {
+	Markets   []DexMarketInfo
+	Orders    []DexTradeOrder
+	Timestamp int64
+}
+type DexTradeOrder struct {
+	Id                 string
+	Address            types.Address
+	MarketId           int32
+	Side               bool
+	Type               int32
+	Price              string
+	TakerFeeRate       int32
+	MakerFeeRate       int32
+	TakerBrokerFeeRate int32
+	MakerBrokerFeeRate int32
+	Quantity           *big.Int
+	Amount             *big.Int
+	LockedBuyFee       *big.Int
+	Status             int32
+	ExecutedQuantity   *big.Int
+	ExecutedAmount     *big.Int
+	ExecutedBaseFee    *big.Int
+	ExecutedBrokerFee  *big.Int
+	Timestamp          int64
+	Agent              types.Address
+	SendHash           types.Hash
 }
