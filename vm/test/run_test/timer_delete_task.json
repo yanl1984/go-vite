@@ -56,8 +56,8 @@
       }
     },
     "blockData":"363e67b744381ab6610817cd43a9d2a28b00228908936aa3e54eaab1ee32ef67f48002780000000000000000000000ab24ef68b84e642c0ddca06beec81c9acb1977bb01",
-    "quota": 1,
-    "quotaUsed": 1
+    "quota": 8400,
+    "quotaUsed": 8400
   },
   "receive_fail_id_not_exists":{
     "sbHeight": 300,

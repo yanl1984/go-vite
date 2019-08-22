@@ -61,8 +61,8 @@
       "tti_5649544520544f4b454e6e40": "3635c9adc5dea00000"
     },
     "blockData": "c422cfb50000000000000000000000ab24ef68b84e642c0ddca06beec81c9acb1977bb00",
-    "quota": 1,
-    "quotaUsed": 1
+    "quota": 94500,
+    "quotaUsed": 94500
   },
   "update_owner_receive_fail_invalid_owner1":{
     "sbHeight": 300,

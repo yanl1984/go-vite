@@ -482,9 +482,9 @@ func newDexAgentGasTable() GasTable {
 func newTimerGasTable() GasTable {
 	gt := newDexAgentGasTable()
 	gt.SelfDestructGas = 7500
-	gt.TimerNewTaskGas = 1
-	gt.TimerDeleteTaskGas = 1
-	gt.TimerRechargeGas = 1
-	gt.TimerUpdateOwnerGas = 1
+	gt.TimerNewTaskGas = 178500
+	gt.TimerDeleteTaskGas = 8400
+	gt.TimerRechargeGas = 94500
+	gt.TimerUpdateOwnerGas = 94500
 	return gt
 }

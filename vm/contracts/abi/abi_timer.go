@@ -16,7 +16,6 @@ const (
 		{"type":"function","name":"DeleteTask", "inputs":[{"name":"taskId","type":"bytes32"},{"name":"refundAddress","type":"address"}]},
 		{"type":"function","name":"Recharge", "inputs":[{"name":"taskId","type":"bytes32"}]},
 		{"type":"function","name":"UpdateOwner", "inputs":[{"name":"owner","type":"address"}]},
-		{"type":"variable","name":"test", "inputs":[{"name":"taskId","type":"bytes32"}]},
 		{"type":"variable","name":"taskInfo","inputs":[{"name":"taskId","type":"bytes32"},{"name":"taskType","type":"uint64"},{"name":"window","type":"uint64"},{"name":"gap","type":"uint64"},{"name":"endCondition","type":"uint64"},{"name":"receiverAddress","type":"address"},{"name":"refundAddress","type":"address"}]},
 		{"type":"variable","name":"taskTriggerInfo","inputs":[{"name":"balance","type":"uint256"},{"name":"triggerTimes","type":"uint64"},{"name":"next","type":"uint64"},{"name":"delete","type":"uint64"}]},
 		{"type":"variable","name":"lastTriggerInfo","inputs":[{"name":"timestamp","type":"uint64"},{"name":"height","type":"uint64"}]}
