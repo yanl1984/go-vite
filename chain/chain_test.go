@@ -212,6 +212,9 @@ var GenesisJson = `{
     },
 	"vite_0000000000000000000000000000000000000004d28108e76b": {
       "tti_5649544520544f4b454e6e40":500000000000000000000000
+    },
+	"vite_0000000000000000000000000000000000000008e745d12403": {
+      "tti_5649544520544f4b454e6e40":100000000000000000000
     }
   },
   "DexFundInfo": {
@@ -399,6 +402,40 @@ var GenesisJson = `{
             "SendHash": "ba5520be6bbc1b8a77ab83af14f2a14c86a6abbcf380d314b4c9d8e440b5ff3b"
          }
       ]
+  },
+  "TimerInfo":{
+	"TaskInfoList":[
+		{
+			"TaskId":"07977814ed1208d80ec4ce837953f258845bd798644a345bc99c58e4b2b34f82",          
+			"TaskType":2122,      
+			"Window":3600,        
+			"Gap":3600,           
+			"EndCondition":1,  
+			"ReceiverAddress":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a", 
+			"RefundAddress":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",   
+			"Owner":"vite_56fd05b23ff26cd7b0a40957fb77bde60c9fd6ebc35f809c23",           
+			"Index":1,         
+			"Balance":10000000000000000000,         
+			"TriggerTimes":0,  
+			"Next":1558411200,          
+			"Delete":0        
+		},
+		{
+			"TaskId":"b12a756febe01acc4e20aef9ba018fe4c9c752d48e506f20583498a458fad3c7",          
+			"TaskType":2122,      
+			"Window":3600,        
+			"Gap":3600,           
+			"EndCondition":1,  
+			"ReceiverAddress":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a", 
+			"RefundAddress":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",   
+			"Owner":"vite_56fd05b23ff26cd7b0a40957fb77bde60c9fd6ebc35f809c23",           
+			"Index":2,         
+			"Balance":0,         
+			"TriggerTimes":0,  
+			"Next":1558411200,          
+			"Delete":1590033600        
+		}
+	]
   }
 }
 `

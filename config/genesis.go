@@ -15,6 +15,7 @@ type Genesis struct {
 	AccountBalanceMap     map[string]map[string]*big.Int // address - tokenId - balanceAmount
 	DexFundInfo           *DexFundContractInfo
 	DexTradeInfo          *DexTradeContractInfo
+	TimerInfo             *TimerContractInfo
 }
 
 func IsCompleteGenesisConfig(genesisConfig *Genesis) bool {
@@ -203,4 +204,24 @@ type DexTradeOrder struct {
 	Timestamp          int64
 	Agent              types.Address
 	SendHash           types.Hash
+}
+
+type TimerContractInfo struct {
+	TaskInfoList []TimerTaskInfo
+}
+
+type TimerTaskInfo struct {
+	TaskId          types.Hash
+	TaskType        uint64
+	Window          uint64
+	Gap             uint64
+	EndCondition    uint64
+	ReceiverAddress types.Address
+	RefundAddress   types.Address
+	Owner           types.Address
+	Index           uint64
+	Balance         *big.Int
+	TriggerTimes    uint64
+	Next            uint64
+	Delete          uint64
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"github.com/vitelabs/go-vite/common/helper"
 	"github.com/vitelabs/go-vite/vm/contracts/abi"
 	"github.com/vitelabs/go-vite/vm/contracts/dex"
 	dexproto "github.com/vitelabs/go-vite/vm/contracts/dex/proto"
@@ -27,6 +28,7 @@ func NewGenesisAccountBlocks(cfg *config.Genesis) []*vm_db.VmAccountBlock {
 	list = newGenesisNormalAccountBlocks(cfg, list, addrSet)
 	list, addrSet = newDexFundContractBlocks(cfg, list, addrSet)
 	list, addrSet = newDexTradeContractBlocks(cfg, list, addrSet)
+	list, addrSet = newTimerContractBlocks(cfg, list, addrSet)
 	return list
 }
 
@@ -453,6 +455,62 @@ func newDexTradeContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock
 		list = append(list, &vm_db.VmAccountBlock{&block, vmdb})
 		addrSet[contractAddr] = struct{}{}
 	}
+	return list, addrSet
+}
+
+func newTimerContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock, addrSet map[types.Address]interface{}) ([]*vm_db.VmAccountBlock, map[types.Address]interface{}) {
+	if cfg.TimerInfo == nil {
+		return list, addrSet
+	}
+	contractAddr := types.AddressTimer
+	block := ledger.AccountBlock{
+		BlockType:      ledger.BlockTypeGenesisReceive,
+		Height:         1,
+		AccountAddress: contractAddr,
+		Amount:         big.NewInt(0),
+		Fee:            big.NewInt(0),
+	}
+	vmdb := vm_db.NewGenesisVmDB(&contractAddr)
+	index := uint64(0)
+	for _, taskInfo := range cfg.TimerInfo.TaskInfoList {
+		index = helper.Max(index, taskInfo.Index)
+		timerId := abi.GetTimerId(taskInfo.Owner, taskInfo.Index)
+
+		err := vmdb.SetValue(taskInfo.TaskId.Bytes(), timerId)
+		util.DealWithErr(err)
+
+		taskInfoValue, _ := abi.ABITimer.PackVariable(
+			abi.VariableNameTimerTaskInfo,
+			taskInfo.TaskId,
+			taskInfo.TaskType,
+			taskInfo.Window,
+			taskInfo.Gap,
+			taskInfo.EndCondition,
+			taskInfo.ReceiverAddress,
+			taskInfo.RefundAddress)
+		err = vmdb.SetValue(abi.GetTimerTaskInfoKey(timerId), taskInfoValue)
+		dealWithError(err)
+
+		taskTriggerInfo, _ := abi.ABITimer.PackVariable(abi.VariableNameTimerTaskTriggerInfo, taskInfo.Balance, taskInfo.TriggerTimes, taskInfo.Next, taskInfo.Delete)
+		err = vmdb.SetValue(abi.GetTimerTaskTriggerInfoKey(timerId), taskTriggerInfo)
+		dealWithError(err)
+
+		if taskInfo.Delete > 0 {
+			err := vmdb.SetValue(abi.GetTimerStoppedQueueKey(timerId, taskInfo.Delete), timerId)
+			util.DealWithErr(err)
+		} else {
+			timeHeight, _, _ := abi.GetTimerTaskTypeDetail(taskInfo.TaskType)
+			err = vmdb.SetValue(abi.GetTimerQueueKey(timeHeight, timerId, taskInfo.Next), timerId)
+			util.DealWithErr(err)
+		}
+	}
+	if index > 0 {
+		vmdb.SetValue(abi.GetTimerNextIdKey(), new(big.Int).SetUint64(index).Bytes())
+	}
+	updateAccountBalanceMap(cfg, contractAddr, vmdb)
+	block.Hash = block.ComputeHash()
+	list = append(list, &vm_db.VmAccountBlock{&block, vmdb})
+	addrSet[contractAddr] = struct{}{}
 	return list, addrSet
 }
 

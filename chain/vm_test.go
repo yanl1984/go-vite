@@ -24,7 +24,7 @@ import (
 
 func initVMEnvironment() {
 	vm.InitVMConfig(false, true, false, false, "")
-	chainInstance, err := NewChainInstance("unit_test/devdata", false)
+	chainInstance, err := NewChainInstance("unit_test/devdata", true)
 	if err != nil {
 		panic(err)
 	}
@@ -34,12 +34,17 @@ func initVMEnvironment() {
 
 var (
 	testAddr, _    = types.HexToAddress("vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a")
+	testAddr2, _   = types.HexToAddress("vite_56fd05b23ff26cd7b0a40957fb77bde60c9fd6ebc35f809c23")
 	testTokenId, _ = types.HexToTokenTypeId("tti_045e6ca837c143cd477b32f3")
+	testHash, _    = types.HexToHash("07977814ed1208d80ec4ce837953f258845bd798644a345bc99c58e4b2b34f82")
+	testHash2, _   = types.HexToHash("b12a756febe01acc4e20aef9ba018fe4c9c752d48e506f20583498a458fad3c7")
 
-	pledgeAmount         = new(big.Int).Mul(big.NewInt(134), big1e18)
-	registerPledgeAmount = new(big.Int).Mul(big.NewInt(5e5), big1e18)
-	mintFee              = new(big.Int).Mul(big.NewInt(1e3), big1e18)
-	createContractFee    = new(big.Int).Mul(big.NewInt(10), big1e18)
+	pledgeAmount            = new(big.Int).Mul(big.NewInt(134), big1e18)
+	registerPledgeAmount    = new(big.Int).Mul(big.NewInt(5e5), big1e18)
+	mintFee                 = new(big.Int).Mul(big.NewInt(1e3), big1e18)
+	createContractFee       = new(big.Int).Mul(big.NewInt(10), big1e18)
+	timerNewTaskAmount      = new(big.Int).Mul(big.NewInt(100), big1e18)
+	timerRechargeTaskAmount = new(big.Int).Mul(big.NewInt(10), big1e18)
 
 	big1e18 = big.NewInt(1e18)
 	big0    = big.NewInt(0)
@@ -379,6 +384,82 @@ func makeGetTokenInfoBlock(addr types.Address) *ledger.AccountBlock {
 	return makeSendBlock(addr, types.AddressMintage, data, big0, big0)
 }
 
+func BenchmarkVMTimerNewTaskSend(b *testing.B) {
+	sendBlock := makeTimerNewTaskBlock(testAddr2)
+	benchmarkSend(b, sendBlock)
+}
+func BenchmarkVMTimerNewTaskReceive(b *testing.B) {
+	sendBlock := makeTimerNewTaskBlock(testAddr2)
+	receiveBlock := makeReceiveBlock(types.AddressTimer)
+	benchmarkReceive(b, sendBlock, receiveBlock)
+}
+func makeTimerNewTaskBlock(addr types.Address) *ledger.AccountBlock {
+	data, err := abi.ABITimer.PackMethod(
+		abi.MethodNameTimerNewTask,
+		abi.GenerateTimerTaskType(abi.TimerTimeHeightHeight, abi.TimerEndTypeTimes, abi.TimerGapTypeFixed),
+		uint64(1),
+		uint64(3600),
+		uint64(3600),
+		uint64(1),
+		addr,
+		addr)
+	if err != nil {
+		panic(err)
+	}
+	return makeSendBlock(addr, types.AddressTimer, data, timerNewTaskAmount, big0)
+}
+
+func BenchmarkVMTimerDeleteTaskSend(b *testing.B) {
+	sendBlock := makeTimerDeleteTaskBlock(testAddr2, testHash)
+	benchmarkSend(b, sendBlock)
+}
+func BenchmarkVMTimerDeleteTaskReceive(b *testing.B) {
+	sendBlock := makeTimerDeleteTaskBlock(testAddr2, testHash)
+	receiveBlock := makeReceiveBlock(types.AddressTimer)
+	benchmarkReceive(b, sendBlock, receiveBlock)
+}
+func makeTimerDeleteTaskBlock(addr types.Address, taskId types.Hash) *ledger.AccountBlock {
+	data, err := abi.ABITimer.PackMethod(abi.MethodNameTimerDeleteTask, taskId, addr)
+	if err != nil {
+		panic(err)
+	}
+	return makeSendBlock(addr, types.AddressTimer, data, big0, big0)
+}
+
+func BenchmarkVMTimerRechargeSend(b *testing.B) {
+	sendBlock := makeTimerRechargeBlock(testAddr2, testHash2)
+	benchmarkSend(b, sendBlock)
+}
+func BenchmarkVMTimerRechargeReceive(b *testing.B) {
+	sendBlock := makeTimerRechargeBlock(testAddr2, testHash2)
+	receiveBlock := makeReceiveBlock(types.AddressTimer)
+	benchmarkReceive(b, sendBlock, receiveBlock)
+}
+func makeTimerRechargeBlock(addr types.Address, taskId types.Hash) *ledger.AccountBlock {
+	data, err := abi.ABITimer.PackMethod(abi.MethodNameTimerRecharge, taskId)
+	if err != nil {
+		panic(err)
+	}
+	return makeSendBlock(addr, types.AddressTimer, data, timerRechargeTaskAmount, big0)
+}
+
+func BenchmarkVMTimerUpdateOwnerSend(b *testing.B) {
+	sendBlock := makeTimerUpdateOwnerBlock(testAddr, testAddr2)
+	benchmarkSend(b, sendBlock)
+}
+func BenchmarkVMTimerUpdateOwnerReceive(b *testing.B) {
+	sendBlock := makeTimerUpdateOwnerBlock(testAddr, testAddr2)
+	receiveBlock := makeReceiveBlock(types.AddressTimer)
+	benchmarkReceive(b, sendBlock, receiveBlock)
+}
+func makeTimerUpdateOwnerBlock(addr types.Address, newOwner types.Address) *ledger.AccountBlock {
+	data, err := abi.ABITimer.PackMethod(abi.MethodNameTimerUpdateOwner, newOwner)
+	if err != nil {
+		panic(err)
+	}
+	return makeSendBlock(addr, types.AddressTimer, data, big0, big0)
+}
+
 func benchmarkSend(b *testing.B, sendBlock *ledger.AccountBlock) {
 	initVMEnvironment()
 	chainInstance, _, _ := SetUp(4, 1, 1)
@@ -681,7 +762,7 @@ func TestCalcStorageSize(t *testing.T) {
 }
 
 func TestPrintBlockSize(t *testing.T) {
-	printBlockSize("call",
+	/*printBlockSize("call",
 		makeSendBlock(testAddr, testAddr, nil, big1e18, big0),
 		makeReceiveBlock(testAddr))
 
@@ -735,7 +816,20 @@ func TestPrintBlockSize(t *testing.T) {
 		makeReceiveBlock(types.AddressMintage))
 	printBlockSize("getTokenInfo",
 		makeGetTokenInfoBlock(testAddr),
-		makeReceiveBlock(types.AddressMintage))
+		makeReceiveBlock(types.AddressMintage))*/
+
+	printBlockSize("timerNewTask",
+		makeTimerNewTaskBlock(testAddr2),
+		makeReceiveBlock(types.AddressTimer))
+	printBlockSize("timerDeleteTask",
+		makeTimerDeleteTaskBlock(testAddr2, testHash),
+		makeReceiveBlock(types.AddressTimer))
+	printBlockSize("timerRecharge",
+		makeTimerRechargeBlock(testAddr2, testHash2),
+		makeReceiveBlock(types.AddressTimer))
+	printBlockSize("timerUpdateOwner",
+		makeTimerUpdateOwnerBlock(testAddr, testAddr2),
+		makeReceiveBlock(types.AddressTimer))
 }
 
 func TestPrintCreateContractBlockSize(t *testing.T) {
