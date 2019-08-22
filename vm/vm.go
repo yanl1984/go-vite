@@ -259,8 +259,11 @@ func (vm *VM) RunV2(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger
 		blockCopy.Data = nil
 		contractMeta := getContractMeta(db)
 		destructed := checkContractDestructed(blockCopy.AccountAddress, contractMeta)
-		if blockCopy.BlockType == ledger.BlockTypeReceiveTimer && fork.IsNewFork(sb.Height) {
-			return vm.receiveTimer(db, blockCopy, contractMeta)
+		if blockCopy.BlockType == ledger.BlockTypeReceiveTimer {
+			if fork.IsNewFork(sb.Height) {
+				return vm.receiveTimer(db, blockCopy, contractMeta)
+			}
+			return nil, noRetry, util.ErrTransactionTypeNotSupport
 		}
 		if sendBlock.BlockType == ledger.BlockTypeSendRefund {
 			return vm.receiveRefund(db, blockCopy, sendBlock, contractMeta, !destructed)
@@ -913,7 +916,9 @@ func (vm *VM) receiveRefund(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock
 
 func (vm *VM) receiveTimer(db vm_db.VmDb, block *ledger.AccountBlock, meta *ledger.ContractMeta) (*vm_db.VmAccountBlock, bool, error) {
 	defer monitor.LogTimerConsuming([]string{"vm", "receiveTimer"}, time.Now())
-	blockListToSend, err := contracts.ReceiveTaskTrigger(db, vm.GlobalStatus().SnapshotBlock(), vm)
+	sb := vm.GlobalStatus().SnapshotBlock()
+	block.FromBlockHash = sb.Hash
+	blockListToSend, err := contracts.ReceiveTaskTrigger(db, sb, vm)
 	if err == nil {
 		if len(blockListToSend) == 0 {
 			return nil, noRetry, util.ErrNoTaskDue

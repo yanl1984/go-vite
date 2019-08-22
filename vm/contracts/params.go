@@ -54,11 +54,12 @@ type ContractsParams struct {
 	MintPledgeHeight                 uint64 // Pledge height for mintage if choose to pledge instead of destroy vite token
 	ViteXVipPledgeHeight             uint64 // Pledge height for dex_fund contract, in order to upgrade to viteX vip
 	TimerOwnerAddressDefault         types.Address
+	ViteXSuperVipPledgeHeight        uint64 // Pledge height for dex_fund contract, in order to upgrade to viteX super vip
 }
 
 var (
 	TimerOwnerAddressDefaultTest, _       = types.HexToAddress("vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a")
-	TimerOwnerAddressDefaultPreMainnet, _ = types.HexToAddress("")
+	TimerOwnerAddressDefaultPreMainnet, _ = types.HexToAddress("vite_6f4746c037e3cacff609a01c2ad6ef7dac130a4725ec94b55a")
 
 	ContractsParamsTest = ContractsParams{
 		RegisterMinPledgeHeight:          1,
@@ -67,6 +68,7 @@ var (
 		MintPledgeHeight:                 1,
 		ViteXVipPledgeHeight:             1,
 		TimerOwnerAddressDefault:         TimerOwnerAddressDefaultTest,
+		ViteXSuperVipPledgeHeight:        1,
 	}
 	ContractsParamsMainNet = ContractsParams{
 		RegisterMinPledgeHeight:          3600 * 24 * 3,
@@ -75,5 +77,6 @@ var (
 		MintPledgeHeight:                 3600 * 24 * 30 * 3,
 		ViteXVipPledgeHeight:             3600 * 24 * 30,
 		TimerOwnerAddressDefault:         TimerOwnerAddressDefaultPreMainnet,
+		ViteXSuperVipPledgeHeight:        3600 * 24 * 30,
 	}
 )

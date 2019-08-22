@@ -120,6 +120,14 @@ func IsDexFork(snapshotHeight uint64) bool {
 	return snapshotHeight >= dexForkPoint.Height
 }
 
+func IsStemFork(snapshotHeight uint64) bool {
+	stemForkPoint, ok := forkPointMap["StemFork"]
+	if !ok {
+		panic("check stem fork failed. StemFork is not existed.")
+	}
+	return snapshotHeight >= stemForkPoint.Height
+}
+
 func IsNewFork(snapshotHeight uint64) bool {
 	newForkPoint, ok := forkPointMap["NewFork"]
 	if !ok {

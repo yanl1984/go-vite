@@ -29,6 +29,7 @@ func initFork() {
 	fork.SetForkPoints(&config.ForkPoints{
 		SeedFork: &config.ForkPoint{Height: 100, Version: 1},
 		DexFork:  &config.ForkPoint{Height: 200, Version: 1},
+		StemFork: &config.ForkPoint{Height: 250, Version: 1},
 		NewFork:  &config.ForkPoint{Height: 300, Version: 1}})
 }
 
@@ -593,7 +594,7 @@ func checkSendBlockList(expected []*TestCaseSendBlock, got []*ledger.AccountBloc
 	for i, expectedSendBlock := range expected {
 		gotSendBlock := got[i]
 		if (expectedSendBlock.BlockType > 0 && gotSendBlock.BlockType != expectedSendBlock.BlockType) || (expectedSendBlock.BlockType == 0 && gotSendBlock.BlockType != ledger.BlockTypeSendCall) {
-			return strconv.Itoa(i) + "th, expected blockType " + strconv.Itoa(int(expectedSendBlock.BlockType)) + ", got toAddress " + strconv.Itoa(int(gotSendBlock.BlockType))
+			return strconv.Itoa(i) + "th, expected blockType " + strconv.Itoa(int(expectedSendBlock.BlockType)) + ", got blockType " + strconv.Itoa(int(gotSendBlock.BlockType))
 		} else if gotSendBlock.ToAddress != expectedSendBlock.ToAddress {
 			return strconv.Itoa(i) + "th, expected toAddress " + expectedSendBlock.ToAddress.String() + ", got toAddress " + gotSendBlock.ToAddress.String()
 		} else if gotAmount := hex.EncodeToString(gotSendBlock.Amount.Bytes()); gotAmount != expectedSendBlock.Amount {

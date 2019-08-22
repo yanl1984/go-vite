@@ -1,0 +1,164 @@
+{
+  "update_owner_send_call_fail_invalid_amount":{
+    "sbHeight": 300,
+    "blockType": 2,
+    "fromAddress": "vite_6f4746c037e3cacff609a01c2ad6ef7dac130a4725ec94b55a",
+    "toAddress": "vite_0000000000000000000000000000000000000008e745d12403",
+    "data": "c422cfb50000000000000000000000ab24ef68b84e642c0ddca06beec81c9acb1977bb00",
+    "amount": "01",
+    "tokenId": "tti_5649544520544f4b454e6e40",
+    "pledgeBeneficialAmount": "10000000000000000000000",
+    "err":"invalid method param",
+    "success": false,
+    "preBalanceMap": {
+      "tti_5649544520544f4b454e6e40": "3635c9adc5dea00000"
+    }
+  },
+  "update_owner_send_call_fail_same_owner":{
+    "sbHeight": 300,
+    "blockType": 2,
+    "fromAddress": "vite_6f4746c037e3cacff609a01c2ad6ef7dac130a4725ec94b55a",
+    "toAddress": "vite_0000000000000000000000000000000000000008e745d12403",
+    "data": "c422cfb500000000000000000000006f4746c037e3cacff609a01c2ad6ef7dac130a4700",
+    "amount": "00",
+    "tokenId": "tti_5649544520544f4b454e6e40",
+    "pledgeBeneficialAmount": "10000000000000000000000",
+    "err":"invalid method param",
+    "success": false,
+    "preBalanceMap": {
+      "tti_5649544520544f4b454e6e40": "3635c9adc5dea00000"
+    }
+  },
+  "update_owner_send_call_fail_owner_not_exists":{
+    "sbHeight": 300,
+    "blockType": 2,
+    "fromAddress": "vite_6f4746c037e3cacff609a01c2ad6ef7dac130a4725ec94b55a",
+    "toAddress": "vite_0000000000000000000000000000000000000008e745d12403",
+    "data": "c422cfb50000000000000000000000ab24ef68b84e642c0ddca06beec81c9acb1977bb01",
+    "amount": "00",
+    "tokenId": "tti_5649544520544f4b454e6e40",
+    "pledgeBeneficialAmount": "10000000000000000000000",
+    "err":"contract not exists",
+    "success": false,
+    "preBalanceMap": {
+      "tti_5649544520544f4b454e6e40": "3635c9adc5dea00000"
+    }
+  },
+  "update_owner_send_call_success":{
+    "sbHeight": 300,
+    "blockType": 2,
+    "fromAddress": "vite_6f4746c037e3cacff609a01c2ad6ef7dac130a4725ec94b55a",
+    "toAddress": "vite_0000000000000000000000000000000000000008e745d12403",
+    "data": "c422cfb50000000000000000000000ab24ef68b84e642c0ddca06beec81c9acb1977bb0000",
+    "amount": "00",
+    "tokenId": "tti_5649544520544f4b454e6e40",
+    "pledgeBeneficialAmount": "10000000000000000000000",
+    "success": true,
+    "preBalanceMap": {
+      "tti_5649544520544f4b454e6e40": "3635c9adc5dea00000"
+    },
+    "balanceMap": {
+      "tti_5649544520544f4b454e6e40": "3635c9adc5dea00000"
+    },
+    "blockData": "c422cfb50000000000000000000000ab24ef68b84e642c0ddca06beec81c9acb1977bb00",
+    "quota": 1,
+    "quotaUsed": 1
+  },
+  "update_owner_receive_fail_invalid_owner1":{
+    "sbHeight": 300,
+    "blockType": 4,
+    "sendBlockType": 2,
+    "fromAddress": "vite_098dfae02679a4ca05a4c8bf5dd00a8757f0c622bfccce7d68",
+    "toAddress": "vite_0000000000000000000000000000000000000008e745d12403",
+    "data": "c422cfb50000000000000000000000ab24ef68b84e642c0ddca06beec81c9acb1977bb00",
+    "amount": "00",
+    "tokenId": "tti_5649544520544f4b454e6e40",
+    "needGlobalStatus":true,
+    "err":"invalid method param",
+    "success": true,
+    "preBalanceMap": {
+      "tti_5649544520544f4b454e6e40": "3635c9adc5dea00000"
+    },
+    "balanceMap": {
+      "tti_5649544520544f4b454e6e40": "3635c9adc5dea00000"
+    },
+    "quota": 0,
+    "quotaUsed": 0
+  },
+  "update_owner_receive_fail_invalid_owner2":{
+    "sbHeight": 300,
+    "blockType": 4,
+    "sendBlockType": 2,
+    "fromAddress": "vite_098dfae02679a4ca05a4c8bf5dd00a8757f0c622bfccce7d68",
+    "toAddress": "vite_0000000000000000000000000000000000000008e745d12403",
+    "data": "c422cfb50000000000000000000000ab24ef68b84e642c0ddca06beec81c9acb1977bb00",
+    "amount": "00",
+    "tokenId": "tti_5649544520544f4b454e6e40",
+    "needGlobalStatus":true,
+    "err":"invalid method param",
+    "success": true,
+    "preBalanceMap": {
+      "tti_5649544520544f4b454e6e40": "3635c9adc5dea00000"
+    },
+    "balanceMap": {
+      "tti_5649544520544f4b454e6e40": "3635c9adc5dea00000"
+    },
+    "preStorage":{
+      "6f776e":"bb6ad02107a4422d6a324fd2e3707ad53cfed93500"
+    },
+    "storage":{
+      "6f776e":"bb6ad02107a4422d6a324fd2e3707ad53cfed93500"
+    },
+    "quota": 0,
+    "quotaUsed": 0
+  },
+  "update_owner_receive_success1":{
+    "sbHeight": 300,
+    "blockType": 4,
+    "sendBlockType": 2,
+    "fromAddress": "vite_6f4746c037e3cacff609a01c2ad6ef7dac130a4725ec94b55a",
+    "toAddress": "vite_0000000000000000000000000000000000000008e745d12403",
+    "data": "c422cfb50000000000000000000000ab24ef68b84e642c0ddca06beec81c9acb1977bb00",
+    "amount": "00",
+    "tokenId": "tti_5649544520544f4b454e6e40",
+    "needGlobalStatus":true,
+    "success": true,
+    "preBalanceMap": {
+      "tti_5649544520544f4b454e6e40": "3635c9adc5dea00000"
+    },
+    "balanceMap": {
+      "tti_5649544520544f4b454e6e40": "3635c9adc5dea00000"
+    },
+    "storage":{
+      "6f776e":"ab24ef68b84e642c0ddca06beec81c9acb1977bb00"
+    },
+    "quota": 0,
+    "quotaUsed": 0
+  },
+  "update_owner_receive_success2":{
+    "sbHeight": 300,
+    "blockType": 4,
+    "sendBlockType": 2,
+    "fromAddress": "vite_bb6ad02107a4422d6a324fd2e3707ad53cfed9359378a78792",
+    "toAddress": "vite_0000000000000000000000000000000000000008e745d12403",
+    "data": "c422cfb50000000000000000000000ab24ef68b84e642c0ddca06beec81c9acb1977bb00",
+    "amount": "00",
+    "tokenId": "tti_5649544520544f4b454e6e40",
+    "needGlobalStatus":true,
+    "success": true,
+    "preBalanceMap": {
+      "tti_5649544520544f4b454e6e40": "3635c9adc5dea00000"
+    },
+    "balanceMap": {
+      "tti_5649544520544f4b454e6e40": "3635c9adc5dea00000"
+    },
+    "preStorage":{
+      "6f776e":"bb6ad02107a4422d6a324fd2e3707ad53cfed93500"
+    },
+    "storage":{
+      "6f776e":"ab24ef68b84e642c0ddca06beec81c9acb1977bb00"
+    },
+    "quota": 0,
+    "quotaUsed": 0
+  }
+}

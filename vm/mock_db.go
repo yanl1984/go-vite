@@ -336,6 +336,9 @@ func (db *mockDB) SetContractMeta(toAddr types.Address, meta *ledger.ContractMet
 	db.contractMetaMap[toAddr] = meta
 }
 func (db *mockDB) GetContractMeta() (*ledger.ContractMeta, error) {
+	if meta := ledger.GetBuiltinContractMeta(*db.currentAddr); meta != nil {
+		return meta, nil
+	}
 	if meta, ok := db.contractMetaMap[*db.currentAddr]; ok {
 		return meta, nil
 	}
@@ -345,6 +348,9 @@ func (db *mockDB) GetContractMeta() (*ledger.ContractMeta, error) {
 	return nil, nil
 }
 func (db *mockDB) GetContractMetaInSnapshot(contractAddress types.Address, snapshotBlock *ledger.SnapshotBlock) (meta *ledger.ContractMeta, err error) {
+	if meta := ledger.GetBuiltinContractMeta(contractAddress); meta != nil {
+		return meta, nil
+	}
 	if meta, ok := db.contractMetaMap[contractAddress]; ok {
 		return meta, nil
 	}
