@@ -10,296 +10,296 @@ import (
 	"math/big"
 )
 
-type MethodTimerNewTask struct{}
+type MethodTimerNewTimer struct{}
 
-func (p *MethodTimerNewTask) GetFee(block *ledger.AccountBlock) (*big.Int, error) {
+func (p *MethodTimerNewTimer) GetFee(block *ledger.AccountBlock) (*big.Int, error) {
 	return big.NewInt(0), nil
 }
 
-func (p *MethodTimerNewTask) GetRefundData(sendBlock *ledger.AccountBlock) ([]byte, bool) {
+func (p *MethodTimerNewTimer) GetRefundData(sendBlock *ledger.AccountBlock) ([]byte, bool) {
 	return []byte{}, false
 }
 
-func (p *MethodTimerNewTask) GetSendQuota(data []byte, gasTable *util.GasTable) (uint64, error) {
-	return gasTable.TimerNewTaskGas, nil
+func (p *MethodTimerNewTimer) GetSendQuota(data []byte, gasTable *util.GasTable) (uint64, error) {
+	return gasTable.TimerNewTimerGas, nil
 }
-func (p *MethodTimerNewTask) GetReceiveQuota(gasTable *util.GasTable) uint64 {
+func (p *MethodTimerNewTimer) GetReceiveQuota(gasTable *util.GasTable) uint64 {
 	return 0
 }
 
-func (p *MethodTimerNewTask) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
-	param := new(abi.ParamTimerNewTask)
-	err := abi.ABITimer.UnpackMethod(param, abi.MethodNameTimerNewTask, block.Data)
+func (p *MethodTimerNewTimer) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
+	param := new(abi.ParamNewTimer)
+	err := abi.ABITimer.UnpackMethod(param, abi.MethodNameTimerNewTimer, block.Data)
 	if err != nil {
 		return err
 	}
 
 	if block.Amount.Sign() > 0 {
-		if block.Amount.Cmp(timerNewTaskFee) < 0 {
+		if block.Amount.Cmp(newTimerFee) < 0 {
 			return util.ErrInvalidMethodParam
 		}
-		chargeAmount := new(big.Int).Sub(block.Amount, timerNewTaskFee)
+		chargeAmount := new(big.Int).Sub(block.Amount, newTimerFee)
 		if err = checkTimerChargeAmount(chargeAmount, block.TokenId); err != nil {
 			return err
 		}
 	}
 
-	timeHeight, endType, gapType := abi.GetTimerTaskTypeDetail(param.TaskType)
-	if generatedTimerTaskType := abi.GenerateTimerTaskType(timeHeight, endType, gapType); generatedTimerTaskType != param.TaskType {
+	timeHeight, expiringType, intervalType := abi.GetTimerTypeDetail(param.TimerType)
+	if generatedTimerType := abi.GenerateTimerType(timeHeight, expiringType, intervalType); generatedTimerType != param.TimerType {
 		return util.ErrInvalidMethodParam
 	}
 	if (timeHeight != abi.TimerTimeHeightTime && timeHeight != abi.TimerTimeHeightHeight) ||
-		(endType != abi.TimerEndTypeEndTimeHeight && endType != abi.TimerEndTypeTimes && endType != abi.TimerEndTypePermanent) ||
-		(gapType != abi.TimerGapTypePostpone && gapType != abi.TimerGapTypeFixed) {
+		(expiringType != abi.TimerExpiringTypeTimeHeight && expiringType != abi.TimerExpiringTypeTimes && expiringType != abi.TimerExpiringTypePermanent) ||
+		(intervalType != abi.TimerIntervalTypePostpone && intervalType != abi.TimerIntervalTypeFixed) {
 		return util.ErrInvalidMethodParam
 	}
 
-	_, err = util.GetQuotaRatioForS(db, param.ReceiverAddress)
+	_, err = util.GetQuotaRatioForS(db, param.InvokingAddr)
 	if err != nil {
 		return err
 	}
 
-	_, err = util.GetQuotaRatioForS(db, param.RefundAddress)
+	_, err = util.GetQuotaRatioForS(db, param.RefundAddr)
 	if err != nil {
 		return err
 	}
 
-	if (timeHeight == abi.TimerTimeHeightTime && (param.Gap < TimerTimeGapMin || param.Gap > TimerTimeGapMax)) ||
-		(timeHeight == abi.TimerTimeHeightHeight && (param.Gap < TimerHeightGapMin || param.Gap > TimerHeightGapMax)) {
+	if (timeHeight == abi.TimerTimeHeightTime && (param.Interval < TimerTimeIntervalMin || param.Interval > TimerTimeIntervalMax)) ||
+		(timeHeight == abi.TimerTimeHeightHeight && (param.Interval < TimerHeightIntervalMin || param.Interval > TimerHeightIntervalMax)) {
 		return util.ErrInvalidMethodParam
 	}
 
 	if (timeHeight == abi.TimerTimeHeightTime && param.Window < TimerTimeWindowMin) ||
 		(timeHeight == abi.TimerTimeHeightHeight && param.Window < TimerHeightWindowMin) ||
-		param.Window > param.Gap {
+		param.Window > param.Interval {
 		return util.ErrInvalidMethodParam
 	}
 
-	if (endType == abi.TimerEndTypeEndTimeHeight && (param.EndCondition <= 0 || param.EndCondition < param.Start)) ||
-		(endType == abi.TimerEndTypeTimes && param.EndCondition <= 0) ||
-		(endType == abi.TimerEndTypePermanent && param.EndCondition != 0) {
+	if (expiringType == abi.TimerExpiringTypeTimeHeight && (param.ExpiringCondition <= 0 || param.ExpiringCondition < param.Start)) ||
+		(expiringType == abi.TimerExpiringTypeTimes && param.ExpiringCondition <= 0) ||
+		(expiringType == abi.TimerExpiringTypePermanent && param.ExpiringCondition != 0) {
 		return util.ErrInvalidMethodParam
 	}
 
 	block.Data, _ = abi.ABITimer.PackMethod(
-		abi.MethodNameTimerNewTask,
-		param.TaskType,
+		abi.MethodNameTimerNewTimer,
+		param.TimerType,
 		param.Start,
 		param.Window,
-		param.Gap,
-		param.EndCondition,
-		param.ReceiverAddress,
-		param.RefundAddress)
+		param.Interval,
+		param.ExpiringCondition,
+		param.InvokingAddr,
+		param.RefundAddr)
 	return nil
 }
 
-func (p *MethodTimerNewTask) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) ([]*ledger.AccountBlock, error) {
-	param := new(abi.ParamTimerNewTask)
-	abi.ABITimer.UnpackMethod(param, abi.MethodNameTimerNewTask, sendBlock.Data)
-	timeHeight, endType, _ := abi.GetTimerTaskTypeDetail(param.TaskType)
+func (p *MethodTimerNewTimer) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) ([]*ledger.AccountBlock, error) {
+	param := new(abi.ParamNewTimer)
+	abi.ABITimer.UnpackMethod(param, abi.MethodNameTimerNewTimer, sendBlock.Data)
+	timeHeight, endType, _ := abi.GetTimerTypeDetail(param.TimerType)
 
 	current := getCurrent(timeHeight, db, vm)
-	next := nextTrigger(param.Start, current, param.Gap)
-	if taskFinish(endType, param.EndCondition, next) {
+	next := nextTrigger(param.Start, current, param.Interval)
+	if timerFinish(endType, param.ExpiringCondition, next) {
 		return nil, util.ErrInvalidMethodParam
 	}
 
 	nextId := getAndSetTimerNextId(db)
-	timerId := abi.GetTimerId(sendBlock.AccountAddress, nextId)
-	err := db.SetValue(sendBlock.Hash.Bytes(), timerId)
+	innerId := abi.GetInnerId(sendBlock.AccountAddress, nextId)
+	err := db.SetValue(abi.GetTimerIdKey(sendBlock.Hash), innerId)
 	util.DealWithErr(err)
 
-	err = db.SetValue(abi.GetTimerQueueKey(timeHeight, timerId, next), timerId)
+	err = db.SetValue(abi.GetTimerQueueKey(timeHeight, innerId, next), innerId)
 	util.DealWithErr(err)
 
 	isOwner := getTimerOwner(db) == sendBlock.AccountAddress
 	if (isOwner && sendBlock.Amount.Sign() > 0) || (!isOwner && sendBlock.Amount.Sign() == 0) {
 		return nil, util.ErrInvalidMethodParam
 	}
-	if isBuiltInContract := types.IsBuiltinContractAddr(param.ReceiverAddress); isOwner && !isBuiltInContract {
+	if isBuiltInContract := types.IsBuiltinContractAddr(param.InvokingAddr); isOwner && !isBuiltInContract {
 		return nil, util.ErrInvalidMethodParam
 	}
-	taskInfo, _ := abi.ABITimer.PackVariable(
-		abi.VariableNameTimerTaskInfo,
+	info, _ := abi.ABITimer.PackVariable(
+		abi.VariableNameTimerInfo,
 		sendBlock.Hash,
-		abi.GetVariableTaskTypeByParamTaskType(param.TaskType, isOwner),
+		abi.GetVariableTimerTypeByParamTimerType(param.TimerType, isOwner),
 		param.Window,
-		param.Gap,
-		param.EndCondition,
-		param.ReceiverAddress,
-		param.RefundAddress)
-	err = db.SetValue(abi.GetTimerTaskInfoKey(timerId), taskInfo)
+		param.Interval,
+		param.ExpiringCondition,
+		param.InvokingAddr,
+		param.RefundAddr)
+	err = db.SetValue(abi.GetTimerInfoKey(innerId), info)
 	util.DealWithErr(err)
 
-	var chargeAmount *big.Int
+	var amount *big.Int
 	if isOwner {
-		chargeAmount = big.NewInt(0)
+		amount = big.NewInt(0)
 	} else {
-		chargeAmount = new(big.Int).Sub(sendBlock.Amount, timerNewTaskFee)
-		addFee(db, timerNewTaskFee)
+		amount = new(big.Int).Sub(sendBlock.Amount, newTimerFee)
+		addFee(db, newTimerFee)
 	}
-	taskTriggerInfo, _ := abi.ABITimer.PackVariable(abi.VariableNameTimerTaskTriggerInfo, chargeAmount, uint64(0), next, uint64(0))
-	err = db.SetValue(abi.GetTimerTaskTriggerInfoKey(timerId), taskTriggerInfo)
+	triggerInfo, _ := abi.ABITimer.PackVariable(abi.VariableNameTimerTriggerInfo, amount, uint64(0), next, uint64(0))
+	err = db.SetValue(abi.GetTimerTriggerInfoKey(innerId), triggerInfo)
 	util.DealWithErr(err)
 
 	return nil, nil
 }
 
-type MethodTimerDeleteTask struct{}
+type MethodTimerDeleteTimer struct{}
 
-func (p *MethodTimerDeleteTask) GetFee(block *ledger.AccountBlock) (*big.Int, error) {
+func (p *MethodTimerDeleteTimer) GetFee(block *ledger.AccountBlock) (*big.Int, error) {
 	return big.NewInt(0), nil
 }
 
-func (p *MethodTimerDeleteTask) GetRefundData(sendBlock *ledger.AccountBlock) ([]byte, bool) {
+func (p *MethodTimerDeleteTimer) GetRefundData(sendBlock *ledger.AccountBlock) ([]byte, bool) {
 	return []byte{}, false
 }
 
-func (p *MethodTimerDeleteTask) GetSendQuota(data []byte, gasTable *util.GasTable) (uint64, error) {
-	return gasTable.TimerDeleteTaskGas, nil
+func (p *MethodTimerDeleteTimer) GetSendQuota(data []byte, gasTable *util.GasTable) (uint64, error) {
+	return gasTable.TimerDeleteTimerGas, nil
 }
-func (p *MethodTimerDeleteTask) GetReceiveQuota(gasTable *util.GasTable) uint64 {
+func (p *MethodTimerDeleteTimer) GetReceiveQuota(gasTable *util.GasTable) uint64 {
 	return 0
 }
 
-func (p *MethodTimerDeleteTask) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
+func (p *MethodTimerDeleteTimer) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
 	if block.Amount.Sign() > 0 {
 		return util.ErrInvalidMethodParam
 	}
-	param := new(abi.ParamTimerDeleteTask)
-	err := abi.ABITimer.UnpackMethod(param, abi.MethodNameTimerDeleteTask, block.Data)
+	param := new(abi.ParamDeleteTimer)
+	err := abi.ABITimer.UnpackMethod(param, abi.MethodNameTimerDeleteTimer, block.Data)
 	if err != nil {
 		return err
 	}
-	_, err = util.GetQuotaRatioForS(db, param.RefundAddress)
+	_, err = util.GetQuotaRatioForS(db, param.RefundAddr)
 	if err != nil {
 		return err
 	}
-	block.Data, _ = abi.ABITimer.PackMethod(abi.MethodNameTimerDeleteTask, param.TaskId, param.RefundAddress)
+	block.Data, _ = abi.ABITimer.PackMethod(abi.MethodNameTimerDeleteTimer, param.TimerId, param.RefundAddr)
 	return nil
 }
-func (p *MethodTimerDeleteTask) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) ([]*ledger.AccountBlock, error) {
-	param := new(abi.ParamTimerDeleteTask)
-	abi.ABITimer.UnpackMethod(param, abi.MethodNameTimerDeleteTask, sendBlock.Data)
-	timerId, err := db.GetValue(param.TaskId.Bytes())
+func (p *MethodTimerDeleteTimer) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) ([]*ledger.AccountBlock, error) {
+	param := new(abi.ParamDeleteTimer)
+	abi.ABITimer.UnpackMethod(param, abi.MethodNameTimerDeleteTimer, sendBlock.Data)
+	innerId, err := abi.GetInnerIdByTimerId(db, param.TimerId)
 	util.DealWithErr(err)
-	if len(timerId) == 0 {
+	if len(innerId) == 0 {
 		return nil, util.ErrInvalidMethodParam
 	}
-	if abi.GetOwnerFromTimerId(timerId) != sendBlock.AccountAddress {
+	if abi.GetOwnerFromInnerId(innerId) != sendBlock.AccountAddress {
 		return nil, util.ErrInvalidMethodParam
 	}
 
-	err = db.SetValue(param.TaskId.Bytes(), nil)
+	err = db.SetValue(abi.GetTimerIdKey(param.TimerId), nil)
 	util.DealWithErr(err)
 
-	taskInfoKey, taskInfo, err := abi.GetTaskInfoByTimerId(db, timerId)
+	infoKey, info, err := abi.GetTimerInfoByInnerId(db, innerId)
 	util.DealWithErr(err)
-	err = db.SetValue(taskInfoKey, nil)
+	err = db.SetValue(infoKey, nil)
 	util.DealWithErr(err)
 
-	taskTriggerInfo, refundBlocks := deleteTaskTriggerInfoAndRefund(db, timerId, param.RefundAddress)
-	if !taskTriggerInfo.IsFinish() {
-		timeHeight, _, _ := abi.GetTimerTaskTypeDetail(taskInfo.TaskType)
-		if taskTriggerInfo.IsStopped() {
-			db.SetValue(abi.GetTimerStoppedQueueKey(timerId, taskTriggerInfo.Delete), nil)
+	triggerInfo, refundBlocks := deleteTimerTriggerInfoAndRefund(db, innerId, param.RefundAddr)
+	if !triggerInfo.IsFinish() {
+		timeHeight, _, _ := abi.GetTimerTypeDetail(info.TimerType)
+		if triggerInfo.IsStopped() {
+			db.SetValue(abi.GetTimerStoppedQueueKey(innerId, triggerInfo.Delete), nil)
 		} else {
-			db.SetValue(abi.GetTimerQueueKey(timeHeight, timerId, taskTriggerInfo.Next), nil)
+			db.SetValue(abi.GetTimerQueueKey(timeHeight, innerId, triggerInfo.Next), nil)
 		}
 	}
 	return refundBlocks, nil
 }
 
-type MethodTimerRecharge struct{}
+type MethodTimerDeposit struct{}
 
-func (p *MethodTimerRecharge) GetFee(block *ledger.AccountBlock) (*big.Int, error) {
+func (p *MethodTimerDeposit) GetFee(block *ledger.AccountBlock) (*big.Int, error) {
 	return big.NewInt(0), nil
 }
 
-func (p *MethodTimerRecharge) GetRefundData(sendBlock *ledger.AccountBlock) ([]byte, bool) {
+func (p *MethodTimerDeposit) GetRefundData(sendBlock *ledger.AccountBlock) ([]byte, bool) {
 	return []byte{}, false
 }
 
-func (p *MethodTimerRecharge) GetSendQuota(data []byte, gasTable *util.GasTable) (uint64, error) {
-	return gasTable.TimerRechargeGas, nil
+func (p *MethodTimerDeposit) GetSendQuota(data []byte, gasTable *util.GasTable) (uint64, error) {
+	return gasTable.TimerDepositGas, nil
 }
-func (p *MethodTimerRecharge) GetReceiveQuota(gasTable *util.GasTable) uint64 {
+func (p *MethodTimerDeposit) GetReceiveQuota(gasTable *util.GasTable) uint64 {
 	return 0
 }
 
-func (p *MethodTimerRecharge) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
+func (p *MethodTimerDeposit) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
 	if err := checkTimerChargeAmount(block.Amount, block.TokenId); err != nil {
 		return err
 	}
-	taskId := new(types.Hash)
-	err := abi.ABITimer.UnpackMethod(taskId, abi.MethodNameTimerRecharge, block.Data)
+	timerId := new(types.Hash)
+	err := abi.ABITimer.UnpackMethod(timerId, abi.MethodNameTimerDeposit, block.Data)
 	if err != nil {
 		return err
 	}
-	block.Data, _ = abi.ABITimer.PackMethod(abi.MethodNameTimerRecharge, *taskId)
+	block.Data, _ = abi.ABITimer.PackMethod(abi.MethodNameTimerDeposit, *timerId)
 	return nil
 }
-func (p *MethodTimerRecharge) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) ([]*ledger.AccountBlock, error) {
-	taskId := new(types.Hash)
-	abi.ABITimer.UnpackMethod(taskId, abi.MethodNameTimerRecharge, sendBlock.Data)
-	timerId, err := db.GetValue(taskId.Bytes())
+func (p *MethodTimerDeposit) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) ([]*ledger.AccountBlock, error) {
+	timerId := new(types.Hash)
+	abi.ABITimer.UnpackMethod(timerId, abi.MethodNameTimerDeposit, sendBlock.Data)
+	innerId, err := abi.GetInnerIdByTimerId(db, *timerId)
 	util.DealWithErr(err)
-	if len(timerId) == 0 {
+	if len(innerId) == 0 {
 		return nil, util.ErrInvalidMethodParam
 	}
 
-	taskTriggerInfoKey, taskTriggerInfo, err := abi.GetTaskTriggerInfoByTimerId(db, timerId)
+	triggerInfoKey, triggerInfo, err := abi.GetTimerTriggerInfoByInnerId(db, innerId)
 	util.DealWithErr(err)
-	_, taskInfo, err := abi.GetTaskInfoByTimerId(db, timerId)
+	_, info, err := abi.GetTimerInfoByInnerId(db, innerId)
 	util.DealWithErr(err)
-	if chargeType := abi.GetChargeTypeFromTaskType(taskInfo.TaskType); chargeType == abi.TimerChargeTypeFree {
+	if chargeType := abi.GetChargeTypeFromTimerType(info.TimerType); chargeType == abi.TimerChargeTypeFree {
 		return nil, util.ErrInvalidMethodParam
 	}
 
-	taskTriggerInfo.Balance.Add(taskTriggerInfo.Balance, sendBlock.Amount)
-	if taskTriggerInfo.IsStopped() {
-		timeHeight, endType, _ := abi.GetTimerTaskTypeDetail(taskInfo.TaskType)
-		taskTriggerInfo.Next = nextTrigger(taskTriggerInfo.Next, getCurrent(timeHeight, db, vm), taskInfo.Gap)
-		if taskFinish(endType, taskInfo.EndCondition, taskTriggerInfo.Next) {
+	triggerInfo.Amount.Add(triggerInfo.Amount, sendBlock.Amount)
+	if triggerInfo.IsStopped() {
+		timeHeight, expiringType, _ := abi.GetTimerTypeDetail(info.TimerType)
+		triggerInfo.Next = nextTrigger(triggerInfo.Next, getCurrent(timeHeight, db, vm), info.Interval)
+		if timerFinish(expiringType, info.ExpiringCondition, triggerInfo.Next) {
 			return nil, util.ErrInvalidMethodParam
 		}
 
-		db.SetValue(abi.GetTimerStoppedQueueKey(timerId, taskTriggerInfo.Delete), nil)
+		db.SetValue(abi.GetTimerStoppedQueueKey(innerId, triggerInfo.Delete), nil)
 
-		err = db.SetValue(abi.GetTimerQueueKey(timeHeight, timerId, taskTriggerInfo.Next), timerId)
+		err = db.SetValue(abi.GetTimerQueueKey(timeHeight, innerId, triggerInfo.Next), innerId)
 		util.DealWithErr(err)
 
-		taskTriggerInfo.Delete = 0
+		triggerInfo.Delete = 0
 	}
-	newTaskTriggerInfoValue, _ := abi.ABITimer.PackVariable(abi.VariableNameTimerTaskTriggerInfo, taskTriggerInfo.Balance, taskTriggerInfo.TriggerTimes, taskTriggerInfo.Next, taskTriggerInfo.Delete)
-	err = db.SetValue(taskTriggerInfoKey, newTaskTriggerInfoValue)
+	newtriggerInfoValue, _ := abi.ABITimer.PackVariable(abi.VariableNameTimerTriggerInfo, triggerInfo.Amount, triggerInfo.TriggerTimes, triggerInfo.Next, triggerInfo.Delete)
+	err = db.SetValue(triggerInfoKey, newtriggerInfoValue)
 	util.DealWithErr(err)
 	return nil, nil
 }
 
-type MethodTimerUpdateOwner struct{}
+type MethodTimerTransferOwnership struct{}
 
-func (p *MethodTimerUpdateOwner) GetFee(block *ledger.AccountBlock) (*big.Int, error) {
+func (p *MethodTimerTransferOwnership) GetFee(block *ledger.AccountBlock) (*big.Int, error) {
 	return big.NewInt(0), nil
 }
 
-func (p *MethodTimerUpdateOwner) GetRefundData(sendBlock *ledger.AccountBlock) ([]byte, bool) {
+func (p *MethodTimerTransferOwnership) GetRefundData(sendBlock *ledger.AccountBlock) ([]byte, bool) {
 	return []byte{}, false
 }
 
-func (p *MethodTimerUpdateOwner) GetSendQuota(data []byte, gasTable *util.GasTable) (uint64, error) {
-	return gasTable.TimerRechargeGas, nil
+func (p *MethodTimerTransferOwnership) GetSendQuota(data []byte, gasTable *util.GasTable) (uint64, error) {
+	return gasTable.TimerTransferOwnership, nil
 }
-func (p *MethodTimerUpdateOwner) GetReceiveQuota(gasTable *util.GasTable) uint64 {
+func (p *MethodTimerTransferOwnership) GetReceiveQuota(gasTable *util.GasTable) uint64 {
 	return 0
 }
 
-func (p *MethodTimerUpdateOwner) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
+func (p *MethodTimerTransferOwnership) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
 	if block.Amount.Sign() != 0 {
 		return util.ErrInvalidMethodParam
 	}
 	newOwner := new(types.Address)
-	err := abi.ABITimer.UnpackMethod(newOwner, abi.MethodNameTimerUpdateOwner, block.Data)
+	err := abi.ABITimer.UnpackMethod(newOwner, abi.MethodNameTimerTransferOwnership, block.Data)
 	if err != nil {
 		return err
 	}
@@ -310,22 +310,22 @@ func (p *MethodTimerUpdateOwner) DoSend(db vm_db.VmDb, block *ledger.AccountBloc
 	if err != nil {
 		return err
 	}
-	block.Data, _ = abi.ABITimer.PackMethod(abi.MethodNameTimerUpdateOwner, *newOwner)
+	block.Data, _ = abi.ABITimer.PackMethod(abi.MethodNameTimerTransferOwnership, *newOwner)
 	return nil
 }
-func (p *MethodTimerUpdateOwner) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) ([]*ledger.AccountBlock, error) {
+func (p *MethodTimerTransferOwnership) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) ([]*ledger.AccountBlock, error) {
 	owner := getTimerOwner(db)
 	if owner != sendBlock.AccountAddress {
 		return nil, util.ErrInvalidMethodParam
 	}
 	newOwner := new(types.Address)
-	abi.ABITimer.UnpackMethod(newOwner, abi.MethodNameTimerUpdateOwner, sendBlock.Data)
+	abi.ABITimer.UnpackMethod(newOwner, abi.MethodNameTimerTransferOwnership, sendBlock.Data)
 	err := db.SetValue(abi.GetTimerOwnerKey(), newOwner.Bytes())
 	util.DealWithErr(err)
 	return nil, nil
 }
 
-func ReceiveTaskTrigger(db vm_db.VmDb, sb *ledger.SnapshotBlock, vm vmEnvironment) ([]*ledger.AccountBlock, error) {
+func ReceiveTimerTrigger(db vm_db.VmDb, sb *ledger.SnapshotBlock, vm vmEnvironment) ([]*ledger.AccountBlock, error) {
 	// check current snapshot block > last snapshot block
 	lastTriggerInfo, err := abi.GetTimerLastTriggerInfo(db)
 	util.DealWithErr(err)
@@ -339,22 +339,22 @@ func ReceiveTaskTrigger(db vm_db.VmDb, sb *ledger.SnapshotBlock, vm vmEnvironmen
 	err = db.SetValue(abi.GetTimerLastTriggerInfoKey(), lastTriggerInfoValue)
 	util.DealWithErr(err)
 
-	taskNum := 0
+	num := 0
 	returnBlocks := make([]*ledger.AccountBlock, 0)
 	//trigger by height
-	taskNum, returnBlocks = trigger(db, abi.TimerTimeHeightHeight, currentHeight, currentHeight, sb, taskNum, returnBlocks)
-	if taskNum >= TimerTriggerTasksNumMax {
+	num, returnBlocks = trigger(db, abi.TimerTimeHeightHeight, currentHeight, currentHeight, sb, num, returnBlocks)
+	if num >= TimerTriggerNumMax {
 		return returnBlocks, nil
 	}
 	// trigger by time
-	taskNum, returnBlocks = trigger(db, abi.TimerTimeHeightTime, currentTime, currentHeight, sb, taskNum, returnBlocks)
-	if taskNum >= TimerTriggerTasksNumMax {
+	num, returnBlocks = trigger(db, abi.TimerTimeHeightTime, currentTime, currentHeight, sb, num, returnBlocks)
+	if num >= TimerTriggerNumMax {
 		return returnBlocks, nil
 	}
 
-	// delete arrearage tasks for over 7 days
-	taskNum, returnBlocks = deleteExpiredTask(db, currentHeight, sb, taskNum, returnBlocks)
-	if taskNum >= TimerTriggerTasksNumMax {
+	// delete arrearage timers for over 7 days
+	num, returnBlocks = deleteExpiredTimer(db, currentHeight, sb, num, returnBlocks)
+	if num >= TimerTriggerNumMax {
 		return returnBlocks, nil
 	}
 
@@ -363,12 +363,12 @@ func ReceiveTaskTrigger(db vm_db.VmDb, sb *ledger.SnapshotBlock, vm vmEnvironmen
 	return returnBlocks, nil
 }
 
-func trigger(db vm_db.VmDb, timerQueueKeyPrefix uint8, current, currentHeight uint64, sb *ledger.SnapshotBlock, taskNum int, returnBlocks []*ledger.AccountBlock) (int, []*ledger.AccountBlock) {
+func trigger(db vm_db.VmDb, timerQueueKeyPrefix uint8, current, currentHeight uint64, sb *ledger.SnapshotBlock, num int, returnBlocks []*ledger.AccountBlock) (int, []*ledger.AccountBlock) {
 	iterator, err := db.NewStorageIterator(abi.GetTimerQueueKeyPrefix(timerQueueKeyPrefix))
 	util.DealWithErr(err)
 	defer iterator.Release()
 	for {
-		if taskNum >= TimerTriggerTasksNumMax {
+		if num >= TimerTriggerNumMax {
 			break
 		}
 		if !iterator.Next() {
@@ -380,108 +380,108 @@ func trigger(db vm_db.VmDb, timerQueueKeyPrefix uint8, current, currentHeight ui
 		if !abi.IsTimerQueueKey(iterator.Key()) {
 			continue
 		}
-		timerId := iterator.Value()
+		innerId := iterator.Value()
 		next := abi.GetNextTriggerFromTimerQueueKey(iterator.Key())
 		if next > current {
-			// next task not due
+			// next timer not due
 			break
 		}
 
-		taskNum = taskNum + 1
+		num = num + 1
 		err := db.SetValue(iterator.Key(), nil)
 		util.DealWithErr(err)
 
-		taskInfoKey, taskInfo, err := abi.GetTaskInfoByTimerId(db, timerId)
+		infoKey, info, err := abi.GetTimerInfoByInnerId(db, innerId)
 		util.DealWithErr(err)
-		_, endType, gapType := abi.GetTimerTaskTypeDetail(taskInfo.TaskType)
-		if taskFinish(endType, taskInfo.EndCondition, current) {
-			// task finish
-			taskTriggerInfoKey, taskTriggerInfo, err := abi.GetTaskTriggerInfoByTimerId(db, timerId)
+		_, expiringType, intervalType := abi.GetTimerTypeDetail(info.TimerType)
+		if timerFinish(expiringType, info.ExpiringCondition, current) {
+			// timer finish
+			triggerInfoKey, triggerInfo, err := abi.GetTimerTriggerInfoByInnerId(db, innerId)
 			util.DealWithErr(err)
-			refundBlocks := deleteAndRefund(db, taskInfoKey, taskTriggerInfoKey, taskInfo, taskTriggerInfo, sb)
+			refundBlocks := deleteAndRefund(db, infoKey, triggerInfoKey, info, triggerInfo, sb)
 			returnBlocks = append(returnBlocks, refundBlocks...)
 			continue
 		}
-		_, err = util.GetQuotaRatioBySnapshotBlock(db, taskInfo.ReceiverAddress, sb)
+		_, err = util.GetQuotaRatioBySnapshotBlock(db, info.InvokingAddr, sb)
 		if err != nil {
-			// receiver address deleted, delete task
-			taskTriggerInfoKey, taskTriggerInfo, err := abi.GetTaskTriggerInfoByTimerId(db, timerId)
+			// receiver address deleted, delete timer
+			triggerInfoKey, triggerInfo, err := abi.GetTimerTriggerInfoByInnerId(db, innerId)
 			util.DealWithErr(err)
-			refundBlocks := deleteAndRefund(db, taskInfoKey, taskTriggerInfoKey, taskInfo, taskTriggerInfo, sb)
+			refundBlocks := deleteAndRefund(db, infoKey, triggerInfoKey, info, triggerInfo, sb)
 			returnBlocks = append(returnBlocks, refundBlocks...)
 			continue
 		}
-		if next+taskInfo.Window <= current {
-			// current task skipped
-			next = lastTrigger(next, current, taskInfo.Gap)
-			if next > current || next+taskInfo.Window <= current {
-				next = next + taskInfo.Gap
-				taskTriggerInfoKey, taskTriggerInfo, err := abi.GetTaskTriggerInfoByTimerId(db, timerId)
+		if next+info.Window <= current {
+			// current timer skipped
+			next = lastTrigger(next, current, info.Interval)
+			if next > current || next+info.Window <= current {
+				next = next + info.Interval
+				triggerInfoKey, triggerInfo, err := abi.GetTimerTriggerInfoByInnerId(db, innerId)
 				util.DealWithErr(err)
-				if taskFinish(endType, taskInfo.EndCondition, next) {
-					// next task finish
-					refundBlocks := deleteAndRefund(db, taskInfoKey, taskTriggerInfoKey, taskInfo, taskTriggerInfo, sb)
+				if timerFinish(expiringType, info.ExpiringCondition, next) {
+					// next timer finish
+					refundBlocks := deleteAndRefund(db, infoKey, triggerInfoKey, info, triggerInfo, sb)
 					returnBlocks = append(returnBlocks, refundBlocks...)
 					continue
 				}
 				// prepare next trigger
-				taskTriggerInfoValue, _ := abi.ABITimer.PackVariable(abi.VariableNameTimerTaskTriggerInfo, taskTriggerInfo.Balance, taskTriggerInfo.TriggerTimes, next, taskTriggerInfo.Delete)
-				err = db.SetValue(taskTriggerInfoKey, taskTriggerInfoValue)
+				triggerInfoValue, _ := abi.ABITimer.PackVariable(abi.VariableNameTimerTriggerInfo, triggerInfo.Amount, triggerInfo.TriggerTimes, next, triggerInfo.Delete)
+				err = db.SetValue(triggerInfoKey, triggerInfoValue)
 				util.DealWithErr(err)
 				err = db.SetValue(abi.GetTimerNewQueueKey(iterator.Key(), next), iterator.Value())
 				continue
 			}
 		}
-		// trigger task
-		data, _ := abi.ABITimerNotify.PackMethod(abi.MethodNameTimerNotify, current, taskInfo.TaskId)
+		// trigger
+		data, _ := abi.ABITimerNotify.PackMethod(abi.MethodNameTimerNotify, current, info.TimerId)
 		returnBlocks = append(returnBlocks, &ledger.AccountBlock{
 			AccountAddress: types.AddressTimer,
-			ToAddress:      taskInfo.ReceiverAddress,
+			ToAddress:      info.InvokingAddr,
 			BlockType:      ledger.BlockTypeSendCall,
 			Amount:         big.NewInt(0),
 			TokenId:        ledger.ViteTokenId,
 			Data:           data,
 		})
-		taskTriggerInfoKey, taskTriggerInfo, err := abi.GetTaskTriggerInfoByTimerId(db, timerId)
+		triggerInfoKey, triggerInfo, err := abi.GetTimerTriggerInfoByInnerId(db, innerId)
 		util.DealWithErr(err)
-		chargeType := abi.GetChargeTypeFromTaskType(taskInfo.TaskType)
+		chargeType := abi.GetChargeTypeFromTimerType(info.TimerType)
 		if chargeType == abi.TimerChargeTypeCharge {
-			addFee(db, timerChargeAmountPerTask)
-			taskTriggerInfo.Balance.Sub(taskTriggerInfo.Balance, timerChargeAmountPerTask)
+			addFee(db, timerChargeAmountPerTrigger)
+			triggerInfo.Amount.Sub(triggerInfo.Amount, timerChargeAmountPerTrigger)
 		}
 
-		next = nextTriggerByGapType(next, current, taskInfo.Gap, gapType)
-		if (endType == abi.TimerEndTypeTimes && taskTriggerInfo.TriggerTimes+1 == taskInfo.EndCondition) ||
-			taskFinish(endType, taskInfo.EndCondition, next) {
-			// task finish, delete all
-			refundBlocks := deleteAndRefund(db, taskInfoKey, taskTriggerInfoKey, taskInfo, taskTriggerInfo, sb)
+		next = nextTriggerByIntervalType(next, current, info.Interval, intervalType)
+		if (expiringType == abi.TimerExpiringTypeTimes && triggerInfo.TriggerTimes+1 == info.ExpiringCondition) ||
+			timerFinish(expiringType, info.ExpiringCondition, next) {
+			// timer finish, delete all
+			refundBlocks := deleteAndRefund(db, infoKey, triggerInfoKey, info, triggerInfo, sb)
 			returnBlocks = append(returnBlocks, refundBlocks...)
 			continue
 		}
 
 		// prepare next trigger
-		if chargeType == abi.TimerChargeTypeFree || taskTriggerInfo.Balance.Sign() > 0 {
-			err := db.SetValue(abi.GetTimerNewQueueKey(iterator.Key(), next), timerId)
+		if chargeType == abi.TimerChargeTypeFree || triggerInfo.Amount.Sign() > 0 {
+			err := db.SetValue(abi.GetTimerNewQueueKey(iterator.Key(), next), innerId)
 			util.DealWithErr(err)
 		} else {
-			// arrearage task, put into stopped queue
-			taskTriggerInfo.Delete = currentHeight + TimerArrearageDeleteHeight
-			err := db.SetValue(abi.GetTimerStoppedQueueKey(timerId, taskTriggerInfo.Delete), timerId)
+			// arrearage timer, put into stopped queue
+			triggerInfo.Delete = currentHeight + TimerArrearageDeleteHeight
+			err := db.SetValue(abi.GetTimerStoppedQueueKey(innerId, triggerInfo.Delete), innerId)
 			util.DealWithErr(err)
 		}
-		taskTriggerInfoValue, _ := abi.ABITimer.PackVariable(abi.VariableNameTimerTaskTriggerInfo, taskTriggerInfo.Balance, taskTriggerInfo.TriggerTimes+1, next, taskTriggerInfo.Delete)
-		err = db.SetValue(taskTriggerInfoKey, taskTriggerInfoValue)
+		triggerInfoValue, _ := abi.ABITimer.PackVariable(abi.VariableNameTimerTriggerInfo, triggerInfo.Amount, triggerInfo.TriggerTimes+1, next, triggerInfo.Delete)
+		err = db.SetValue(triggerInfoKey, triggerInfoValue)
 		util.DealWithErr(err)
 	}
-	return taskNum, returnBlocks
+	return num, returnBlocks
 }
 
-func deleteExpiredTask(db vm_db.VmDb, currentHeight uint64, sb *ledger.SnapshotBlock, taskNum int, returnBlocks []*ledger.AccountBlock) (int, []*ledger.AccountBlock) {
+func deleteExpiredTimer(db vm_db.VmDb, currentHeight uint64, sb *ledger.SnapshotBlock, num int, returnBlocks []*ledger.AccountBlock) (int, []*ledger.AccountBlock) {
 	iterator, err := db.NewStorageIterator(abi.GetTimerStoppedQueueKeyPrefix())
 	util.DealWithErr(err)
 	defer iterator.Release()
 	for {
-		if taskNum >= TimerTriggerTasksNumMax {
+		if num >= TimerTriggerNumMax {
 			break
 		}
 		if !iterator.Next() {
@@ -495,38 +495,39 @@ func deleteExpiredTask(db vm_db.VmDb, currentHeight uint64, sb *ledger.SnapshotB
 		}
 		deleteHeight := abi.GetDeleteHeightFromTimerStoppedQueueKey(iterator.Key())
 		if deleteHeight > currentHeight {
-			// next arrearage task not due
+			// next arrearage timer not due
 			break
 		}
 
-		taskNum = taskNum + 1
-		timerId := iterator.Value()
+		num = num + 1
+		innerId := iterator.Value()
 		err := db.SetValue(iterator.Key(), nil)
 		util.DealWithErr(err)
-		taskInfoKey, taskInfo, err := abi.GetTaskInfoByTimerId(db, timerId)
+		infoKey, info, err := abi.GetTimerInfoByInnerId(db, innerId)
 		util.DealWithErr(err)
 
-		deleteAndRefund(db, taskInfoKey, abi.GetTimerTaskTriggerInfoKey(timerId), taskInfo, nil, sb)
+		deleteAndRefund(db, infoKey, abi.GetTimerTriggerInfoKey(innerId), info, nil, sb)
 	}
-	return taskNum, returnBlocks
+	return num, returnBlocks
 }
 
-func deleteAndRefund(db vm_db.VmDb, taskInfoKey, taskTriggerInfoKey []byte, taskInfo *abi.TimerTaskInfo, taskTriggerInfo *abi.TimerTaskTriggerInfo, sb *ledger.SnapshotBlock) []*ledger.AccountBlock {
-	err := db.SetValue(taskInfo.TaskId.Bytes(), nil)
+func deleteAndRefund(db vm_db.VmDb, infoKey, triggerInfoKey []byte, info *abi.TimerInfo, triggerInfo *abi.TimerTriggerInfo, sb *ledger.SnapshotBlock) []*ledger.AccountBlock {
+	err := db.SetValue(abi.GetTimerIdKey(info.TimerId), nil)
 	util.DealWithErr(err)
-	err = db.SetValue(taskInfoKey, nil)
+	err = db.SetValue(infoKey, nil)
 	util.DealWithErr(err)
-	err = db.SetValue(taskTriggerInfoKey, nil)
+	err = db.SetValue(triggerInfoKey, nil)
 	util.DealWithErr(err)
-	_, err = util.GetQuotaRatioBySnapshotBlock(db, taskInfo.RefundAddress, sb)
+	_, err = util.GetQuotaRatioBySnapshotBlock(db, info.RefundAddr, sb)
 	if err == nil {
-		return refundTask(taskTriggerInfo, taskInfo.RefundAddress)
+		return refundTimer(triggerInfo, info.RefundAddr)
 	}
 	return nil
 }
 
 func burnFee(db vm_db.VmDb, returnBlocks []*ledger.AccountBlock) []*ledger.AccountBlock {
-	feeKey, feeAmount := getFee(db)
+	feeKey, feeAmount, err := abi.GetTimerFee(db)
+	util.DealWithErr(err)
 	if feeAmount.Cmp(timerBurnFeeMin) >= 0 {
 		burnData, _ := abi.ABIMintage.PackMethod(abi.MethodNameBurn)
 		returnBlocks = append(returnBlocks, &ledger.AccountBlock{
@@ -544,16 +545,10 @@ func burnFee(db vm_db.VmDb, returnBlocks []*ledger.AccountBlock) []*ledger.Accou
 }
 
 func addFee(db vm_db.VmDb, amount *big.Int) {
-	key, feeAmount := getFee(db)
+	key, feeAmount, err := abi.GetTimerFee(db)
+	util.DealWithErr(err)
 	feeAmount.Add(feeAmount, amount)
 	db.SetValue(key, feeAmount.Bytes())
-}
-
-func getFee(db vm_db.VmDb) ([]byte, *big.Int) {
-	key := abi.GetTimerFeeKey()
-	value, err := db.GetValue(key)
-	util.DealWithErr(err)
-	return key, new(big.Int).SetBytes(value)
 }
 
 func getCurrent(timeHeight uint8, db vm_db.VmDb, vm vmEnvironment) uint64 {
@@ -582,56 +577,49 @@ func nextTrigger(start, current, gap uint64) uint64 {
 	return start + (current-start)/gap*gap + gap
 }
 
-func nextTriggerByGapType(last, current, gap uint64, gapType uint8) uint64 {
-	if gapType == abi.TimerGapTypeFixed {
-		return last + (current-last)/gap*gap + gap
+func nextTriggerByIntervalType(last, current, interval uint64, intervalType uint8) uint64 {
+	if intervalType == abi.TimerIntervalTypeFixed {
+		return last + (current-last)/interval*interval + interval
 	} else {
-		return current + gap
+		return current + interval
 	}
 }
 
-func lastTrigger(start, current, gap uint64) uint64 {
-	return start + (current-start)/gap*gap
+func lastTrigger(start, current, interval uint64) uint64 {
+	return start + (current-start)/interval*interval
 }
 
 func checkTimerChargeAmount(amount *big.Int, tokenId types.TokenTypeId) error {
-	if tokenId != ledger.ViteTokenId || amount.Cmp(timerChargeAmountPerTask) < 0 || new(big.Int).Mod(amount, timerChargeAmountPerTask).Sign() != 0 {
+	if tokenId != ledger.ViteTokenId || amount.Cmp(timerChargeAmountPerTrigger) < 0 || new(big.Int).Mod(amount, timerChargeAmountPerTrigger).Sign() != 0 {
 		return util.ErrInvalidMethodParam
 	}
 	return nil
 }
 
 func getAndSetTimerNextId(db vm_db.VmDb) uint64 {
-	timerNextIdKey := abi.GetTimerNextIdKey()
-	value, err := db.GetValue(timerNextIdKey)
+	timerNextIdKey, nextId, err := abi.GetTimerNextIndex(db)
 	util.DealWithErr(err)
-	nextId := uint64(1)
-	nextIdBig := big.NewInt(1)
-	if len(value) > 0 {
-		nextId = nextIdBig.SetBytes(value).Uint64()
-	}
-	nextIdBig.Add(nextIdBig, helper.Big1)
-	err = db.SetValue(timerNextIdKey, nextIdBig.Bytes())
+	err = db.SetValue(timerNextIdKey, new(big.Int).SetUint64(nextId+1).Bytes())
 	util.DealWithErr(err)
 	return nextId
 }
 
-func deleteTaskTriggerInfoAndRefund(db vm_db.VmDb, timerId []byte, refundAddr types.Address) (*abi.TimerTaskTriggerInfo, []*ledger.AccountBlock) {
-	taskTriggerInfoKey, taskTriggerInfo, err := abi.GetTaskTriggerInfoByTimerId(db, timerId)
+func deleteTimerTriggerInfoAndRefund(db vm_db.VmDb, innerId []byte, refundAddr types.Address) (*abi.TimerTriggerInfo, []*ledger.AccountBlock) {
+	triggerInfoKey, triggerInfo, err := abi.GetTimerTriggerInfoByInnerId(db, innerId)
 	util.DealWithErr(err)
-	err = db.SetValue(taskTriggerInfoKey, nil)
+	err = db.SetValue(triggerInfoKey, nil)
 	util.DealWithErr(err)
-	return taskTriggerInfo, refundTask(taskTriggerInfo, refundAddr)
+	return triggerInfo, refundTimer(triggerInfo, refundAddr)
 }
 
-func refundTask(taskTriggerInfo *abi.TimerTaskTriggerInfo, refundAddr types.Address) []*ledger.AccountBlock {
-	if taskTriggerInfo != nil && taskTriggerInfo.Balance.Sign() > 0 {
+func refundTimer(triggerInfo *abi.TimerTriggerInfo, refundAddr types.Address) []*ledger.AccountBlock {
+	if triggerInfo != nil && triggerInfo.Amount.Sign() > 0 {
 		return []*ledger.AccountBlock{
 			{
 				AccountAddress: types.AddressTimer,
 				ToAddress:      refundAddr,
 				BlockType:      ledger.BlockTypeSendCall,
-				Amount:         taskTriggerInfo.Balance,
+				Amount:         triggerInfo.Amount,
 				TokenId:        ledger.ViteTokenId,
 			},
 		}
@@ -640,17 +628,16 @@ func refundTask(taskTriggerInfo *abi.TimerTaskTriggerInfo, refundAddr types.Addr
 }
 
 func getTimerOwner(db vm_db.VmDb) types.Address {
-	value, err := db.GetValue(abi.GetTimerOwnerKey())
+	owner, err := abi.GetTimerOwner(db)
 	util.DealWithErr(err)
-	if len(value) > 0 {
-		owner, _ := types.BytesToAddress(value)
-		return owner
+	if owner != nil {
+		return *owner
 	}
 	return nodeConfig.params.TimerOwnerAddressDefault
 }
 
-func taskFinish(endType uint8, endCondition, future uint64) bool {
-	if endType == abi.TimerEndTypeEndTimeHeight &&
+func timerFinish(endType uint8, endCondition, future uint64) bool {
+	if endType == abi.TimerExpiringTypeTimeHeight &&
 		future > endCondition {
 		return true
 	}

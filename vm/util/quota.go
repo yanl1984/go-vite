@@ -228,10 +228,10 @@ type GasTable struct {
 	DexFundBindInviteCodeGas       uint64
 	DexFundEndorseVxMinePoolGas    uint64
 	DexFundSettleMakerMinedVxGas   uint64
-	TimerNewTaskGas                uint64
-	TimerDeleteTaskGas             uint64
-	TimerRechargeGas               uint64
-	TimerUpdateOwnerGas            uint64
+	TimerNewTimerGas               uint64
+	TimerDeleteTimerGas            uint64
+	TimerDepositGas                uint64
+	TimerTransferOwnership         uint64
 	DexFundConfigMarketsAgentGas   uint64
 	DexFundNewAgentOrderGas        uint64
 }
@@ -482,9 +482,9 @@ func newDexAgentGasTable() GasTable {
 func newTimerGasTable() GasTable {
 	gt := newDexAgentGasTable()
 	gt.SelfDestructGas = 7500
-	gt.TimerNewTaskGas = 178500
-	gt.TimerDeleteTaskGas = 8400
-	gt.TimerRechargeGas = 94500
-	gt.TimerUpdateOwnerGas = 94500
+	gt.TimerNewTimerGas = 178500
+	gt.TimerDeleteTimerGas = 8400
+	gt.TimerDepositGas = 94500
+	gt.TimerTransferOwnership = 94500
 	return gt
 }

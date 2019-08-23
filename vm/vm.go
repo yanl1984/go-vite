@@ -918,7 +918,7 @@ func (vm *VM) receiveTimer(db vm_db.VmDb, block *ledger.AccountBlock, meta *ledg
 	defer monitor.LogTimerConsuming([]string{"vm", "receiveTimer"}, time.Now())
 	sb := vm.GlobalStatus().SnapshotBlock()
 	block.FromBlockHash = sb.Hash
-	blockListToSend, err := contracts.ReceiveTaskTrigger(db, sb, vm)
+	blockListToSend, err := contracts.ReceiveTimerTrigger(db, sb, vm)
 	if err == nil {
 		if len(blockListToSend) == 0 {
 			return nil, noRetry, util.ErrNoTaskDue

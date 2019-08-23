@@ -5,6 +5,7 @@ import (
 	"github.com/vitelabs/go-vite/common/helper"
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/vm/abi"
+	"github.com/vitelabs/go-vite/vm/util"
 	"math/big"
 	"strings"
 )
@@ -12,28 +13,28 @@ import (
 const (
 	jsonTimer = `
 	[
-		{"type":"function","name":"NewTask", "inputs":[{"name":"taskType","type":"uint64"},{"name":"start","type":"uint64"},{"name":"window","type":"uint64"},{"name":"gap","type":"uint64"},{"name":"endCondition","type":"uint64"},{"name":"receiverAddress","type":"address"},{"name":"refundAddress","type":"address"}]},
-		{"type":"function","name":"DeleteTask", "inputs":[{"name":"taskId","type":"bytes32"},{"name":"refundAddress","type":"address"}]},
-		{"type":"function","name":"Recharge", "inputs":[{"name":"taskId","type":"bytes32"}]},
-		{"type":"function","name":"UpdateOwner", "inputs":[{"name":"owner","type":"address"}]},
-		{"type":"variable","name":"taskInfo","inputs":[{"name":"taskId","type":"bytes32"},{"name":"taskType","type":"uint64"},{"name":"window","type":"uint64"},{"name":"gap","type":"uint64"},{"name":"endCondition","type":"uint64"},{"name":"receiverAddress","type":"address"},{"name":"refundAddress","type":"address"}]},
-		{"type":"variable","name":"taskTriggerInfo","inputs":[{"name":"balance","type":"uint256"},{"name":"triggerTimes","type":"uint64"},{"name":"next","type":"uint64"},{"name":"delete","type":"uint64"}]},
+		{"type":"function","name":"NewTimer", "inputs":[{"name":"timerType","type":"uint64"},{"name":"start","type":"uint64"},{"name":"window","type":"uint64"},{"name":"interval","type":"uint64"},{"name":"expiringCondition","type":"uint64"},{"name":"invokingAddr","type":"address"},{"name":"refundAddr","type":"address"}]},
+		{"type":"function","name":"DeleteTimer", "inputs":[{"name":"timerId","type":"bytes32"},{"name":"refundAddr","type":"address"}]},
+		{"type":"function","name":"Deposit", "inputs":[{"name":"timerId","type":"bytes32"}]},
+		{"type":"function","name":"TransferOwnership", "inputs":[{"name":"newOwnerAddr","type":"address"}]},
+		{"type":"variable","name":"timerInfo","inputs":[{"name":"timerId","type":"bytes32"},{"name":"timerType","type":"uint64"},{"name":"window","type":"uint64"},{"name":"interval","type":"uint64"},{"name":"expiringCondition","type":"uint64"},{"name":"invokingAddr","type":"address"},{"name":"refundAddr","type":"address"}]},
+		{"type":"variable","name":"timerTriggerInfo","inputs":[{"name":"amount","type":"uint256"},{"name":"triggerTimes","type":"uint64"},{"name":"next","type":"uint64"},{"name":"delete","type":"uint64"}]},
 		{"type":"variable","name":"lastTriggerInfo","inputs":[{"name":"timestamp","type":"uint64"},{"name":"height","type":"uint64"}]}
 	]`
 
 	jsonTimerNotify = `
 	[
-		{"type":"function","name":"__notify", "inputs":[{"name":"current","type":"uint64"},{"name":"taskId","type":"bytes32"}]}
+		{"type":"function","name":"__notify", "inputs":[{"name":"current","type":"uint64"},{"name":"timerId","type":"bytes32"}]}
 	]
 	`
 
-	MethodNameTimerNewTask           = "NewTask"
-	MethodNameTimerDeleteTask        = "DeleteTask"
-	MethodNameTimerRecharge          = "Recharge"
-	MethodNameTimerUpdateOwner       = "UpdateOwner"
+	MethodNameTimerNewTimer          = "NewTimer"
+	MethodNameTimerDeleteTimer       = "DeleteTimer"
+	MethodNameTimerDeposit           = "Deposit"
+	MethodNameTimerTransferOwnership = "TransferOwnership"
 	MethodNameTimerNotify            = "__notify"
-	VariableNameTimerTaskInfo        = "taskInfo"
-	VariableNameTimerTaskTriggerInfo = "taskTriggerInfo"
+	VariableNameTimerInfo            = "timerInfo"
+	VariableNameTimerTriggerInfo     = "timerTriggerInfo"
 	VariableNameTimerLastTriggerInfo = "lastTriggerInfo"
 )
 const (
@@ -41,84 +42,86 @@ const (
 	TimerTimeHeightHeight
 )
 const (
-	TimerEndTypeEndTimeHeight uint8 = iota + 1
-	TimerEndTypeTimes
-	TimerEndTypePermanent
+	TimerExpiringTypeTimeHeight uint8 = iota + 1
+	TimerExpiringTypeTimes
+	TimerExpiringTypePermanent
 )
 const (
-	TimerGapTypePostpone uint8 = iota + 1
-	TimerGapTypeFixed
+	TimerIntervalTypePostpone uint8 = iota + 1
+	TimerIntervalTypeFixed
 )
 const (
 	TimerChargeTypeFree uint8 = iota + 1
 	TimerChargeTypeCharge
 )
 const (
-	timerIdLen              = types.AddressSize + 8
+	timerInfoKeyLen         = 2 + types.AddressSize + 8
 	timerQueueKeyLen        = 2 + 1 + 8 + 8
 	timerStoppedQueueKeyLen = 2 + 8 + 8
 )
 
 /*
- taskInfo: 31 byte, 2 byte prefix + 21 byte address + 8 byte id
- taskTriggerInfo: 31 byte, 2 byte prefix + 21 byte address + 8 byte id
+ timerInfo: 31 byte, 2 byte prefix + 21 byte address + 8 byte id
+ timerTriggerInfo: 31 byte, 2 byte prefix + 21 byte address + 8 byte id
  queue: 19 byte, 2 byte prefix + 1 byte time height type + 8 byte next time height + 8 byte id
  stoppedQueue: 18 byte, 2 byte prefix + 8 byte delete height + 8 byte id
- taskId: 32 byte request hash
+ timerId: 32 byte request hash
  nextId: 3 byte
  lastTriggerInfo: 3 byte
  fee: 3 byte
+ owner: 3 byte
 */
 var (
-	ABITimer, _                   = abi.JSONToABIContract(strings.NewReader(jsonTimer))
-	ABITimerNotify, _             = abi.JSONToABIContract(strings.NewReader(jsonTimerNotify))
-	timerNextIdKey                = []byte("nid")
-	timerLastTriggerInfoKey       = []byte("lti")
-	timerFeeKey                   = []byte("fee")
-	timerOwnerKey                 = []byte("own")
-	timerTaskInfoKeyPrefix        = []byte{0, 0}
-	timerTaskTriggerInfoKeyPrefix = []byte{0, 1}
-	timerQueueKeyPrefix           = []byte{1, 0}
-	timerStoppedQueueKeyPrefix    = []byte{1, 1}
+	ABITimer, _                = abi.JSONToABIContract(strings.NewReader(jsonTimer))
+	ABITimerNotify, _          = abi.JSONToABIContract(strings.NewReader(jsonTimerNotify))
+	timerNextIndexKey          = []byte("nid")
+	timerLastTriggerInfoKey    = []byte("lti")
+	timerFeeKey                = []byte("fee")
+	timerOwnerKey              = []byte("own")
+	timerInfoKeyPrefix         = []byte{0, 0}
+	timerTriggerInfoKeyPrefix  = []byte{0, 1}
+	timerQueueKeyPrefix        = []byte{1, 0}
+	timerStoppedQueueKeyPrefix = []byte{1, 1}
 )
 
-type ParamTimerNewTask struct {
-	TaskType        uint64
-	Start           uint64
-	EndCondition    uint64
-	Window          uint64
-	Gap             uint64
-	ReceiverAddress types.Address
-	RefundAddress   types.Address
+type ParamNewTimer struct {
+	TimerType         uint64
+	Start             uint64
+	ExpiringCondition uint64
+	Window            uint64
+	Interval          uint64
+	InvokingAddr      types.Address
+	RefundAddr        types.Address
 }
 
-type ParamTimerDeleteTask struct {
-	TaskId        types.Hash
-	RefundAddress types.Address
+type ParamDeleteTimer struct {
+	TimerId    types.Hash
+	RefundAddr types.Address
 }
 
-type TimerTaskInfo struct {
-	TaskId          types.Hash
-	TaskType        uint64
-	Window          uint64
-	Gap             uint64
-	EndCondition    uint64
-	ReceiverAddress types.Address
-	RefundAddress   types.Address
+type TimerInfo struct {
+	TimerId           types.Hash
+	TimerType         uint64
+	Window            uint64
+	Interval          uint64
+	ExpiringCondition uint64
+	InvokingAddr      types.Address
+	RefundAddr        types.Address
+	InnerId           []byte
 }
 
-type TimerTaskTriggerInfo struct {
-	Balance      *big.Int
+type TimerTriggerInfo struct {
+	Amount       *big.Int
 	TriggerTimes uint64
 	Next         uint64
 	Delete       uint64
 }
 
-func (t *TimerTaskTriggerInfo) IsStopped() bool {
+func (t *TimerTriggerInfo) IsStopped() bool {
 	return t.Delete > 0
 }
 
-func (t *TimerTaskTriggerInfo) IsFinish() bool {
+func (t *TimerTriggerInfo) IsFinish() bool {
 	return t.Delete == 0 && t.Next == 0
 }
 
@@ -127,44 +130,41 @@ type TimerLastTriggerInfo struct {
 	Height    uint64
 }
 
-func GetTimerId(address types.Address, id uint64) []byte {
+func GetInnerId(address types.Address, id uint64) []byte {
 	return helper.JoinBytes(address.Bytes(), helper.LeftPadBytes(new(big.Int).SetUint64(id).Bytes(), 8))
 }
-func GetOwnerFromTimerId(timerId []byte) types.Address {
-	addr, _ := types.BytesToAddress(timerId[:types.AddressSize])
+func GetOwnerFromInnerId(innerId []byte) types.Address {
+	addr, _ := types.BytesToAddress(innerId[:types.AddressSize])
 	return addr
 }
-func getIdFromTimerId(timerId []byte) []byte {
-	return timerId[types.AddressSize:]
+func GetIndexFromInnerId(innerId []byte) []byte {
+	return innerId[types.AddressSize:]
 }
-func IsTimerIdKey(k []byte) bool {
-	return len(k) == timerIdLen
+func GetTimerNextIndexKey() []byte {
+	return timerNextIndexKey
 }
-func GetTimerNextIdKey() []byte {
-	return timerNextIdKey
+func GetTimerTypeDetail(timerType uint64) (timeHeight, expiringType, intervalType uint8) {
+	ct := timerType / 1000
+	th := (timerType - ct*1000) / 100
+	et := (timerType - ct*1000 - th*100) / 10
+	it := timerType - ct*1000 - th*100 - et*10
+	return uint8(th), uint8(et), uint8(it)
 }
-func GetTimerTaskTypeDetail(taskType uint64) (timeHeight, endType, gapType uint8) {
-	ct := taskType / 1000
-	th := (taskType - ct*1000) / 100
-	et := (taskType - ct*1000 - th*100) / 10
-	gt := taskType - ct*1000 - th*100 - et*10
-	return uint8(th), uint8(et), uint8(gt)
+func GetChargeTypeFromTimerType(timerType uint64) uint8 {
+	return uint8(timerType / 1000)
 }
-func GetChargeTypeFromTaskType(taskType uint64) uint8 {
-	return uint8(taskType / 1000)
-}
-func GetVariableTaskTypeByParamTaskType(taskType uint64, isOwner bool) uint64 {
+func GetVariableTimerTypeByParamTimerType(timerType uint64, isOwner bool) uint64 {
 	if isOwner {
-		return uint64(TimerChargeTypeFree)*1000 + taskType
+		return uint64(TimerChargeTypeFree)*1000 + timerType
 	}
-	return uint64(TimerChargeTypeCharge)*1000 + taskType
+	return uint64(TimerChargeTypeCharge)*1000 + timerType
 }
-func GenerateTimerTaskType(timeHeight, endType, gapType uint8) uint64 {
-	return uint64(gapType) + uint64(endType)*10 + uint64(timeHeight)*100
+func GenerateTimerType(timeHeight, expiringType, intervalType uint8) uint64 {
+	return uint64(intervalType) + uint64(expiringType)*10 + uint64(timeHeight)*100
 }
 
-func GetTimerQueueKey(timeHeight uint8, timerId []byte, next uint64) []byte {
-	return helper.JoinBytes(timerQueueKeyPrefix, []byte{byte(timeHeight)}, helper.LeftPadBytes(new(big.Int).SetUint64(next).Bytes(), 8), getIdFromTimerId(timerId))
+func GetTimerQueueKey(timeHeight uint8, innerId []byte, next uint64) []byte {
+	return helper.JoinBytes(timerQueueKeyPrefix, []byte{byte(timeHeight)}, helper.LeftPadBytes(new(big.Int).SetUint64(next).Bytes(), 8), GetIndexFromInnerId(innerId))
 }
 func GetTimerNewQueueKey(oldKey []byte, next uint64) []byte {
 	return helper.JoinBytes(oldKey[:3], helper.LeftPadBytes(new(big.Int).SetUint64(next).Bytes(), 8), oldKey[11:])
@@ -178,8 +178,8 @@ func IsTimerQueueKey(k []byte) bool {
 func GetNextTriggerFromTimerQueueKey(k []byte) uint64 {
 	return new(big.Int).SetBytes(k[3:11]).Uint64()
 }
-func GetTimerStoppedQueueKey(timerId []byte, delete uint64) []byte {
-	return helper.JoinBytes(timerStoppedQueueKeyPrefix, helper.LeftPadBytes(new(big.Int).SetUint64(delete).Bytes(), 8), getIdFromTimerId(timerId))
+func GetTimerStoppedQueueKey(innerId []byte, delete uint64) []byte {
+	return helper.JoinBytes(timerStoppedQueueKeyPrefix, helper.LeftPadBytes(new(big.Int).SetUint64(delete).Bytes(), 8), GetIndexFromInnerId(innerId))
 }
 func IsTimerStoppedQueueKey(k []byte) bool {
 	return len(k) == timerStoppedQueueKeyLen && bytes.Equal(k[:2], timerStoppedQueueKeyPrefix)
@@ -190,11 +190,20 @@ func GetTimerStoppedQueueKeyPrefix() []byte {
 func GetDeleteHeightFromTimerStoppedQueueKey(key []byte) uint64 {
 	return new(big.Int).SetBytes(key[2:10]).Uint64()
 }
-func GetTimerTaskInfoKey(timerId []byte) []byte {
-	return helper.JoinBytes(timerTaskInfoKeyPrefix, timerId)
+func GetTimerInfoKey(innerId []byte) []byte {
+	return helper.JoinBytes(timerInfoKeyPrefix, innerId)
 }
-func GetTimerTaskTriggerInfoKey(timerId []byte) []byte {
-	return helper.JoinBytes(timerTaskTriggerInfoKeyPrefix, timerId)
+func GetTimerInfoKeyPrefix(owner types.Address) []byte {
+	return helper.JoinBytes(timerInfoKeyPrefix, owner.Bytes())
+}
+func GetInnerIdFromTimerInfoKey(k []byte) []byte {
+	return k[2:]
+}
+func IsTimerInfoKey(k []byte) bool {
+	return len(k) == timerInfoKeyLen && bytes.Equal(k[:2], timerInfoKeyPrefix)
+}
+func GetTimerTriggerInfoKey(innerId []byte) []byte {
+	return helper.JoinBytes(timerTriggerInfoKeyPrefix, innerId)
 }
 func GetTimerFeeKey() []byte {
 	return timerFeeKey
@@ -205,27 +214,68 @@ func GetTimerLastTriggerInfoKey() []byte {
 func GetTimerOwnerKey() []byte {
 	return timerOwnerKey
 }
-
-func GetTaskInfoByTimerId(db StorageDatabase, timerId []byte) ([]byte, *TimerTaskInfo, error) {
-	taskInfoKey := GetTimerTaskInfoKey(timerId)
-	taskInfoValue, err := db.GetValue(taskInfoKey)
-	if err != nil {
-		return nil, nil, err
-	}
-	taskInfo := new(TimerTaskInfo)
-	ABITimer.UnpackVariable(taskInfo, VariableNameTimerTaskInfo, taskInfoValue)
-	return taskInfoKey, taskInfo, nil
+func GetTimerIdKey(timerId types.Hash) []byte {
+	return timerId.Bytes()
 }
 
-func GetTaskTriggerInfoByTimerId(db StorageDatabase, timerId []byte) ([]byte, *TimerTaskTriggerInfo, error) {
-	taskTriggerInfoKey := GetTimerTaskTriggerInfoKey(timerId)
-	taskTriggerInfoValue, err := db.GetValue(taskTriggerInfoKey)
+func GetTimerFee(db StorageDatabase) ([]byte, *big.Int, error) {
+	key := GetTimerFeeKey()
+	value, err := db.GetValue(key)
 	if err != nil {
 		return nil, nil, err
 	}
-	taskTriggerInfo := new(TimerTaskTriggerInfo)
-	ABITimer.UnpackVariable(taskTriggerInfo, VariableNameTimerTaskTriggerInfo, taskTriggerInfoValue)
-	return taskTriggerInfoKey, taskTriggerInfo, nil
+	return key, new(big.Int).SetBytes(value), err
+}
+
+func GetTimerNextIndex(db StorageDatabase) ([]byte, uint64, error) {
+	timerNextIndexKey := GetTimerNextIndexKey()
+	value, err := db.GetValue(timerNextIndexKey)
+	if err != nil {
+		return nil, 0, err
+	}
+	nextIndex := uint64(1)
+	if len(value) > 0 {
+		nextIndex = new(big.Int).SetBytes(value).Uint64()
+	}
+	return timerNextIndexKey, nextIndex, nil
+}
+
+func GetTimerOwner(db StorageDatabase) (*types.Address, error) {
+	value, err := db.GetValue(GetTimerOwnerKey())
+	if err != nil {
+		return nil, err
+	}
+	if len(value) > 0 {
+		owner, _ := types.BytesToAddress(value)
+		return &owner, nil
+	}
+	return nil, nil
+}
+
+func GetInnerIdByTimerId(db StorageDatabase, timerId types.Hash) ([]byte, error) {
+	return db.GetValue(GetTimerIdKey(timerId))
+}
+
+func GetTimerInfoByInnerId(db StorageDatabase, innerId []byte) ([]byte, *TimerInfo, error) {
+	timerInfoKey := GetTimerInfoKey(innerId)
+	timerInfoValue, err := db.GetValue(timerInfoKey)
+	if err != nil {
+		return nil, nil, err
+	}
+	timerInfo := new(TimerInfo)
+	ABITimer.UnpackVariable(timerInfo, VariableNameTimerInfo, timerInfoValue)
+	return timerInfoKey, timerInfo, nil
+}
+
+func GetTimerTriggerInfoByInnerId(db StorageDatabase, innerId []byte) ([]byte, *TimerTriggerInfo, error) {
+	timerTriggerInfoKey := GetTimerTriggerInfoKey(innerId)
+	timerTriggerInfoValue, err := db.GetValue(timerTriggerInfoKey)
+	if err != nil {
+		return nil, nil, err
+	}
+	timerTriggerInfo := new(TimerTriggerInfo)
+	ABITimer.UnpackVariable(timerTriggerInfo, VariableNameTimerTriggerInfo, timerTriggerInfoValue)
+	return timerTriggerInfoKey, timerTriggerInfo, nil
 }
 
 func GetTimerLastTriggerInfo(db StorageDatabase) (*TimerLastTriggerInfo, error) {
@@ -239,4 +289,57 @@ func GetTimerLastTriggerInfo(db StorageDatabase) (*TimerLastTriggerInfo, error) 
 		return lastTriggerInfo, nil
 	}
 	return nil, nil
+}
+
+func GetTimerInfoListByOwner(db StorageDatabase, owner types.Address) ([]*TimerInfo, error) {
+	if *db.Address() != types.AddressTimer {
+		return nil, util.ErrAddressNotMatch
+	}
+	iterator, err := db.NewStorageIterator(GetTimerInfoKeyPrefix(owner))
+	if err != nil {
+		return nil, err
+	}
+	defer iterator.Release()
+	timerInfoList := make([]*TimerInfo, 0)
+	for {
+		if !iterator.Next() {
+			if iterator.Error() != nil {
+				return nil, iterator.Error()
+			}
+			break
+		}
+		if !filterKeyValue(iterator.Key(), iterator.Value(), IsTimerInfoKey) {
+			continue
+		}
+		timerInfo := new(TimerInfo)
+		if err := ABITimer.UnpackVariable(timerInfo, VariableNameTimerInfo, iterator.Value()); err == nil {
+			timerInfo.InnerId = GetInnerIdFromTimerInfoKey(iterator.Key())
+			timerInfoList = append(timerInfoList, timerInfo)
+		}
+	}
+	return timerInfoList, nil
+}
+
+func GetTimerSummary(db StorageDatabase) (uint64, uint64, error) {
+	queueCount := uint64(0)
+	stoppedQueueCount := uint64(0)
+	iterator, err := db.NewStorageIterator([]byte{1})
+	if err != nil {
+		return 0, 0, err
+	}
+	defer iterator.Release()
+	for {
+		if !iterator.Next() {
+			if iterator.Error() != nil {
+				return 0, 0, iterator.Error()
+			}
+			break
+		}
+		if filterKeyValue(iterator.Key(), iterator.Value(), IsTimerQueueKey) {
+			queueCount = queueCount + 1
+		} else if filterKeyValue(iterator.Key(), iterator.Value(), IsTimerStoppedQueueKey) {
+			stoppedQueueCount = stoppedQueueCount + 1
+		}
+	}
+	return queueCount, stoppedQueueCount, nil
 }
