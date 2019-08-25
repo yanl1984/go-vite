@@ -194,6 +194,7 @@ type ContractInfo struct {
 	ConfirmTime uint8     `json:"confirmTime"`
 	SeedCount   uint8     `json:"seedCount"`
 	QuotaRatio  uint8     `json:"quotaRatio"`
+	Delete      bool      `json:"delete"`
 }
 
 func (c *ContractApi) GetContractInfo(addr types.Address) (*ContractInfo, error) {
@@ -208,5 +209,5 @@ func (c *ContractApi) GetContractInfo(addr types.Address) (*ContractInfo, error)
 	if meta == nil {
 		return nil, nil
 	}
-	return &ContractInfo{Code: code, Gid: meta.Gid, ConfirmTime: meta.SendConfirmedTimes, SeedCount: meta.SeedConfirmedTimes, QuotaRatio: meta.QuotaRatio}, nil
+	return &ContractInfo{Code: code, Gid: meta.Gid, ConfirmTime: meta.SendConfirmedTimes, SeedCount: meta.SeedConfirmedTimes, QuotaRatio: meta.QuotaRatio, Delete: meta.IsDeleted()}, nil
 }

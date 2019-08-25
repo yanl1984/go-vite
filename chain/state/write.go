@@ -97,6 +97,9 @@ func (sDB *StateDB) Write(block *vm_db.VmAccountBlock) error {
 		metaBytes := meta.Serialize()
 		sDB.writeContractMeta(batch, contractKey, metaBytes)
 
+		if redoLog.ContractMeta == nil {
+			redoLog.ContractMeta = make(map[types.Address][]byte)
+		}
 		redoLog.ContractMeta[accountBlock.AccountAddress] = metaBytes
 	}
 

@@ -26,7 +26,7 @@ func (p TimerApi) String() string {
 }
 
 type NewTimerParam struct {
-	TimeHeight        uint8         `json:"timeHeight"`
+	TimeHeight        uint8         `json:"timeHeightType"`
 	ExpiringType      uint8         `json:"expiringType"`
 	IntervalType      uint8         `json:"intervalType"`
 	Start             string        `json:"start"`
@@ -79,7 +79,7 @@ func (t *TimerApi) GetUpdateOwnerData(newOwner types.Address) ([]byte, error) {
 
 type TimerInfo struct {
 	TimerId           types.Hash    `json:"timerId"`
-	TimeHeight        uint8         `json:"timeHeight"`
+	TimeHeight        uint8         `json:"timeHeightType"`
 	ExpiringType      uint8         `json:"expiringType"`
 	IntervalType      uint8         `json:"intervalType"`
 	Window            string        `json:"window"`
@@ -87,7 +87,7 @@ type TimerInfo struct {
 	ExpiringCondition string        `json:"expiringCondition"`
 	InvokingAddr      types.Address `json:"invokingAddr"`
 	RefundAddr        types.Address `json:"refundAddr"`
-	Owner             types.Address `json:"owner"`
+	Owner             types.Address `json:"ownerAddr"`
 	Index             string        `json:"index"`
 	Amount            *string       `json:"amount"`
 	TriggerTimes      string        `json:"triggerTimes"`
@@ -95,7 +95,7 @@ type TimerInfo struct {
 	Delete            string        `json:"delete"`
 }
 
-func (t *TimerApi) GetTimerInfoListByOwner(owner types.Address) ([]*TimerInfo, error) {
+func (t *TimerApi) GetTimerInfosByOwner(owner types.Address) ([]*TimerInfo, error) {
 	db, err := getVmDb(t.chain, types.AddressTimer)
 	if err != nil {
 		return nil, err
