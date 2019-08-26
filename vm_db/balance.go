@@ -1,6 +1,7 @@
 package vm_db
 
 import (
+	"github.com/vitelabs/go-vite/common/db/xleveldb/errors"
 	"github.com/vitelabs/go-vite/common/types"
 	"math/big"
 )
@@ -20,8 +21,26 @@ func (vdb *vmDb) SetBalance(tokenTypeId *types.TokenTypeId, amount *big.Int) {
 }
 
 func (vdb *vmDb) GetBalanceMap() (map[types.TokenTypeId]*big.Int, error) {
-	// TODO
-	return nil, nil
+	address := vdb.Address()
+	if address == nil {
+		return nil, errors.New("no address")
+	}
+
+	balanceMap, err := vdb.chain.GetBalanceMap(*address)
+	if err != nil {
+		return nil, err
+	}
+
+	if balanceMap == nil {
+		balanceMap = make(map[types.TokenTypeId]*big.Int)
+	}
+	unsavedBalanceMap := vdb.GetUnsavedBalanceMap()
+	for tokenId, balance := range unsavedBalanceMap {
+		balanceMap[tokenId] = balance
+	}
+
+	return balanceMap, nil
+
 }
 
 func (vdb *vmDb) GetUnsavedBalanceMap() map[types.TokenTypeId]*big.Int {

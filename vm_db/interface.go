@@ -21,6 +21,8 @@ type Chain interface {
 
 	GetBalance(addr types.Address, tokenId types.TokenTypeId) (*big.Int, error)
 
+	GetBalanceMap(addr types.Address) (map[types.TokenTypeId]*big.Int, error)
+
 	GetContractCode(contractAddr types.Address) ([]byte, error)
 
 	GetContractMeta(contractAddress types.Address) (meta *ledger.ContractMeta, err error)
