@@ -461,11 +461,8 @@ func (vm *VM) receiveCreate(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock
 			vm.updateBlock(db, block, err, 0, 0)
 			db, err = vm.doSendBlockList(db, 0)
 			if err == nil {
-				db, err = selfDestruct(vm, db, block)
-				if err == nil {
-					block.Data = getReceiveCallData(db, err)
-					return mergeReceiveBlock(db, block, vm.sendBlockList), noRetry, nil
-				}
+				block.Data = getReceiveCallData(db, err)
+				return mergeReceiveBlock(db, block, vm.sendBlockList), noRetry, nil
 			}
 		}
 	}
