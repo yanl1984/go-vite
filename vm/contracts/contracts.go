@@ -188,7 +188,7 @@ func newLeafContracts() map[types.Address]*builtinContract {
 	return contracts
 }
 
-func GetBuiltinContractMethod(addr types.Address, methodSelector []byte, sbHeight uint64) (BuiltinContractMethod, bool, error) {
+func GetBuiltinContractMethod(addr types.Address, methodSelector []byte, sbHeight uint64) (BuiltinContractMethod, string, bool, error) {
 	var contractsMap map[types.Address]*builtinContract
 	if fork.IsLeafFork(sbHeight) {
 		contractsMap = leafContracts
@@ -204,10 +204,10 @@ func GetBuiltinContractMethod(addr types.Address, methodSelector []byte, sbHeigh
 		if method, err := p.abi.MethodById(methodSelector); err == nil {
 			c, methodExists := p.m[method.Name]
 			if methodExists {
-				return c, methodExists, nil
+				return c, method.Name, methodExists, nil
 			}
 		}
-		return nil, addrExists, util.ErrAbiMethodNotFound
+		return nil, "", addrExists, util.ErrAbiMethodNotFound
 	}
-	return nil, addrExists, nil
+	return nil, "", addrExists, nil
 }

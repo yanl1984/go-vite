@@ -463,7 +463,7 @@ func (vm *VM) sendCall(db vm_db.VmDb, block *ledger.AccountBlock, useQuota bool,
 	defer monitor.LogTimerConsuming([]string{"vm", "sendCall"}, time.Now())
 	// check can make transaction
 	quotaLeft := quotaTotal
-	if p, ok, err := contracts.GetBuiltinContractMethod(block.ToAddress, block.Data, vm.latestSnapshotHeight); ok {
+	if p, _, ok, err := contracts.GetBuiltinContractMethod(block.ToAddress, block.Data, vm.latestSnapshotHeight); ok {
 		if err != nil {
 			return nil, err
 		}
@@ -533,7 +533,7 @@ func (vm *VM) receiveCall(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *
 		vm.updateBlock(db, block, util.ErrDepth, 0, 0)
 		return &vm_db.VmAccountBlock{block, db}, noRetry, util.ErrDepth
 	}
-	if p, ok, _ := contracts.GetBuiltinContractMethod(block.AccountAddress, sendBlock.Data, vm.latestSnapshotHeight); ok {
+	if p, methodName, ok, _ := contracts.GetBuiltinContractMethod(block.AccountAddress, sendBlock.Data, vm.latestSnapshotHeight); ok {
 		// check quota
 		quotaUsed := p.GetReceiveQuota(vm.gasTable)
 		if quotaUsed > 0 {
@@ -552,7 +552,13 @@ func (vm *VM) receiveCall(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *
 			}
 		}
 		util.AddBalance(db, &sendBlock.TokenId, sendBlock.Amount)
+		start := time.Now().UnixNano()
 		blockListToSend, err := p.DoReceive(db, block, sendBlock, vm)
+		cost := (time.Now().UnixNano()-start)/1e6
+		if cost > 1 || methodName == "DexFundPeriodJob" {
+			nodeConfig.log.Info("receiveCall", "DoReceive method", methodName, "cost", cost)
+		}
+
 		if err == nil {
 			vm.updateBlock(db, block, err, quotaUsed, quotaUsed)
 			vm.vmContext.sendBlockList = blockListToSend
