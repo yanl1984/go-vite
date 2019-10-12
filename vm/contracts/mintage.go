@@ -164,7 +164,7 @@ func (p *MethodIssue) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendB
 	abi.ABIMintage.UnpackMethod(param, p.MethodName, sendBlock.Data)
 	oldTokenInfo, err := abi.GetTokenById(db, param.TokenId)
 	util.DealWithErr(err)
-	if oldTokenInfo == nil || !oldTokenInfo.IsReIssuable || oldTokenInfo.Owner != sendBlock.AccountAddress ||
+	if oldTokenInfo == nil || !oldTokenInfo.IsReIssuable ||
 		new(big.Int).Sub(oldTokenInfo.MaxSupply, oldTokenInfo.TotalSupply).Cmp(param.Amount) < 0 {
 		return nil, util.ErrInvalidMethodParam
 	}
