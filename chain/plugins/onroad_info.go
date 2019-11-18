@@ -23,22 +23,34 @@ var (
 	updateInfoErr = errors.New("conflict, fail to update onroad info")
 )
 
+const PluginKeyOnRoadInfo = "onRoadInfo"
+
 type OnRoadInfo struct {
 	chain Chain
+
+	pluginKey string
 
 	unconfirmedCache map[types.Address]map[types.Hash]*ledger.AccountBlock
 	store            *chain_db.Store
 	mu               sync.RWMutex
 }
 
-func newOnRoadInfo(store *chain_db.Store, chain Chain) Plugin {
+func newOnRoadInfo(pluginKey string, store *chain_db.Store, chain Chain) Plugin {
 	or := &OnRoadInfo{
-		chain: chain,
-
+		chain:            chain,
+		pluginKey:        pluginKey,
 		store:            store,
 		unconfirmedCache: make(map[types.Address]map[types.Hash]*ledger.AccountBlock),
 	}
 	return or
+}
+
+func (or *OnRoadInfo) GetName() string {
+	return or.pluginKey
+}
+
+func (or *OnRoadInfo) GetStore() (bool, *chain_db.Store) {
+	return false, or.store
 }
 
 func (or *OnRoadInfo) SetStore(store *chain_db.Store) {
@@ -187,81 +199,6 @@ func (or *OnRoadInfo) DeleteAccountBlocks(batch *leveldb.Batch, blocks []*ledger
 	return nil
 }
 
-func (or *OnRoadInfo) UpdateOnRoadInfo(addr types.Address, tkId types.TokenTypeId, number uint64, amount big.Int) error {
-	or.mu.Lock()
-	defer or.mu.Unlock()
-
-	onRoadMap, ok := or.unconfirmedCache[addr]
-	if ok && onRoadMap != nil {
-		pendingMap := make([]*ledger.AccountBlock, 0)
-		for _, v := range onRoadMap {
-			if v == nil {
-				continue
-			}
-			pendingMap = append(pendingMap, v)
-		}
-		uMap := excludePairTrades(or.chain, pendingMap)
-		value, ok := uMap[addr]
-		if ok && len(value) > 0 {
-			return errors.New("can't force to refresh")
-		}
-	}
-
-	batch := or.store.NewBatch()
-	key := CreateOnRoadInfoKey(&addr, &tkId)
-	if number == 0 && amount.Cmp(helper.Big0) <= 0 {
-		or.deleteMeta(batch, key)
-	} else {
-		om, err := or.getMeta(key)
-		if err != nil {
-			return err
-		}
-		if om == nil {
-			om = &onroadMeta{}
-		}
-		om.Number = number
-		om.TotalAmount = amount
-		if err := or.writeMeta(batch, key, om); err != nil {
-			return err
-		}
-	}
-
-	or.store.WriteDirectly(batch)
-	// flush to disk
-	if flusher := or.chain.Flusher(); flusher != nil {
-		flusher.Flush()
-	}
-	return nil
-}
-
-func (or *OnRoadInfo) RemoveFromUnconfirmedCache(addr types.Address, hashList []*types.Hash) error {
-	or.mu.Lock()
-	defer or.mu.Unlock()
-
-	omMap, err := or.readOnRoadInfo(&addr)
-	if err != nil {
-		return err
-	}
-	if len(omMap) > 0 {
-		return errors.New("can't force to refresh")
-	}
-
-	onRoadMap, ok := or.unconfirmedCache[addr]
-	if !ok || onRoadMap == nil {
-		return nil
-	}
-	for _, v := range hashList {
-		if v == nil {
-			continue
-		}
-		value, ok := onRoadMap[*v]
-		if ok && value != nil {
-			delete(onRoadMap, *v)
-		}
-	}
-	return nil
-}
-
 func (or *OnRoadInfo) GetOnRoadInfoUnconfirmedHashList(addr types.Address) ([]*types.Hash, error) {
 	or.mu.RLock()
 	defer or.mu.RUnlock()
@@ -322,7 +259,7 @@ func (or *OnRoadInfo) GetAccountInfo(addr *types.Address) (*ledger.AccountInfo, 
 		diffNum := num.Add(num, &signOm.number)
 		diffAmount := om.TotalAmount.Add(&om.TotalAmount, &signOm.amount)
 
-		oLog.Info(fmt.Sprintf("add unconfirmed info addr=%v tk=%v result[%v %v]\n", addr, tkId, diffNum.String(), diffAmount.String()), "method", "GetAccountInfo")
+		oLog.Info(fmt.Sprintf("Add unconfirmed info addr=%v tk=%v result[%v %v]\n", addr, tkId, diffNum.String(), diffAmount.String()), "method", "GetAccountInfo")
 
 		if diffAmount.Sign() < 0 || diffNum.Sign() < 0 || (diffAmount.Sign() > 0 && diffNum.Sign() == 0) {
 			return nil, errors.New("conflict, fail to get onroad info")
@@ -350,6 +287,21 @@ func (or *OnRoadInfo) GetAccountInfo(addr *types.Address) (*ledger.AccountInfo, 
 		onroadInfo.TotalNumber += v.Number
 	}
 	return onroadInfo, nil
+}
+func (or *OnRoadInfo) InsertAccountBlockSuccess(*leveldb.Batch, []*ledger.AccountBlock) error {
+	return nil
+}
+
+func (or *OnRoadInfo) DeleteAccountBlocksSuccess(*leveldb.Batch, []*ledger.AccountBlock) error {
+	return nil
+}
+
+func (or *OnRoadInfo) InsertSnapshotBlockSuccess(*leveldb.Batch, *ledger.SnapshotBlock, []*ledger.AccountBlock) error {
+	return nil
+}
+
+func (or *OnRoadInfo) DeleteSnapshotBlockSuccess(*leveldb.Batch, []*ledger.SnapshotChunk) error {
+	return nil
 }
 
 func (or *OnRoadInfo) getUnconfirmed(addr types.Address) (map[types.TokenTypeId]*signOnRoadMeta, error) {

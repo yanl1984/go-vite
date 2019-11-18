@@ -2,13 +2,11 @@ package api
 
 import (
 	"encoding/json"
-	"errors"
 	"math/big"
 	"runtime/debug"
 	"time"
 
 	"github.com/vitelabs/go-vite/common/fork"
-	"github.com/vitelabs/go-vite/common/helper"
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/config"
 	"github.com/vitelabs/go-vite/vite"
@@ -218,22 +216,4 @@ func (api DebugApi) GetForkInfo() config.ForkPoints {
 
 func (api DebugApi) GetOnRoadInfoUnconfirmed(addr types.Address) ([]*types.Hash, error) {
 	return api.v.Chain().GetOnRoadInfoUnconfirmedHashList(addr)
-}
-
-func (api DebugApi) UpdateOnRoadInfo(addr types.Address, tkId types.TokenTypeId, number uint64, amountStr *string) error {
-	amount := big.NewInt(0)
-	if amountStr != nil {
-		if _, ok := amount.SetString(*amountStr, 10); !ok {
-			return ErrStrToBigInt
-		}
-	}
-	result := amount.Cmp(helper.Big0)
-	if result < 0 || (number == 0 && result > 0) {
-		return errors.New("amount invalid")
-	}
-	return api.v.Chain().UpdateOnRoadInfo(addr, tkId, number, *amount)
-}
-
-func (api DebugApi) ClearOnRoadUnconfirmedCache(addr types.Address, hashList []*types.Hash) error {
-	return api.v.Chain().ClearOnRoadUnconfirmedCache(addr, hashList)
 }

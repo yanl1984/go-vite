@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package vitepb;
+
+message UnreceivedSnapshotMeta {
+    SnapshotHashHeight HashHeight = 1;
+    repeated AddrUnreceivedInfo UnreceivedInfos = 2;
+
+    message SnapshotHashHeight {
+        bytes Hash = 1;
+        uint64 Height = 2;
+    }
+
+    message AddrUnreceivedInfo {
+        bytes address = 1;
+        repeated TokenBalanceInfo BalanceInfos= 2;
+    };
+
+    message TokenBalanceInfo {
+        bytes TokenId = 1;
+        uint64 Number = 2;
+        bytes Amount = 3;
+    };
+}
+

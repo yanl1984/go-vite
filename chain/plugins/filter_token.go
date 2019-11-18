@@ -12,16 +12,28 @@ import (
 	"github.com/vitelabs/go-vite/ledger"
 )
 
+const PluginKeyFilterToken = "filterToken"
+
 type FilterToken struct {
-	store *chain_db.Store
-	chain Chain
+	pluginKey string
+	store     *chain_db.Store
+	chain     Chain
 }
 
-func newFilterToken(store *chain_db.Store, chain Chain) Plugin {
+func newFilterToken(pluginKey string, store *chain_db.Store, chain Chain) Plugin {
 	return &FilterToken{
-		store: store,
-		chain: chain,
+		pluginKey: pluginKey,
+		store:     store,
+		chain:     chain,
 	}
+}
+
+func (ft *FilterToken) GetName() string {
+	return ft.pluginKey
+}
+
+func (ft *FilterToken) GetStore() (bool, *chain_db.Store) {
+	return false, ft.store
 }
 
 func (ft *FilterToken) SetStore(store *chain_db.Store) {
@@ -84,6 +96,7 @@ func (ft *FilterToken) DeleteSnapshotBlocks(batch *leveldb.Batch, chunks []*ledg
 	}
 	return nil
 }
+
 func (ft *FilterToken) RemoveNewUnconfirmed(*leveldb.Batch, []*ledger.AccountBlock) error {
 	return nil
 }
@@ -152,7 +165,7 @@ func (ft *FilterToken) GetBlocks(addr types.Address, tokenId types.TokenTypeId, 
 
 func (ft *FilterToken) deleteAccountBlocks(batch *leveldb.Batch, accountBlocks []*ledger.AccountBlock, sendBlocksMap map[types.Hash]*ledger.AccountBlock) error {
 	for _, accountBlock := range accountBlocks {
-		// add send blocks
+		// Add send blocks
 		for _, sendBlock := range accountBlock.SendBlockList {
 			sendBlocksMap[sendBlock.Hash] = sendBlock
 
@@ -190,6 +203,22 @@ func (ft *FilterToken) deleteAccountBlocks(batch *leveldb.Batch, accountBlocks [
 		key := createDiffTokenKey(accountBlock.AccountAddress, tokenTypeId, accountBlock.Height)
 		batch.Delete(key)
 	}
+	return nil
+}
+
+func (ft *FilterToken) InsertAccountBlockSuccess(*leveldb.Batch, []*ledger.AccountBlock) error {
+	return nil
+}
+
+func (ft *FilterToken) DeleteAccountBlocksSuccess(*leveldb.Batch, []*ledger.AccountBlock) error {
+	return nil
+}
+
+func (ft *FilterToken) InsertSnapshotBlockSuccess(*leveldb.Batch, *ledger.SnapshotBlock, []*ledger.AccountBlock) error {
+	return nil
+}
+
+func (ft *FilterToken) DeleteSnapshotBlockSuccess(*leveldb.Batch, []*ledger.SnapshotChunk) error {
 	return nil
 }
 

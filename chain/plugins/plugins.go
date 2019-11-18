@@ -43,8 +43,8 @@ func NewPlugins(chainDir string, chain Chain) (*Plugins, error) {
 	}
 
 	plugins := map[string]Plugin{
-		"filterToken": newFilterToken(store, chain),
-		"onRoadInfo":  newOnRoadInfo(store, chain),
+		PluginKeyFilterToken: newFilterToken(PluginKeyFilterToken, store, chain),
+		PluginKeyOnRoadInfo:  newOnRoadInfo(PluginKeyOnRoadInfo, store, chain),
 	}
 
 	return &Plugins{
@@ -55,6 +55,10 @@ func NewPlugins(chainDir string, chain Chain) (*Plugins, error) {
 		writeStatus: start,
 		log:         log15.New("module", "chain_plugins"),
 	}, nil
+}
+
+func (p Plugins) AppendPlugin(customPlugin Plugin) {
+	p.plugins[customPlugin.GetName()] = customPlugin
 }
 
 func (p *Plugins) StopWrite() {
@@ -94,8 +98,12 @@ func (p *Plugins) RebuildData() error {
 
 	p.store = store
 
-	for _, plugin := range p.plugins {
-		plugin.SetStore(store)
+	defaultPlugins := make([]Plugin, 0)
+	for _, v := range p.plugins {
+		if customized, _ := v.GetStore(); !customized {
+			v.SetStore(store)
+			defaultPlugins = append(defaultPlugins, v)
+		}
 	}
 
 	// replace flusher store
@@ -137,7 +145,7 @@ func (p *Plugins) RebuildData() error {
 
 				batch := p.store.NewBatch()
 
-				for _, plugin := range p.plugins {
+				for _, plugin := range defaultPlugins {
 					if err := plugin.InsertAccountBlock(batch, ab); err != nil {
 						return err
 					}
@@ -148,7 +156,7 @@ func (p *Plugins) RebuildData() error {
 			// write sb
 			batch := p.store.NewBatch()
 
-			for _, plugin := range p.plugins {
+			for _, plugin := range defaultPlugins {
 				if err := plugin.InsertSnapshotBlock(batch, chunk.SnapshotBlock, chunk.AccountBlocks); err != nil {
 					pErr := errors.New(fmt.Sprintf("InsertSnapshotBlock fail, err:%v, sb[%v, %v,len=%v] ", err, chunk.SnapshotBlock.Height, chunk.SnapshotBlock.Hash, len(chunk.AccountBlocks)))
 					p.log.Error(pErr.Error(), "method", "RebuildData")
@@ -172,14 +180,26 @@ func (p *Plugins) RebuildData() error {
 }
 
 func (p *Plugins) Close() error {
-	if err := p.store.Close(); err != nil {
-		return err
+	for _, v := range p.Stores() {
+		if err := v.Close(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
 func (p *Plugins) Store() *chain_db.Store {
 	return p.store
+}
+
+func (p *Plugins) Stores() []*chain_db.Store {
+	storeList := []*chain_db.Store{p.store}
+	for _, v := range p.plugins {
+		if customized, store := v.GetStore(); customized && store != nil {
+			storeList = append(storeList, store)
+		}
+	}
+	return storeList
 }
 
 func (p *Plugins) GetPlugin(name string) Plugin {

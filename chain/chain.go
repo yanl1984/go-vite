@@ -169,11 +169,20 @@ func (c *chain) Init() error {
 		return err
 	}
 
-	// reconstruct the plugins
-	/*	if c.chainCfg.OpenPlugins {
-			c.plugins.BuildPluginsDb(c.flusher)
+	// plugins inits
+	if c.chainCfg.OpenPlugins {
+		if plugins := c.plugins; plugins != nil {
+
+			// special design plugin: PluginKeyUnreceivedInfo
+			pluginUnreceived, ok := plugins.GetPlugin(chain_plugins.PluginKeyUnreceivedInfo).(*chain_plugins.UnreceivedInfo)
+			if ok && pluginUnreceived != nil {
+				if err := pluginUnreceived.Init(c.flusher); err != nil {
+					return err
+				}
+			}
 		}
-	*/
+	}
+
 	c.log.Info("Complete initialization", "method", "Init")
 
 	return nil
@@ -309,13 +318,23 @@ func (c *chain) newDbAndRecover() error {
 			c.log.Error(cErr.Error(), "method", "newDbAndRecover")
 			return cErr
 		}
+		// special design plugin
+		unreceivedPlugin, err := chain_plugins.NewUnreceivedInfo(c, c.chainDir)
+		if err != nil {
+			return err
+		}
+		c.plugins.AppendPlugin(unreceivedPlugin)
+
 		c.Register(c.plugins)
 	}
 
 	// new flusher
 	stores := []chain_flusher.Storage{c.blockDB, c.stateDB.Store(), c.stateDB.RedoStore(), c.indexDB.Store()}
 	if c.chainCfg.OpenPlugins {
-		stores = append(stores, c.plugins.Store())
+		pluginsStores := c.plugins.Stores()
+		for _, v := range pluginsStores {
+			stores = append(stores, v)
+		}
 	}
 	if c.flusher, err = chain_flusher.NewFlusher(stores, &c.flushMu, c.chainDir); err != nil {
 		cErr := errors.New(fmt.Sprintf("chain_flusher.NewFlusher failed. Error: %s", err))

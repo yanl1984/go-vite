@@ -287,9 +287,7 @@ type Chain interface {
 
 	GetOnRoadInfoUnconfirmedHashList(addr types.Address) ([]*types.Hash, error)
 
-	UpdateOnRoadInfo(addr types.Address, tkId types.TokenTypeId, number uint64, amount big.Int) error
-
-	ClearOnRoadUnconfirmedCache(addr types.Address, hashList []*types.Hash) error
+	GetAccountUnreceivedInfo(addr types.Address) (*ledger.AccountInfo, error)
 
 	// ====== Other ======
 	SetCacheLevelForConsensus(level uint32) // affect `GetVoteList` and `GetConfirmedBalanceList`. 0 means no cache, 1 means cache
