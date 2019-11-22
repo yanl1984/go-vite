@@ -709,17 +709,16 @@ func makeDexFundStakeForPrincipalSVIPBlock(addr types.Address) *ledger.AccountBl
 }
 
 func BenchmarkVMDexFundCancelStakeByIdSend(b *testing.B) {
-	stakeId, _ := types.HexToHash("8aadbeb14a503c43506c9c3566fb3baa7b63f39206bc44260696ecb13ffe6a95")
-	sendBlock := makeDexFundCancelStakeByIdPBlock(stakeId)
+	sendBlock := makeDexFundCancelStakeByIdPBlock()
 	benchmarkSend(b, sendBlock)
 }
 func BenchmarkVMDexFundCancelStakeByIdReceive(b *testing.B) {
-	stakeId, _ := types.HexToHash("8aadbeb14a503c43506c9c3566fb3baa7b63f39206bc44260696ecb13ffe6a95")
-	sendBlock := makeDexFundCancelStakeByIdPBlock(stakeId)
+	sendBlock := makeDexFundCancelStakeByIdPBlock()
 	receiveBlock := makeReceiveBlock(types.AddressDexFund)
 	benchmarkReceive(b, sendBlock, receiveBlock)
 }
-func makeDexFundCancelStakeByIdPBlock(stakeId types.Hash) *ledger.AccountBlock {
+func makeDexFundCancelStakeByIdPBlock() *ledger.AccountBlock {
+	stakeId, _ := types.HexToHash("8aadbeb14a503c43506c9c3566fb3baa7b63f39206bc44260696ecb13ffe6a95")
 	data, err := abi.ABIDexFund.PackMethod(abi.MethodNameDexFundCancelStakeById, stakeId)
 	if err != nil {
 		panic(err)
@@ -813,4 +812,17 @@ func TestPrintDexBlockSize(t *testing.T) {
 	printBlockSize("dexTradeCancelOrderByHash",
 		makeDexTradeCancelOrderByHashBlock(dexAddr),
 		makeReceiveBlock(types.AddressDexTrade))
+
+	printBlockSize("dexFundLockVxForDividend",
+		makeDexFundLockVxForDividendBlock(testAddr),
+		makeReceiveBlock(types.AddressDexFund))
+	printBlockSize("dexFundSwitchConfig",
+		makeDexFundSwitchConfigBlock(testAddr),
+		makeReceiveBlock(types.AddressDexFund))
+	printBlockSize("dexFundStakeForPrincipalSVIP",
+		makeDexFundStakeForPrincipalSVIPBlock(testAddr),
+		makeReceiveBlock(types.AddressDexFund))
+	printBlockSize("dexFundCancelStakeById",
+		makeDexFundCancelStakeByIdPBlock(),
+		makeReceiveBlock(types.AddressDexFund))
 }

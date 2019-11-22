@@ -1,9 +1,7 @@
-package message
+package net
 
 import (
 	crand "crypto/rand"
-	"encoding/hex"
-	"fmt"
 	"math/big"
 	mrand "math/rand"
 	"testing"

@@ -2,6 +2,7 @@ package chain
 
 import (
 	"fmt"
+	"github.com/vitelabs/go-vite/crypto/ed25519"
 
 	"github.com/vitelabs/go-vite/chain/utils"
 	"github.com/vitelabs/go-vite/common/types"
@@ -493,6 +494,7 @@ func createSnapshotContent(chainInstance *chain, snapshotAll bool) ledger.Snapsh
 type createSbOption struct {
 	SnapshotAll bool
 	Seed        uint64
+	Version     uint32
 }
 
 func createSnapshotBlock(chainInstance *chain, option createSbOption) *ledger.SnapshotBlock {
@@ -506,13 +508,15 @@ func createSnapshotBlock(chainInstance *chain, option createSbOption) *ledger.Sn
 	} else {
 		now = latestSb.Timestamp.Add(3 * time.Second)
 	}
-
+	publicKey, _ := ed25519.HexToPublicKey("40654b2a32d04e0bd48cd321029d692877365a7f487eaa375e8bcac504aa5ed4")
 	sb := &ledger.SnapshotBlock{
 		PrevHash:        latestSb.Hash,
 		Height:          latestSb.Height + 1,
 		Timestamp:       &now,
 		SnapshotContent: createSnapshotContent(chainInstance, option.SnapshotAll),
 		Seed:            option.Seed,
+		Version:         6,
+		PublicKey:       publicKey,
 	}
 	sb.Hash = sb.ComputeHash()
 	return sb

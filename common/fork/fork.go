@@ -18,10 +18,12 @@ type ForkPointItem struct {
 type ForkPointList []*ForkPointItem
 type ForkPointMap map[string]*ForkPointItem
 
+// === context data ===
 var activeChecker ActiveChecker
 
 var forkPointList ForkPointList
 var forkPointMap ForkPointMap
+// === context data ===
 
 func (a ForkPointList) Len() int           { return len(a) }
 func (a ForkPointList) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
@@ -63,6 +65,12 @@ func SetForkPoints(points *config.ForkPoints) {
 
 func SetActiveChecker(ac ActiveChecker) {
 	activeChecker = ac
+}
+
+func CleanContext()  {
+	activeChecker = nil
+	forkPointList = nil
+	forkPointMap = nil
 }
 
 func CheckForkPoints(points config.ForkPoints) error {

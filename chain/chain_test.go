@@ -49,7 +49,7 @@ var GenesisJson = `{
       "Version":5
     },
 	"EarthFork":{
-      "Height":6,
+      "Height":20,
       "Version":6
     }
   },
@@ -102,13 +102,13 @@ var GenesisJson = `{
     "RegistrationInfoMap":{
       "00000000000000000001":{
         "s1":{
-          "BlockProducingAddress":"vite_360232b0378111b122685a15e612143dc9a89cfa7e803f4b5a",
-          "StakeAddress":"vite_360232b0378111b122685a15e612143dc9a89cfa7e803f4b5a",
+          "BlockProducingAddress":"vite_f6de9301a702bbf513b3c7eb88d837214601ce7c8d9c0178a6",
+          "StakeAddress":"vite_f6de9301a702bbf513b3c7eb88d837214601ce7c8d9c0178a6",
           "Amount":100000000000000000000000,
           "ExpirationHeight":7776000,
           "RewardTime":1,
           "RevokeTime":0,
-          "HistoryAddressList":["vite_360232b0378111b122685a15e612143dc9a89cfa7e803f4b5a"]
+          "HistoryAddressList":["vite_f6de9301a702bbf513b3c7eb88d837214601ce7c8d9c0178a6"]
         }
       }
     }
@@ -178,6 +178,11 @@ var GenesisJson = `{
           "Amount": 1000000000000000000000,
           "ExpirationHeight": 259200,
           "Beneficiary": "vite_56fd05b23ff26cd7b0a40957fb77bde60c9fd6ebc35f809c23"
+        },
+        {
+          "Amount": 1000000000000000000000,
+          "ExpirationHeight": 259200,
+          "Beneficiary": "vite_f6de9301a702bbf513b3c7eb88d837214601ce7c8d9c0178a6"
         }
       ]
     },
@@ -469,18 +474,18 @@ func Clear(c *chain) error {
 func SetUp(accountNum, txCount, snapshotPerBlockNum int) (*chain, map[types.Address]*Account, []*ledger.SnapshotBlock) {
 	// set fork point
 
-	if len(fork.GetActiveForkPointList()) <= 0 {
-		fork.SetForkPoints(&config.ForkPoints{
-			SeedFork: &config.ForkPoint{
-				Version: 1,
-				Height:  10000000,
-			},
-			DexFork: &config.ForkPoint{
-				Version: 2,
-				Height:  10000000,
-			},
-		})
-	}
+	//if len(fork.GetActiveForkPointList()) <= 0 {
+	//	fork.SetForkPoints(&config.ForkPoints{
+	//		SeedFork: &config.ForkPoint{
+	//			Version: 1,
+	//			Height:  10000000,
+	//		},
+	//		DexFork: &config.ForkPoint{
+	//			Version: 2,
+	//			Height:  10000000,
+	//		},
+	//	})
+	//}
 
 	// test quota
 	quota.InitQuotaConfig(true, true)

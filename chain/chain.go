@@ -250,6 +250,7 @@ func (c *chain) Destroy() error {
 	c.blockDB = nil
 	c.syncCache = nil
 	c.metaDB = nil
+	fork.CleanContext()
 
 	c.log.Info("Complete destruction", "method", "Close")
 
