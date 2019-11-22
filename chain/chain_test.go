@@ -317,6 +317,13 @@ var GenesisJson = `{
 					"Token":"tti_5649544520544f4b454e6e40",
 					"Available":1000000000000000000000000,
 					"Locked":1000000000000000000000000
+				},
+				{
+					"Token":"tti_564954455820434f494e69b5",
+					"Available":1000000000000000000000000,
+					"Locked":1000000000000000000000000,
+					"VxLocked":1000000000000000000000000,
+					"VxUnlocking":1000000000000000000000000
 				}
 			]
 		},
@@ -351,7 +358,17 @@ var GenesisJson = `{
       },
       "MarketAgents": {
 		   "vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a":"vite_56fd05b23ff26cd7b0a40957fb77bde60c9fd6ebc35f809c23"
-      }
+      },
+      "DexStakes": [
+		   {
+				"StakeType":1,
+				"Address":"vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a",
+				"Amount":1000000000000000000000000,
+				"Status":2,
+				"SerialNo":10,
+				"Id":"8aadbeb14a503c43506c9c3566fb3baa7b63f39206bc44260696ecb13ffe6a95"
+			}
+      ]
   },
   "DexTradeInfo": {
       "Timestamp":1563187466,

@@ -657,6 +657,76 @@ func makeDexTradeCancelOrderByHashBlock(addr types.Address) *ledger.AccountBlock
 	return makeSendBlock(addr, types.AddressDexTrade, data, big0, big0)
 }
 
+func BenchmarkVMDexFundLockVxForDividendSend(b *testing.B) {
+	sendBlock := makeDexFundLockVxForDividendBlock(testAddr)
+	benchmarkSend(b, sendBlock)
+}
+func BenchmarkVMDexFundLockVxForDividendReceive(b *testing.B) {
+	sendBlock := makeDexFundLockVxForDividendBlock(testAddr)
+	receiveBlock := makeReceiveBlock(types.AddressDexFund)
+	benchmarkReceive(b, sendBlock, receiveBlock)
+}
+func makeDexFundLockVxForDividendBlock(addr types.Address) *ledger.AccountBlock {
+	data, err := abi.ABIDexFund.PackMethod(abi.MethodNameDexFundLockVxForDividend, uint8(dex.UnlockVx), new(big.Int).Mul(new(big.Int).SetInt64(1e18), big.NewInt(10)))
+	if err != nil {
+		panic(err)
+	}
+	return makeSendBlock(addr, types.AddressDexFund, data, big0, big0)
+}
+
+func BenchmarkVMDexFundSwitchConfigSend(b *testing.B) {
+	sendBlock := makeDexFundSwitchConfigBlock(testAddr)
+	benchmarkSend(b, sendBlock)
+}
+func BenchmarkVMDexFundSwitchConfigReceive(b *testing.B) {
+	sendBlock := makeDexFundSwitchConfigBlock(testAddr)
+	receiveBlock := makeReceiveBlock(types.AddressDexFund)
+	benchmarkReceive(b, sendBlock, receiveBlock)
+}
+func makeDexFundSwitchConfigBlock(addr types.Address) *ledger.AccountBlock {
+	data, err := abi.ABIDexFund.PackMethod(abi.MethodNameDexFundSwitchConfig, uint8(dex.AutoLockMinedVx), true)
+	if err != nil {
+		panic(err)
+	}
+	return makeSendBlock(addr, types.AddressDexFund, data, big0, big0)
+}
+
+func BenchmarkVMDexFundStakeForPrincipalSVIPSend(b *testing.B) {
+	sendBlock := makeDexFundStakeForPrincipalSVIPBlock(dexAddr)
+	benchmarkSend(b, sendBlock)
+}
+func BenchmarkVMDexFundStakeForPrincipalSVIPReceive(b *testing.B) {
+	sendBlock := makeDexFundStakeForPrincipalSVIPBlock(dexAddr)
+	receiveBlock := makeReceiveBlock(types.AddressDexFund)
+	benchmarkReceive(b, sendBlock, receiveBlock)
+}
+func makeDexFundStakeForPrincipalSVIPBlock(addr types.Address) *ledger.AccountBlock {
+	data, err := abi.ABIDexFund.PackMethod(abi.MethodNameDexFundStakeForPrincipalSVIP, addr)
+	if err != nil {
+		panic(err)
+	}
+	return makeSendBlock(testAddr, types.AddressDexFund, data, big0, big0)
+}
+
+func BenchmarkVMDexFundCancelStakeByIdSend(b *testing.B) {
+	stakeId, _ := types.HexToHash("8aadbeb14a503c43506c9c3566fb3baa7b63f39206bc44260696ecb13ffe6a95")
+	sendBlock := makeDexFundCancelStakeByIdPBlock(stakeId)
+	benchmarkSend(b, sendBlock)
+}
+func BenchmarkVMDexFundCancelStakeByIdReceive(b *testing.B) {
+	stakeId, _ := types.HexToHash("8aadbeb14a503c43506c9c3566fb3baa7b63f39206bc44260696ecb13ffe6a95")
+	sendBlock := makeDexFundCancelStakeByIdPBlock(stakeId)
+	receiveBlock := makeReceiveBlock(types.AddressDexFund)
+	benchmarkReceive(b, sendBlock, receiveBlock)
+}
+func makeDexFundCancelStakeByIdPBlock(stakeId types.Hash) *ledger.AccountBlock {
+	data, err := abi.ABIDexFund.PackMethod(abi.MethodNameDexFundCancelStakeById, stakeId)
+	if err != nil {
+		panic(err)
+	}
+	return makeSendBlock(testAddr, types.AddressDexFund, data, big0, big0)
+}
+
 func TestPrintDexBlockSize(t *testing.T) {
 	printBlockSize("dexFundDeposit",
 		makeDexDepositBlock(testAddr),

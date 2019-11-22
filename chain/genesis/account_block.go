@@ -354,6 +354,12 @@ func newDexFundContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock,
 				userAcc.Token = acc.Token.Bytes()
 				userAcc.Available = acc.Available.Bytes()
 				userAcc.Locked = acc.Locked.Bytes()
+				if acc.VxLocked != nil {
+					userAcc.VxLocked = acc.VxLocked.Bytes()
+				}
+				if acc.VxUnlocking != nil {
+					userAcc.VxUnlocking = acc.VxUnlocking.Bytes()
+				}
 				userFund.Accounts = append(userFund.Accounts, userAcc)
 			}
 			dex.SaveFund(vmdb, fund.Address, userFund)
@@ -377,6 +383,24 @@ func newDexFundContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock,
 		}
 		for principal, agent := range cfg.DexFundInfo.MarketAgents {
 			vmdb.SetValue(dex.GetGrantedMarketToAgentKey(principal, 1), agent.Bytes())
+		}
+		for _, stake := range cfg.DexFundInfo.DexStakes {
+			info := &dex.DelegateStakeInfo{}
+			info.StakeType = stake.StakeType
+			info.Address = stake.Address.Bytes()
+			if stake.Principal != types.ZERO_ADDRESS {
+				info.Principal = stake.Principal.Bytes()
+			}
+			info.Amount = stake.Amount.Bytes()
+			info.Status = stake.Status
+			info.SerialNo = stake.SerialNo
+			infoBytes, _ := info.Serialize()
+			vmdb.SetValue(dex.GetDelegateStakeInfoKey(stake.Id.Bytes()), infoBytes)
+			index := &dex.DelegateStakeAddressIndex{}
+			index.StakeType = stake.StakeType
+			index.Id = stake.Id.Bytes()
+			indexBytes, _ := index.Serialize()
+			vmdb.SetValue(dex.GetDelegateStakeAddressIndexKey(stake.Id.Bytes(), stake.SerialNo), indexBytes)
 		}
 		block.Hash = block.ComputeHash()
 		fmt.Printf("fund block.hash %s\n", block.Hash.String())

@@ -194,6 +194,7 @@ type DexFundContractInfo struct {
 	MakerMinedVxs         map[string]*big.Int
 	Inviters              map[types.Address]uint32
 	MarketAgents          map[types.Address]types.Address
+	DexStakes             []DexDelegateStake
 }
 type DexTokenInfo struct {
 	TokenId        types.TokenTypeId
@@ -230,9 +231,11 @@ type DexUserFund struct {
 	Accounts []DexFundUserAcc
 }
 type DexFundUserAcc struct {
-	Token     types.TokenTypeId
-	Available *big.Int
-	Locked    *big.Int
+	Token       types.TokenTypeId
+	Available   *big.Int
+	Locked      *big.Int
+	VxLocked    *big.Int
+	VxUnlocking *big.Int
 }
 
 type DexTradeContractInfo struct {
@@ -262,4 +265,13 @@ type DexTradeOrder struct {
 	Timestamp          int64
 	Agent              types.Address
 	SendHash           types.Hash
+}
+type DexDelegateStake struct {
+	StakeType int32
+	Address   types.Address
+	Principal types.Address
+	Amount    *big.Int
+	Status    int32
+	SerialNo  uint64
+	Id        types.Hash
 }
