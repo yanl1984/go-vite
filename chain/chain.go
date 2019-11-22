@@ -2,7 +2,7 @@ package chain
 
 import (
 	"fmt"
-
+	"github.com/olebedev/emitter"
 	"github.com/vitelabs/go-vite/common/fork"
 
 	"github.com/vitelabs/go-vite/chain/plugins"
@@ -54,7 +54,11 @@ type chain struct {
 
 	em *eventManager
 
+	emitter *emitter.Emitter
+
 	cache *chain_cache.Cache
+
+	metaDB *leveldb.DB
 
 	indexDB *chain_index.IndexDB
 
@@ -71,6 +75,9 @@ type chain struct {
 	plugins *chain_plugins.Plugins
 
 	status uint32
+
+	forkActiveCheckPoint fork.ForkPointItem
+	forkActiveCache      fork.ForkPointList
 }
 
 /*
@@ -81,7 +88,7 @@ func NewChain(dir string, chainCfg *config.Chain, genesisCfg *config.Genesis) *c
 		chainCfg = defaultConfig()
 	}
 
-	if !fork.IsInit() {
+	if !fork.IsInitForkPoint() {
 		fork.SetForkPoints(genesisCfg.ForkPoints)
 	}
 
@@ -89,13 +96,32 @@ func NewChain(dir string, chainCfg *config.Chain, genesisCfg *config.Genesis) *c
 		genesisCfg: genesisCfg,
 		dataDir:    dir,
 		chainDir:   path.Join(dir, "ledger"),
-		log:        log15.New("module", "chain"),
-		em:         newEventManager(),
-		chainCfg:   chainCfg,
+
+		log: log15.New("module", "chain"),
+
+		emitter:  emitter.New(10),
+		chainCfg: chainCfg,
 	}
+
+	// set leaf fork point
+	forkActiveCheckPoint := fork.GetLeafForkPoint()
+	if forkActiveCheckPoint == nil {
+		panic("LeafFork is not existed")
+	}
+
+	c.forkActiveCheckPoint = *forkActiveCheckPoint
+
+	// set active fork
+	if !fork.IsInitActiveChecker() {
+		fork.SetActiveChecker(c)
+	}
+
+	c.em = newEventManager(c)
+	c.emitter.Use("*", emitter.Sync)
 
 	c.genesisAccountBlocks = chain_genesis.NewGenesisAccountBlocks(genesisCfg)
 	c.genesisSnapshotBlock = chain_genesis.NewGenesisSnapshotBlock(c.genesisAccountBlocks)
+
 	c.genesisAccountBlockHash = chain_genesis.VmBlocksToHashMap(c.genesisAccountBlocks)
 
 	return c
@@ -103,39 +129,38 @@ func NewChain(dir string, chainCfg *config.Chain, genesisCfg *config.Genesis) *c
 
 /*
  * 1. Check and init ledger (check genesis block)
- * 2. Init index database
- * 3. Init state database
- * 4. Init block database
- * 5. Init cache
+ * 2. Init indexDB
+ * 3. Init stateDB
+ * 4. Init blockDB
+ * 5. Init cache(indexDB cache, stateDB cache, blockDB cache, syncCache)
  */
 func (c *chain) Init() error {
 	c.log.Info("Begin initializing", "method", "Init")
-	for {
-		// init db
-		if err := c.newDbAndRecover(); err != nil {
-			return err
-		}
 
-		// check ledger
-		status, err := c.checkAndInitData()
-		if err != nil {
-			return err
-		}
+	// init db
+	if err := c.newDbAndRecover(); err != nil {
+		return err
+	}
 
-		// ledger is valid
-		if status == chain_genesis.LedgerValid {
-			break
-		}
+	// check ledger
+	status, err := c.checkAndInitData()
+	if err != nil {
+		return err
+	}
 
-		// close and clean ledger data
-		if err := c.closeAndCleanData(); err != nil {
-			return err
-		}
-
+	// ledger is invalid
+	if status != chain_genesis.LedgerValid {
+		return errors.New(fmt.Sprintf("The genesis state is incorrect. You can fix the problem by removing the database manually."+
+			"The directory of database is %s.", c.chainDir))
 	}
 
 	// init cache
 	if err := c.initCache(); err != nil {
+		return err
+	}
+
+	// init fork active
+	if err := c.initActiveFork(); err != nil {
 		return err
 	}
 
@@ -249,6 +274,13 @@ func (c *chain) SetConsensus(cs Consensus) {
 
 func (c *chain) newDbAndRecover() error {
 	var err error
+	// new metaDB
+	c.metaDB, err = c.NewDb("chain_meta")
+	if err != nil {
+		c.log.Error(fmt.Sprintf("new meta db failed, error is %s, chainDir is %s", err, c.chainDir), "method", "newDbAndRecover")
+		return err
+	}
+
 	// new ledger db
 	if c.indexDB, err = chain_index.NewIndexDB(c.chainDir, c); err != nil {
 		c.log.Error(fmt.Sprintf("chain_index.NewIndexDB failed, error is %s, chainDir is %s", err, c.chainDir), "method", "newDbAndRecover")
@@ -311,7 +343,7 @@ func (c *chain) newDbAndRecover() error {
 
 func (c *chain) checkAndInitData() (byte, error) {
 	// check ledger
-	status, err := chain_genesis.CheckLedger(c, c.genesisSnapshotBlock)
+	status, err := chain_genesis.CheckLedger(c, c.genesisSnapshotBlock, c.genesisAccountBlocks)
 	if err != nil {
 		cErr := errors.New(fmt.Sprintf("chain_genesis.CheckLedger failed, error is %s, chainDir is %s", err, c.chainDir))
 
@@ -337,7 +369,7 @@ func (c *chain) checkAndInitData() (byte, error) {
 }
 
 func (c *chain) checkForkPointsAndRollback() error {
-	forkPointList := fork.GetForkPointList()
+	forkPointList := fork.GetActiveForkPointList()
 
 	// check
 	var rollbackForkPoint *fork.ForkPointItem

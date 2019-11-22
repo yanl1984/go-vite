@@ -83,7 +83,6 @@ func NewStateDBWithStore(chain Chain, chainCfg *config.Chain, store *chain_db.St
 	if err := stateDb.newCache(); err != nil {
 		return nil, err
 	}
-
 	stateDb.roundCache = NewRoundCache(chain, stateDb, 3)
 	return stateDb, nil
 }
@@ -309,7 +308,7 @@ func (sDB *StateDB) GetSnapshotBalanceList(balanceMap map[types.Address]*big.Int
 
 func (sDB *StateDB) GetSnapshotValue(snapshotBlockHeight uint64, addr types.Address, key []byte) ([]byte, error) {
 
-	if sDB.useCache && types.IsBuiltinContractAddr(addr) && snapshotBlockHeight == sDB.chain.GetLatestSnapshotBlock().Height {
+	if sDB.useCache && sDB.shouldCacheContractData(addr) && snapshotBlockHeight == sDB.chain.GetLatestSnapshotBlock().Height {
 		return sDB.getValueInCache(append(addr.Bytes(), key...), snapshotValuePrefix)
 	}
 
@@ -364,6 +363,10 @@ func (sDB *StateDB) GetStatus() []interfaces.DBStatus {
 		Size:   uint64(statusList[1].Size),
 		Status: statusList[1].Status,
 	}}
+}
+
+func (sDB *StateDB) shouldCacheContractData(addr types.Address) bool {
+	return addr == types.AddressQuota || addr == types.AddressGovernance || addr == types.AddressAsset
 }
 
 func (sDB *StateDB) getSnapshotBalanceList(balanceMap map[types.Address]*big.Int, snapshotBlockHash types.Hash, addrList []types.Address, tokenId types.TokenTypeId) error {

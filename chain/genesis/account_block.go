@@ -21,9 +21,9 @@ import (
 func NewGenesisAccountBlocks(cfg *config.Genesis) []*vm_db.VmAccountBlock {
 	list := make([]*vm_db.VmAccountBlock, 0)
 	addrSet := make(map[types.Address]interface{})
-	list, addrSet = newGenesisConsensusGroupContractBlocks(cfg, list, addrSet)
-	list, addrSet = newGenesisMintageContractBlocks(cfg, list, addrSet)
-	list, addrSet = newGenesisPledgeContractBlocks(cfg, list, addrSet)
+	list, addrSet = newGenesisGovernanceContractBlocks(cfg, list, addrSet)
+	list, addrSet = newGenesisAssetContractBlocks(cfg, list, addrSet)
+	list, addrSet = newGenesisQuotaContractBlocks(cfg, list, addrSet)
 	list = newGenesisNormalAccountBlocks(cfg, list, addrSet)
 	list, addrSet = newDexFundContractBlocks(cfg, list, addrSet)
 	list, addrSet = newDexTradeContractBlocks(cfg, list, addrSet)
@@ -41,9 +41,9 @@ func updateAccountBalanceMap(cfg *config.Genesis, addr types.Address, vmdb vm_db
 	}
 }
 
-func newGenesisConsensusGroupContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock, addrSet map[types.Address]interface{}) ([]*vm_db.VmAccountBlock, map[types.Address]interface{}) {
-	if cfg.ConsensusGroupInfo != nil {
-		contractAddr := types.AddressConsensusGroup
+func newGenesisGovernanceContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock, addrSet map[types.Address]interface{}) ([]*vm_db.VmAccountBlock, map[types.Address]interface{}) {
+	if cfg.GovernanceInfo != nil {
+		contractAddr := types.AddressGovernance
 		block := ledger.AccountBlock{
 			BlockType:      ledger.BlockTypeGenesisReceive,
 			Height:         1,
@@ -52,18 +52,18 @@ func newGenesisConsensusGroupContractBlocks(cfg *config.Genesis, list []*vm_db.V
 			Fee:            big.NewInt(0),
 		}
 		vmdb := vm_db.NewGenesisVmDB(&contractAddr)
-		for gidStr, groupInfo := range cfg.ConsensusGroupInfo.ConsensusGroupInfoMap {
+		for gidStr, groupInfo := range cfg.GovernanceInfo.ConsensusGroupInfoMap {
 			gid, err := types.HexToGid(gidStr)
 			dealWithError(err)
 			var registerConditionParam []byte
 			if groupInfo.RegisterConditionId == 1 {
-				registerConditionParam, err = abi.ABIConsensusGroup.PackVariable(abi.VariableNameConditionRegisterOfPledge,
-					groupInfo.RegisterConditionParam.PledgeAmount,
-					groupInfo.RegisterConditionParam.PledgeToken,
-					groupInfo.RegisterConditionParam.PledgeHeight)
+				registerConditionParam, err = abi.ABIGovernance.PackVariable(abi.VariableNameRegisterStakeParam,
+					groupInfo.RegisterConditionParam.StakeAmount,
+					groupInfo.RegisterConditionParam.StakeToken,
+					groupInfo.RegisterConditionParam.StakeHeight)
 				dealWithError(err)
 			}
-			value, err := abi.ABIConsensusGroup.PackVariable(abi.VariableNameConsensusGroupInfo,
+			value, err := abi.ABIGovernance.PackVariable(abi.VariableNameConsensusGroupInfo,
 				groupInfo.NodeCount,
 				groupInfo.Interval,
 				groupInfo.PerCount,
@@ -77,61 +77,61 @@ func newGenesisConsensusGroupContractBlocks(cfg *config.Genesis, list []*vm_db.V
 				groupInfo.VoteConditionId,
 				[]byte{},
 				groupInfo.Owner,
-				groupInfo.PledgeAmount,
-				groupInfo.WithdrawHeight)
+				groupInfo.StakeAmount,
+				groupInfo.ExpirationHeight)
 			dealWithError(err)
-			util.SetValue(vmdb, abi.GetConsensusGroupKey(gid), value)
+			util.SetValue(vmdb, abi.GetConsensusGroupInfoKey(gid), value)
 		}
 
-		for gidStr, groupRegistrationInfoMap := range cfg.ConsensusGroupInfo.RegistrationInfoMap {
+		for gidStr, groupRegistrationInfoMap := range cfg.GovernanceInfo.RegistrationInfoMap {
 			gid, err := types.HexToGid(gidStr)
 			dealWithError(err)
 			for name, registrationInfo := range groupRegistrationInfoMap {
-				if len(registrationInfo.HisAddrList) == 0 {
-					registrationInfo.HisAddrList = []types.Address{registrationInfo.NodeAddr}
+				if len(registrationInfo.HistoryAddressList) == 0 {
+					registrationInfo.HistoryAddressList = []types.Address{*registrationInfo.BlockProducingAddress}
 				}
-				value, err := abi.ABIConsensusGroup.PackVariable(abi.VariableNameRegistration,
+				value, err := abi.ABIGovernance.PackVariable(abi.VariableNameRegistrationInfo,
 					name,
-					registrationInfo.NodeAddr,
-					registrationInfo.PledgeAddr,
+					registrationInfo.BlockProducingAddress,
+					registrationInfo.StakeAddress,
 					registrationInfo.Amount,
-					registrationInfo.WithdrawHeight,
+					registrationInfo.ExpirationHeight,
 					registrationInfo.RewardTime,
-					registrationInfo.CancelTime,
-					registrationInfo.HisAddrList)
+					registrationInfo.RevokeTime,
+					registrationInfo.HistoryAddressList)
 				dealWithError(err)
-				util.SetValue(vmdb, abi.GetRegisterKey(name, gid), value)
-				if len(cfg.ConsensusGroupInfo.HisNameMap) == 0 ||
-					len(cfg.ConsensusGroupInfo.HisNameMap[gidStr]) == 0 ||
-					len(cfg.ConsensusGroupInfo.HisNameMap[gidStr][registrationInfo.NodeAddr.String()]) == 0 {
-					value, err := abi.ABIConsensusGroup.PackVariable(abi.VariableNameHisName, name)
+				util.SetValue(vmdb, abi.GetRegistrationInfoKey(name, gid), value)
+				if len(cfg.GovernanceInfo.HisNameMap) == 0 ||
+					len(cfg.GovernanceInfo.HisNameMap[gidStr]) == 0 ||
+					len(cfg.GovernanceInfo.HisNameMap[gidStr][registrationInfo.BlockProducingAddress.String()]) == 0 {
+					value, err := abi.ABIGovernance.PackVariable(abi.VariableNameRegisteredHisName, name)
 					dealWithError(err)
-					util.SetValue(vmdb, abi.GetHisNameKey(registrationInfo.NodeAddr, gid), value)
+					util.SetValue(vmdb, abi.GetHisNameKey(*registrationInfo.BlockProducingAddress, gid), value)
 				}
 			}
 		}
 
-		for gidStr, groupHisNameMap := range cfg.ConsensusGroupInfo.HisNameMap {
+		for gidStr, groupHisNameMap := range cfg.GovernanceInfo.HisNameMap {
 			gid, err := types.HexToGid(gidStr)
 			dealWithError(err)
-			for nodeAddrStr, name := range groupHisNameMap {
-				nodeAddr, err := types.HexToAddress(nodeAddrStr)
+			for blockProducingAddrStr, name := range groupHisNameMap {
+				blockProducingAddr, err := types.HexToAddress(blockProducingAddrStr)
 				dealWithError(err)
-				value, err := abi.ABIConsensusGroup.PackVariable(abi.VariableNameHisName, name)
+				value, err := abi.ABIGovernance.PackVariable(abi.VariableNameRegisteredHisName, name)
 				dealWithError(err)
-				util.SetValue(vmdb, abi.GetHisNameKey(nodeAddr, gid), value)
+				util.SetValue(vmdb, abi.GetHisNameKey(blockProducingAddr, gid), value)
 			}
 		}
 
-		for gidStr, groupVoteMap := range cfg.ConsensusGroupInfo.VoteStatusMap {
+		for gidStr, groupVoteMap := range cfg.GovernanceInfo.VoteStatusMap {
 			gid, err := types.HexToGid(gidStr)
 			dealWithError(err)
-			for voteAddrStr, nodeName := range groupVoteMap {
+			for voteAddrStr, sbpName := range groupVoteMap {
 				voteAddr, err := types.HexToAddress(voteAddrStr)
 				dealWithError(err)
-				value, err := abi.ABIConsensusGroup.PackVariable(abi.VariableNameVoteStatus, nodeName)
+				value, err := abi.ABIGovernance.PackVariable(abi.VariableNameVoteInfo, sbpName)
 				dealWithError(err)
-				util.SetValue(vmdb, abi.GetVoteKey(voteAddr, gid), value)
+				util.SetValue(vmdb, abi.GetVoteInfoKey(voteAddr, gid), value)
 			}
 		}
 
@@ -156,10 +156,10 @@ func (a byTokenId) Less(i, j int) bool {
 	return a[i].tokenId.Hex() > a[j].tokenId.Hex()
 }
 
-func newGenesisMintageContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock, addrSet map[types.Address]interface{}) ([]*vm_db.VmAccountBlock, map[types.Address]interface{}) {
-	if cfg.MintageInfo != nil {
+func newGenesisAssetContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock, addrSet map[types.Address]interface{}) ([]*vm_db.VmAccountBlock, map[types.Address]interface{}) {
+	if cfg.AssetInfo != nil {
 		nextIndexMap := make(map[string]uint16)
-		contractAddr := types.AddressMintage
+		contractAddr := types.AddressAsset
 		block := ledger.AccountBlock{
 			BlockType:      ledger.BlockTypeGenesisReceive,
 			Height:         1,
@@ -168,11 +168,11 @@ func newGenesisMintageContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccoun
 			Fee:            big.NewInt(0),
 		}
 		vmdb := vm_db.NewGenesisVmDB(&contractAddr)
-		tokenList := make([]*tokenInfoForSort, 0, len(cfg.MintageInfo.TokenInfoMap))
-		for tokenIdStr, tokenInfo := range cfg.MintageInfo.TokenInfoMap {
+		tokenList := make([]*tokenInfoForSort, 0, len(cfg.AssetInfo.TokenInfoMap))
+		for tokenIdStr, tokenInfo := range cfg.AssetInfo.TokenInfoMap {
 			tokenId, err := types.HexToTokenTypeId(tokenIdStr)
 			dealWithError(err)
-			tokenList = append(tokenList, &tokenInfoForSort{tokenId, tokenInfo})
+			tokenList = append(tokenList, &tokenInfoForSort{tokenId, *tokenInfo})
 		}
 		sort.Sort(byTokenId(tokenList))
 		for _, tokenInfo := range tokenList {
@@ -180,7 +180,7 @@ func newGenesisMintageContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccoun
 			if index, ok := nextIndexMap[tokenInfo.TokenSymbol]; ok {
 				nextIndex = index
 			}
-			value, err := abi.ABIMintage.PackVariable(abi.VariableNameTokenInfo,
+			value, err := abi.ABIAsset.PackVariable(abi.VariableNameTokenInfo,
 				tokenInfo.TokenName,
 				tokenInfo.TokenSymbol,
 				tokenInfo.TotalSupply,
@@ -188,19 +188,19 @@ func newGenesisMintageContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccoun
 				tokenInfo.Owner,
 				tokenInfo.IsReIssuable,
 				tokenInfo.MaxSupply,
-				tokenInfo.OwnerBurnOnly,
+				tokenInfo.IsOwnerBurnOnly,
 				nextIndex)
 			dealWithError(err)
 			nextIndex = nextIndex + 1
 			nextIndexMap[tokenInfo.TokenSymbol] = nextIndex
-			nextIndexValue, err := abi.ABIMintage.PackVariable(abi.VariableNameTokenNameIndex, nextIndex)
+			nextIndexValue, err := abi.ABIAsset.PackVariable(abi.VariableNameTokenIndex, nextIndex)
 			dealWithError(err)
-			util.SetValue(vmdb, abi.GetNextIndexKey(tokenInfo.TokenSymbol), nextIndexValue)
-			util.SetValue(vmdb, abi.GetMintageKey(tokenInfo.tokenId), value)
+			util.SetValue(vmdb, abi.GetNextTokenIndexKey(tokenInfo.TokenSymbol), nextIndexValue)
+			util.SetValue(vmdb, abi.GetTokenInfoKey(tokenInfo.tokenId), value)
 		}
 
-		if len(cfg.MintageInfo.LogList) > 0 {
-			for _, log := range cfg.MintageInfo.LogList {
+		if len(cfg.AssetInfo.LogList) > 0 {
+			for _, log := range cfg.AssetInfo.LogList {
 				dataBytes, err := hex.DecodeString(log.Data)
 				dealWithError(err)
 				vmdb.AddLog(&ledger.VmLog{Data: dataBytes, Topics: log.Topics})
@@ -215,9 +215,9 @@ func newGenesisMintageContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccoun
 	return list, addrSet
 }
 
-func newGenesisPledgeContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock, addrSet map[types.Address]interface{}) ([]*vm_db.VmAccountBlock, map[types.Address]interface{}) {
-	if cfg.PledgeInfo != nil {
-		contractAddr := types.AddressPledge
+func newGenesisQuotaContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock, addrSet map[types.Address]interface{}) ([]*vm_db.VmAccountBlock, map[types.Address]interface{}) {
+	if cfg.QuotaInfo != nil {
+		contractAddr := types.AddressQuota
 		block := ledger.AccountBlock{
 			BlockType:      ledger.BlockTypeGenesisReceive,
 			Height:         1,
@@ -226,28 +226,28 @@ func newGenesisPledgeContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccount
 			Fee:            big.NewInt(0),
 		}
 		vmdb := vm_db.NewGenesisVmDB(&contractAddr)
-		for pledgeAddrStr, pledgeInfoList := range cfg.PledgeInfo.PledgeInfoMap {
-			pledgeAddr, err := types.HexToAddress(pledgeAddrStr)
+		for stakeAddrStr, stakeInfoList := range cfg.QuotaInfo.StakeInfoMap {
+			stakeAddr, err := types.HexToAddress(stakeAddrStr)
 			dealWithError(err)
-			for i, pledgeInfo := range pledgeInfoList {
-				value, err := abi.ABIPledge.PackVariable(abi.VariableNamePledgeInfo,
-					pledgeInfo.Amount,
-					pledgeInfo.WithdrawHeight,
-					pledgeInfo.BeneficialAddr,
+			for i, stakeInfo := range stakeInfoList {
+				value, err := abi.ABIQuota.PackVariable(abi.VariableNameStakeInfo,
+					stakeInfo.Amount,
+					stakeInfo.ExpirationHeight,
+					stakeInfo.Beneficiary,
 					false,
 					types.ZERO_ADDRESS,
 					uint8(0))
 				dealWithError(err)
-				util.SetValue(vmdb, abi.GetPledgeKey(pledgeAddr, uint64(i)), value)
+				util.SetValue(vmdb, abi.GetStakeInfoKey(stakeAddr, uint64(i)), value)
 			}
 		}
 
-		for beneficialAddrStr, amount := range cfg.PledgeInfo.PledgeBeneficialMap {
-			beneficialAddr, err := types.HexToAddress(beneficialAddrStr)
+		for beneficiaryStr, amount := range cfg.QuotaInfo.StakeBeneficialMap {
+			beneficiary, err := types.HexToAddress(beneficiaryStr)
 			dealWithError(err)
-			value, err := abi.ABIPledge.PackVariable(abi.VariableNamePledgeBeneficial, amount)
+			value, err := abi.ABIQuota.PackVariable(abi.VariableNameStakeBeneficial, amount)
 			dealWithError(err)
-			util.SetValue(vmdb, abi.GetPledgeBeneficialKey(beneficialAddr), value)
+			util.SetValue(vmdb, abi.GetStakeBeneficialKey(beneficiary), value)
 		}
 		updateAccountBalanceMap(cfg, contractAddr, vmdb)
 		block.Hash = block.ComputeHash()
@@ -296,10 +296,10 @@ func newDexFundContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock,
 		}
 		vmdb := vm_db.NewGenesisVmDB(&contractAddr)
 		dex.SetOwner(vmdb, cfg.DexFundInfo.Owner)
-		dex.SetTimerAddress(vmdb, cfg.DexFundInfo.Timer)
-		dex.SetTriggerAddress(vmdb, cfg.DexFundInfo.Trigger)
+		dex.SetTimeOracle(vmdb, cfg.DexFundInfo.Timer)
+		dex.SetPeriodJobTrigger(vmdb, cfg.DexFundInfo.Trigger)
 		dex.SaveMaintainer(vmdb, cfg.DexFundInfo.Maintainer)
-		dex.SaveMakerMineProxy(vmdb, cfg.DexFundInfo.MakerMineProxy)
+		dex.SaveMakerMiningAdmin(vmdb, cfg.DexFundInfo.MakerMineProxy)
 		dex.GenesisSetTimestamp(vmdb, cfg.DexFundInfo.NotifiedTimestamp)
 		dex.SaveVxMinePool(vmdb, cfg.DexFundInfo.EndorseVxAmount)
 		for tk, amt := range cfg.DexFundInfo.AccountBalanceMap {
@@ -316,7 +316,7 @@ func newDexFundContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock,
 			tokenInfo.TokenId = tk.TokenId.Bytes()
 			dex.SaveTokenInfo(vmdb, tk.TokenId, tokenInfo)
 		}
-		pendings := &dex.PendingTransferTokenOwners{}
+		pendings := &dex.PendingTransferTokenOwnerActions{}
 		for _, ttk := range cfg.DexFundInfo.PendingTransferTokens {
 			action := &dexproto.TransferTokenOwnerAction{}
 			action.Token = ttk.TokenId.Bytes()
@@ -334,9 +334,9 @@ func newDexFundContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock,
 				mkInfo.QuoteTokenType = mkif.QuoteTokenType
 				mkInfo.TradeTokenDecimals = mkif.TradeTokenDecimals
 				mkInfo.QuoteTokenDecimals = mkif.QuoteTokenDecimals
-				mkInfo.TakerBrokerFeeRate = mkif.TakerBrokerFeeRate
-				mkInfo.MakerBrokerFeeRate = mkif.MakerBrokerFeeRate
-				mkInfo.AllowMine = mkif.AllowMine
+				mkInfo.TakerOperatorFeeRate = mkif.TakerBrokerFeeRate
+				mkInfo.MakerOperatorFeeRate = mkif.MakerBrokerFeeRate
+				mkInfo.AllowMining = mkif.AllowMine
 				mkInfo.Valid = mkif.Valid
 				mkInfo.Owner = mkif.Owner.Bytes()
 				mkInfo.Creator = mkif.Creator.Bytes()
@@ -347,7 +347,7 @@ func newDexFundContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock,
 		}
 		dex.SavePendingTransferTokenOwners(vmdb, pendings)
 		for _, fund := range cfg.DexFundInfo.UserFunds {
-			userFund := &dex.UserFund{}
+			userFund := &dex.Fund{}
 			userFund.Address = fund.Address.Bytes()
 			for _, acc := range fund.Accounts {
 				userAcc := &dexproto.Account{}
@@ -356,20 +356,20 @@ func newDexFundContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock,
 				userAcc.Locked = acc.Locked.Bytes()
 				userFund.Accounts = append(userFund.Accounts, userAcc)
 			}
-			dex.SaveUserFund(vmdb, fund.Address, userFund)
+			dex.SaveFund(vmdb, fund.Address, userFund)
 		}
 		for addr, amount := range cfg.DexFundInfo.PledgeVxs {
-			dex.SavePledgeForVx(vmdb, addr, amount)
+			dex.SaveMiningStakedAmount(vmdb, addr, amount)
 		}
 		for _, addr := range cfg.DexFundInfo.PledgeVips {
-			pledgeInfo := &dex.PledgeVip{}
-			pledgeInfo.PledgeTimes = 1
+			pledgeInfo := &dex.VIPStaking{}
+			pledgeInfo.StakedTimes = 1
 			pledgeInfo.Timestamp = cfg.DexFundInfo.NotifiedTimestamp
-			dex.SavePledgeForVip(vmdb, addr, pledgeInfo)
+			dex.SaveVIPStaking(vmdb, addr, pledgeInfo)
 		}
 		for pid, amt := range cfg.DexFundInfo.MakerMinedVxs {
 			period, _ := strconv.Atoi(pid)
-			dex.SaveMakerProxyAmountByPeriodId(vmdb, uint64(period), amt)
+			dex.SaveMakerMiningPoolByPeriodId(vmdb, uint64(period), amt)
 		}
 		for addr, code := range cfg.DexFundInfo.Inviters {
 			dex.SaveInviterByCode(vmdb, addr, code)
@@ -407,9 +407,9 @@ func newDexTradeContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock
 			mkInfo.QuoteTokenType = mkif.QuoteTokenType
 			mkInfo.TradeTokenDecimals = mkif.TradeTokenDecimals
 			mkInfo.QuoteTokenDecimals = mkif.QuoteTokenDecimals
-			mkInfo.TakerBrokerFeeRate = mkif.TakerBrokerFeeRate
-			mkInfo.MakerBrokerFeeRate = mkif.MakerBrokerFeeRate
-			mkInfo.AllowMine = mkif.AllowMine
+			mkInfo.TakerOperatorFeeRate = mkif.TakerBrokerFeeRate
+			mkInfo.MakerOperatorFeeRate = mkif.MakerBrokerFeeRate
+			mkInfo.AllowMining = mkif.AllowMine
 			mkInfo.Valid = mkif.Valid
 			mkInfo.Owner = mkif.Owner.Bytes()
 			mkInfo.Creator = mkif.Creator.Bytes()
@@ -427,8 +427,8 @@ func newDexTradeContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock
 			order.Price = dex.PriceToBytes(od.Price)
 			order.TakerFeeRate = od.TakerFeeRate
 			order.MakerFeeRate = od.MakerFeeRate
-			order.TakerBrokerFeeRate = od.TakerBrokerFeeRate
-			order.MakerBrokerFeeRate = od.MakerBrokerFeeRate
+			order.TakerOperatorFeeRate = od.TakerBrokerFeeRate
+			order.MakerOperatorFeeRate = od.MakerBrokerFeeRate
 			order.Quantity = od.Quantity.Bytes()
 			order.Amount = od.Amount.Bytes()
 			order.LockedBuyFee = od.LockedBuyFee.Bytes()
@@ -436,7 +436,7 @@ func newDexTradeContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock
 			order.ExecutedQuantity = od.ExecutedQuantity.Bytes()
 			order.ExecutedAmount = od.ExecutedAmount.Bytes()
 			order.ExecutedBaseFee = od.ExecutedBaseFee.Bytes()
-			order.ExecutedBrokerFee = od.ExecutedBrokerFee.Bytes()
+			order.ExecutedOperatorFee = od.ExecutedBrokerFee.Bytes()
 			order.Timestamp = cfg.DexTradeInfo.Timestamp
 			order.Agent = od.Agent.Bytes()
 			order.SendHash = od.SendHash.Bytes()

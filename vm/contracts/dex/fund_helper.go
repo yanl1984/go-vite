@@ -16,7 +16,7 @@ import (
 	"strings"
 )
 
-func CheckMarketParam(marketParam *ParamDexFundNewMarket) (err error) {
+func CheckMarketParam(marketParam *ParamOpenNewMarket) (err error) {
 	if marketParam.TradeToken == marketParam.QuoteToken {
 		return TradeMarketInvalidTokenPairErr
 	}
@@ -66,17 +66,21 @@ func renderMarketInfoWithTradeTokenInfo(db vm_db.VmDb, marketInfo *MarketInfo, t
 	marketInfo.Owner = tradeTokenInfo.Owner
 }
 
-func OnNewMarketValid(db vm_db.VmDb, reader util.ConsensusReader, marketInfo *MarketInfo, tradeToken, quoteToken types.TokenTypeId, address *types.Address) (block []*ledger.AccountBlock, err error) {
-	if _, err = SubUserFund(db, *address, ledger.ViteTokenId.Bytes(), NewMarketFeeAmount); err != nil {
+func OnNewMarketValid(db vm_db.VmDb, reader util.ConsensusReader, marketInfo *MarketInfo, tradeToken, quoteToken types.TokenTypeId, address *types.Address) (blocks []*ledger.AccountBlock, err error) {
+	if _, err = ReduceAccount(db, *address, ledger.ViteTokenId.Bytes(), NewMarketFeeAmount); err != nil {
 		DeleteMarketInfo(db, tradeToken, quoteToken)
 		AddErrEvent(db, err)
 		//WARN: when not enough fund, take receive as true, but not notify dexTrade
 		return nil, nil
 	}
-	userFee := &dexproto.UserFeeSettle{}
+	userFee := &dexproto.FeeSettle{}
 	userFee.Address = address.Bytes()
 	userFee.BaseFee = NewMarketFeeMineAmount.Bytes()
-	SettleFeesWithTokenId(db, reader, true, ledger.ViteTokenId, ViteTokenDecimals, ViteTokenType, []*dexproto.UserFeeSettle{userFee}, NewMarketFeeDonateAmount, nil)
+	var donateAmount = new(big.Int).Set(NewMarketFeeDonateAmount)
+	if IsEarthFork(db) {
+		donateAmount.Add(donateAmount, NewMarketFeeBurnAmount)
+	}
+	SettleFeesWithTokenId(db, reader, true, ledger.ViteTokenId, ViteTokenDecimals, ViteTokenType, []*dexproto.FeeSettle{userFee}, donateAmount, nil)
 	marketInfo.MarketId = NewAndSaveMarketId(db)
 	SaveMarketInfo(db, marketInfo, tradeToken, quoteToken)
 	AddMarketEvent(db, marketInfo)
@@ -84,46 +88,53 @@ func OnNewMarketValid(db vm_db.VmDb, reader util.ConsensusReader, marketInfo *Ma
 	if marketBytes, err = marketInfo.Serialize(); err != nil {
 		panic(err)
 	} else {
-		var syncNewMarketBlock, newMarketFeeBurnBlock *ledger.AccountBlock
-		if syncData, err = cabi.ABIDexTrade.PackMethod(cabi.MethodNameDexTradeNotifyNewMarket, marketBytes); err != nil {
+		var syncNewMarketMethod = cabi.MethodNameDexTradeSyncNewMarket
+		if !IsLeafFork(db) {
+			syncNewMarketMethod = cabi.MethodNameDexTradeNotifyNewMarket
+		}
+		if syncData, err = cabi.ABIDexTrade.PackMethod(syncNewMarketMethod, marketBytes); err != nil {
 			panic(err)
 		} else {
-			syncNewMarketBlock = &ledger.AccountBlock{
+			blocks = append(blocks, &ledger.AccountBlock{
 				AccountAddress: types.AddressDexFund,
 				ToAddress:      types.AddressDexTrade,
 				BlockType:      ledger.BlockTypeSendCall,
 				TokenId:        ledger.ViteTokenId,
 				Amount:         big.NewInt(0),
 				Data:           syncData,
+			})
+		}
+		if !IsEarthFork(db) { // burn on fee dividend, not on new market
+			if burnData, err = cabi.ABIAsset.PackMethod(cabi.MethodNameBurn); err != nil {
+				panic(err)
+			} else {
+				blocks = append(blocks, &ledger.AccountBlock{
+					AccountAddress: types.AddressDexFund,
+					ToAddress:      types.AddressAsset,
+					BlockType:      ledger.BlockTypeSendCall,
+					TokenId:        ledger.ViteTokenId,
+					Amount:         NewMarketFeeBurnAmount,
+					Data:           burnData,
+				})
 			}
 		}
-		if burnData, err = cabi.ABIMintage.PackMethod(cabi.MethodNameBurn); err != nil {
-			panic(err)
-		} else {
-			newMarketFeeBurnBlock = &ledger.AccountBlock{
-				AccountAddress: types.AddressDexFund,
-				ToAddress:      types.AddressMintage,
-				BlockType:      ledger.BlockTypeSendCall,
-				TokenId:        ledger.ViteTokenId,
-				Amount:         NewMarketFeeBurnAmount,
-				Data:           burnData,
-			}
-		}
-		return []*ledger.AccountBlock{syncNewMarketBlock, newMarketFeeBurnBlock}, nil
+		return
 	}
 }
 
-func OnNewMarketPending(db vm_db.VmDb, param *ParamDexFundNewMarket, marketInfo *MarketInfo) []byte {
+func OnNewMarketPending(db vm_db.VmDb, param *ParamOpenNewMarket, marketInfo *MarketInfo) (data []byte, err error) {
 	SaveMarketInfo(db, marketInfo, param.TradeToken, param.QuoteToken)
-	AddToPendingNewMarkets(db, param.TradeToken, param.QuoteToken)
-	if data, err := abi.ABIMintage.PackMethod(abi.MethodNameGetTokenInfo, param.TradeToken, uint8(GetTokenForNewMarket)); err != nil {
+	if err = AddToPendingNewMarkets(db, param.TradeToken, param.QuoteToken); err != nil {
+		return
+	}
+	if data, err = abi.ABIAsset.PackMethod(abi.MethodNameGetTokenInfo, param.TradeToken, uint8(GetTokenForNewMarket)); err != nil {
 		panic(err)
 	} else {
-		return data
+		return
 	}
 }
 
-func OnNewMarketGetTokenInfoSuccess(db vm_db.VmDb, reader util.ConsensusReader, tradeTokenId types.TokenTypeId, tokenInfoRes *ParamDexFundGetTokenInfoCallback) (appendBlocks []*ledger.AccountBlock, err error) {
+func OnNewMarketGetTokenInfoSuccess(db vm_db.VmDb, reader util.ConsensusReader, tradeTokenId types.TokenTypeId, tokenInfoRes *ParamGetTokenInfoCallback) (appendBlocks []*ledger.AccountBlock, err error) {
 	tradeTokenInfo := newTokenInfoFromCallback(db, tokenInfoRes)
 	SaveTokenInfo(db, tradeTokenId, tradeTokenInfo)
 	AddTokenEvent(db, tradeTokenInfo)
@@ -185,14 +196,14 @@ func OnNewMarketGetTokenInfoFailed(db vm_db.VmDb, tradeTokenId types.TokenTypeId
 
 func OnSetQuoteTokenPending(db vm_db.VmDb, token types.TokenTypeId, quoteTokenType uint8) []byte {
 	AddToPendingSetQuotes(db, token, quoteTokenType)
-	if data, err := abi.ABIMintage.PackMethod(abi.MethodNameGetTokenInfo, token, uint8(GetTokenForSetQuote)); err != nil {
+	if data, err := abi.ABIAsset.PackMethod(abi.MethodNameGetTokenInfo, token, uint8(GetTokenForSetQuote)); err != nil {
 		panic(err)
 	} else {
 		return data
 	}
 }
 
-func OnSetQuoteGetTokenInfoSuccess(db vm_db.VmDb, tokenInfoRes *ParamDexFundGetTokenInfoCallback) error {
+func OnSetQuoteGetTokenInfoSuccess(db vm_db.VmDb, tokenInfoRes *ParamGetTokenInfoCallback) error {
 	if action, err := FilterPendingSetQuotes(db, tokenInfoRes.TokenId); err != nil {
 		return err
 	} else {
@@ -211,14 +222,14 @@ func OnSetQuoteGetTokenInfoFailed(db vm_db.VmDb, tokenId types.TokenTypeId) (err
 
 func OnTransferTokenOwnerPending(db vm_db.VmDb, token types.TokenTypeId, origin, new types.Address) []byte {
 	AddToPendingTransferTokenOwners(db, token, origin, new)
-	if data, err := abi.ABIMintage.PackMethod(abi.MethodNameGetTokenInfo, token, uint8(GetTokenForTransferOwner)); err != nil {
+	if data, err := abi.ABIAsset.PackMethod(abi.MethodNameGetTokenInfo, token, uint8(GetTokenForTransferOwner)); err != nil {
 		panic(err)
 	} else {
 		return data
 	}
 }
 
-func OnTransferOwnerGetTokenInfoSuccess(db vm_db.VmDb, param *ParamDexFundGetTokenInfoCallback) error {
+func OnTransferOwnerGetTokenInfoSuccess(db vm_db.VmDb, param *ParamGetTokenInfoCallback) error {
 	if action, err := FilterPendingTransferTokenOwners(db, param.TokenId); err != nil {
 		return err
 	} else {
@@ -240,7 +251,7 @@ func OnTransferOwnerGetTokenInfoFailed(db vm_db.VmDb, tradeTokenId types.TokenTy
 	return
 }
 
-func PreCheckOrderParam(orderParam *ParamDexFundNewOrder, isNewFork bool) error {
+func PreCheckOrderParam(orderParam *ParamPlaceOrder, isStemFork bool) error {
 	if orderParam.Quantity.Sign() <= 0 {
 		return InvalidOrderQuantityErr
 	}
@@ -249,16 +260,16 @@ func PreCheckOrderParam(orderParam *ParamDexFundNewOrder, isNewFork bool) error 
 		return InvalidOrderTypeErr
 	}
 	if orderParam.OrderType == Limited {
-		if !ValidPrice(orderParam.Price, isNewFork) {
+		if !ValidPrice(orderParam.Price, isStemFork) {
 			return InvalidOrderPriceErr
 		}
 	}
 	return nil
 }
 
-func DoNewOrder(db vm_db.VmDb, param *ParamDexFundNewOrder, accountAddress, agent *types.Address, sendHash types.Hash) ([]*ledger.AccountBlock, error) {
+func DoPlaceOrder(db vm_db.VmDb, param *ParamPlaceOrder, accountAddress, agent *types.Address, sendHash types.Hash) ([]*ledger.AccountBlock, error) {
 	var (
-		dexFund        *UserFund
+		dexFund        *Fund
 		tradeBlockData []byte
 		err            error
 		orderInfoBytes []byte
@@ -269,17 +280,21 @@ func DoNewOrder(db vm_db.VmDb, param *ParamDexFundNewOrder, accountAddress, agen
 	if marketInfo, err = RenderOrder(order, param, db, accountAddress, agent, sendHash); err != nil {
 		return nil, err
 	}
-	if dexFund, ok = GetUserFund(db, *accountAddress); !ok {
+	if dexFund, ok = GetFund(db, *accountAddress); !ok {
 		return nil, ExceedFundAvailableErr
 	}
 	if err = CheckAndLockFundForNewOrder(dexFund, order, marketInfo); err != nil {
 		return nil, err
 	}
-	SaveUserFund(db, *accountAddress, dexFund)
+	SaveFund(db, *accountAddress, dexFund)
 	if orderInfoBytes, err = order.Serialize(); err != nil {
 		panic(err)
 	}
-	if tradeBlockData, err = cabi.ABIDexTrade.PackMethod(cabi.MethodNameDexTradeNewOrder, orderInfoBytes); err != nil {
+	var placeOrderMethod = cabi.MethodNameDexTradePlaceOrder
+	if !IsLeafFork(db) {
+		placeOrderMethod = cabi.MethodNameDexTradeNewOrder
+	}
+	if tradeBlockData, err = cabi.ABIDexTrade.PackMethod(placeOrderMethod, orderInfoBytes); err != nil {
 		panic(err)
 	}
 	return []*ledger.AccountBlock{
@@ -294,22 +309,20 @@ func DoNewOrder(db vm_db.VmDb, param *ParamDexFundNewOrder, accountAddress, agen
 	}, nil
 }
 
-func RenderOrder(order *Order, param *ParamDexFundNewOrder, db vm_db.VmDb, accountAddress, agent *types.Address, sendHash types.Hash) (*MarketInfo, error) {
+func RenderOrder(order *Order, param *ParamPlaceOrder, db vm_db.VmDb, accountAddress, agent *types.Address, sendHash types.Hash) (*MarketInfo, error) {
 	var (
 		marketInfo *MarketInfo
 		ok         bool
 	)
-	if IsViteXStopped(db) {
-		return nil, ViteXStoppedErr
+	if IsDexStopped(db) {
+		return nil, DexStoppedErr
 	}
 	if marketInfo, ok = GetMarketInfo(db, param.TradeToken, param.QuoteToken); !ok || !marketInfo.Valid {
 		return nil, TradeMarketNotExistsErr
 	} else if marketInfo.Stopped {
 		return nil, TradeMarketStoppedErr
-	} else if agent != nil {
-		if !IsMarketGrantedToAgent(db, *accountAddress, *agent, marketInfo.MarketId) {
-			return nil, TradeMarketNotGrantedErr
-		}
+	} else if agent != nil && !IsMarketGrantedToAgent(db, *accountAddress, *agent, marketInfo.MarketId) {
+		return nil, TradeMarketNotGrantedErr
 	}
 	order.Id = ComposeOrderId(db, marketInfo.MarketId, param.Side, param.Price)
 	order.MarketId = marketInfo.MarketId
@@ -335,8 +348,7 @@ func RenderOrder(order *Order, param *ParamDexFundNewOrder, db vm_db.VmDb, accou
 	order.RefundToken = []byte{}
 	order.RefundQuantity = big.NewInt(0).Bytes()
 	order.Timestamp = GetTimestampInt64(db)
-	order.Quantity = param.Quantity.Bytes()
-	if IsNewFork(db) {
+	if IsStemFork(db) {
 		if agent != nil {
 			order.Agent = agent.Bytes()
 		}
@@ -357,20 +369,20 @@ func isAmountTooSmall(db vm_db.VmDb, amount []byte, marketInfo *MarketInfo) bool
 
 func RenderFeeRate(address types.Address, order *Order, marketInfo *MarketInfo, db vm_db.VmDb) {
 	var vipReduceFeeRate int32 = 0
-	if _, ok := GetPledgeForSuperVip(db, address); ok {
+	if _, ok := GetSuperVIPStaking(db, address); ok {
 		vipReduceFeeRate = BaseFeeRate
-	} else if _, ok := GetPledgeForVip(db, address); ok {
+	} else if _, ok := GetVIPStaking(db, address); ok {
 		vipReduceFeeRate = VipReduceFeeRate
 	}
 	order.TakerFeeRate = BaseFeeRate - vipReduceFeeRate
-	order.TakerBrokerFeeRate = marketInfo.TakerBrokerFeeRate
+	order.TakerOperatorFeeRate = marketInfo.TakerOperatorFeeRate
 	order.MakerFeeRate = BaseFeeRate - vipReduceFeeRate
-	order.MakerBrokerFeeRate = marketInfo.MakerBrokerFeeRate
+	order.MakerOperatorFeeRate = marketInfo.MakerOperatorFeeRate
 	if _, err := GetInviterByInvitee(db, address); err == nil { // invited
 		order.TakerFeeRate = order.TakerFeeRate * 9 / 10
-		order.TakerBrokerFeeRate = order.TakerBrokerFeeRate * 9 / 10
+		order.TakerOperatorFeeRate = order.TakerOperatorFeeRate * 9 / 10
 		order.MakerFeeRate = order.MakerFeeRate * 9 / 10
-		order.MakerBrokerFeeRate = order.MakerBrokerFeeRate * 9 / 10
+		order.MakerOperatorFeeRate = order.MakerOperatorFeeRate * 9 / 10
 	}
 }
 
@@ -382,14 +394,14 @@ func CheckSettleActions(actions *dexproto.SettleActions) error {
 		if len(fund.Address) != types.AddressSize {
 			return fmt.Errorf("invalid address format for settle")
 		}
-		if len(fund.FundSettles) == 0 {
+		if len(fund.AccountSettles) == 0 {
 			return fmt.Errorf("no user funds to settle")
 		}
 	}
 	return nil
 }
 
-func CheckAndLockFundForNewOrder(dexFund *UserFund, order *Order, marketInfo *MarketInfo) (err error) {
+func CheckAndLockFundForNewOrder(dexFund *Fund, order *Order, marketInfo *MarketInfo) (err error) {
 	var (
 		lockToken, lockAmount []byte
 		lockTokenId           types.TokenTypeId
@@ -409,7 +421,7 @@ func CheckAndLockFundForNewOrder(dexFund *UserFund, order *Order, marketInfo *Ma
 	if lockTokenId, err = types.BytesToTokenTypeId(lockToken); err != nil {
 		panic(err)
 	}
-	if account, exists = GetAccountByTokeIdFromFund(dexFund, lockTokenId); !exists {
+	if account, exists = GetAccountByToken(dexFund, lockTokenId); !exists {
 		return ExceedFundAvailableErr
 	}
 	available := new(big.Int).SetBytes(account.Available)
@@ -423,7 +435,7 @@ func CheckAndLockFundForNewOrder(dexFund *UserFund, order *Order, marketInfo *Ma
 	return
 }
 
-func newTokenInfoFromCallback(db vm_db.VmDb, param *ParamDexFundGetTokenInfoCallback) *TokenInfo {
+func newTokenInfoFromCallback(db vm_db.VmDb, param *ParamGetTokenInfoCallback) *TokenInfo {
 	tokenInfo := &TokenInfo{}
 	tokenInfo.TokenId = param.TokenId.Bytes()
 	tokenInfo.Decimals = int32(param.Decimals)
@@ -464,7 +476,7 @@ func VerifyNewOrderPriceForRpc(data []byte) (valid bool) {
 		return
 	}
 	if bytes.Equal(data[:4], newOrderMethodId) {
-		param := new(ParamDexFundNewOrder)
+		param := new(ParamPlaceOrder)
 		if err := abi.ABIDexFund.UnpackMethod(param, cabi.MethodNameDexFundNewOrder, data); err == nil {
 			return ValidPrice(param.Price, true)
 		} else {
@@ -475,8 +487,8 @@ func VerifyNewOrderPriceForRpc(data []byte) (valid bool) {
 }
 
 func MaxTotalFeeRate(order Order) int32 {
-	takerRate := order.TakerFeeRate + order.TakerBrokerFeeRate
-	makerRate := order.MakerFeeRate + order.MakerBrokerFeeRate
+	takerRate := order.TakerFeeRate + order.TakerOperatorFeeRate
+	makerRate := order.MakerFeeRate + order.MakerOperatorFeeRate
 	if takerRate > makerRate {
 		return takerRate
 	} else {
@@ -484,21 +496,40 @@ func MaxTotalFeeRate(order Order) int32 {
 	}
 }
 
-// only for unit test
-func SetFeeRate(baseRate int32) {
-	BaseFeeRate = baseRate
-}
-
-func IsNewFork(db vm_db.VmDb) bool {
+func IsDexFeeFork(db vm_db.VmDb) bool {
 	if latestSb, err := db.LatestSnapshotBlock(); err != nil {
 		panic(err)
 	} else {
-		return fork.IsNewFork(latestSb.Height)
+		return fork.IsDexFeeFork(latestSb.Height)
 	}
 }
 
-func ValidBrokerFeeRate(feeRate int32) bool {
-	return feeRate >= 0 && feeRate <= MaxBrokerFeeRate
+func IsStemFork(db vm_db.VmDb) bool {
+	if latestSb, err := db.LatestSnapshotBlock(); err != nil {
+		panic(err)
+	} else {
+		return fork.IsStemFork(latestSb.Height)
+	}
+}
+
+func IsLeafFork(db vm_db.VmDb) bool {
+	if latestSb, err := db.LatestSnapshotBlock(); err != nil {
+		panic(err)
+	} else {
+		return fork.IsLeafFork(latestSb.Height)
+	}
+}
+
+func IsEarthFork(db vm_db.VmDb) bool {
+	if latestSb, err := db.LatestSnapshotBlock(); err != nil {
+		panic(err)
+	} else {
+		return fork.IsEarthFork(latestSb.Height)
+	}
+}
+
+func ValidOperatorFeeRate(feeRate int32) bool {
+	return feeRate >= 0 && feeRate <= MaxOperatorFeeRate
 }
 
 func checkPriceChar(price string) bool {

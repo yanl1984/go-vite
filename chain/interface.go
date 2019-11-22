@@ -1,6 +1,11 @@
 package chain
 
 import (
+	"github.com/olebedev/emitter"
+	"github.com/vitelabs/go-vite/common/fork"
+
+	"github.com/vitelabs/go-vite/vm/contracts/dex"
+
 	"math/big"
 	"time"
 
@@ -54,6 +59,8 @@ type Chain interface {
 	 */
 	Register(listener EventListener)
 	UnRegister(listener EventListener)
+
+	Emitter() *emitter.Emitter
 
 	/*
 	 *	C(Create)
@@ -240,19 +247,29 @@ type Chain interface {
 
 	GetConsensusGroupList(snapshotHash types.Hash) ([]*types.ConsensusGroupInfo, error)
 
+	GetConsensusGroup(snapshotHash types.Hash, gid types.Gid) (*types.ConsensusGroupInfo, error)
+
 	GetVoteList(snapshotHash types.Hash, gid types.Gid) ([]*types.VoteInfo, error)
 
-	GetPledgeBeneficialAmount(addr types.Address) (*big.Int, error)
+	GetStakeBeneficialAmount(addr types.Address) (*big.Int, error)
 
 	// total
-	GetPledgeQuota(addr types.Address) (*big.Int, *types.Quota, error)
+	GetStakeQuota(addr types.Address) (*big.Int, *types.Quota, error)
 
 	// total
-	GetPledgeQuotas(addrList []types.Address) (map[types.Address]*types.Quota, error)
+	GetStakeQuotas(addrList []types.Address) (map[types.Address]*types.Quota, error)
 
 	GetTokenInfoById(tokenId types.TokenTypeId) (*types.TokenInfo, error)
 
 	GetAllTokenInfo() (map[types.TokenTypeId]*types.TokenInfo, error)
+
+	CalVoteDetails(gid types.Gid, info *core.GroupInfo, snapshotBlock ledger.HashHeight) ([]*interfaces.VoteDetails, error)
+
+	GetStakeListByPage(snapshotHash types.Hash, lastKey []byte, count uint64) ([]*types.StakeInfo, []byte, error)
+
+	GetDexFundsByPage(snapshotHash types.Hash, lastAddress types.Address, count int) ([]*dex.Fund, error)
+
+	GetDexStakeListByPage(snapshotHash types.Hash, lastKey []byte, count int) ([]*dex.DelegateStakeInfo, []byte, error)
 
 	// ====== Sync ledger ======
 	GetLedgerReaderByHeight(startHeight uint64, endHeight uint64) (cr interfaces.LedgerReader, err error)
@@ -292,6 +309,12 @@ type Chain interface {
 	StopWrite()
 
 	RecoverWrite()
+
+	WriteGenesisCheckSum(hash types.Hash) error
+
+	QueryGenesisCheckSum() (*types.Hash, error)
+
+	IsForkActive(point fork.ForkPointItem) bool
 
 	// ====== Check ======
 	CheckRedo() error

@@ -105,15 +105,15 @@ func BenchmarkVMPledgeSend(b *testing.B) {
 }
 func BenchmarkVMPledgeReceive(b *testing.B) {
 	sendBlock := makePledgeSendBlock(testAddr)
-	receiveBlock := makeReceiveBlock(types.AddressPledge)
+	receiveBlock := makeReceiveBlock(types.AddressQuota)
 	benchmarkReceive(b, sendBlock, receiveBlock)
 }
 func makePledgeSendBlock(addr types.Address) *ledger.AccountBlock {
-	data, err := abi.ABIPledge.PackMethod(abi.MethodNamePledge, addr)
+	data, err := abi.ABIQuota.PackMethod(abi.MethodNameStake, addr)
 	if err != nil {
 		panic(err)
 	}
-	return makeSendBlock(addr, types.AddressPledge, data, pledgeAmount, big0)
+	return makeSendBlock(addr, types.AddressQuota, data, pledgeAmount, big0)
 }
 
 func BenchmarkVMCancelPledgeSend(b *testing.B) {
@@ -122,15 +122,15 @@ func BenchmarkVMCancelPledgeSend(b *testing.B) {
 }
 func BenchmarkVMCancelPledgeReceive(b *testing.B) {
 	sendBlock := makeCancelPledgeSendBlock(testAddr)
-	receiveBlock := makeReceiveBlock(types.AddressPledge)
+	receiveBlock := makeReceiveBlock(types.AddressQuota)
 	benchmarkReceive(b, sendBlock, receiveBlock)
 }
 func makeCancelPledgeSendBlock(addr types.Address) *ledger.AccountBlock {
-	data, err := abi.ABIPledge.PackMethod(abi.MethodNameCancelPledge, addr, pledgeAmount)
+	data, err := abi.ABIQuota.PackMethod(abi.MethodNameCancelStake, addr, pledgeAmount)
 	if err != nil {
 		panic(err)
 	}
-	return makeSendBlock(addr, types.AddressPledge, data, big0, big0)
+	return makeSendBlock(addr, types.AddressQuota, data, big0, big0)
 }
 
 func BenchmarkVMRegisterSend(b *testing.B) {
@@ -139,15 +139,15 @@ func BenchmarkVMRegisterSend(b *testing.B) {
 }
 func BenchmarkVMRegisterReceive(b *testing.B) {
 	sendBlock := makeRegisterSendBlock(testAddr)
-	receiveBlock := makeReceiveBlock(types.AddressConsensusGroup)
+	receiveBlock := makeReceiveBlock(types.AddressGovernance)
 	benchmarkReceive(b, sendBlock, receiveBlock)
 }
 func makeRegisterSendBlock(addr types.Address) *ledger.AccountBlock {
-	data, err := abi.ABIConsensusGroup.PackMethod(abi.MethodNameRegister, types.SNAPSHOT_GID, "vite super snapshot producer for test 02", addr)
+	data, err := abi.ABIGovernance.PackMethod(abi.MethodNameRegister, types.SNAPSHOT_GID, "vite super snapshot producer for test 02", addr)
 	if err != nil {
 		panic(err)
 	}
-	return makeSendBlock(addr, types.AddressConsensusGroup, data, registerPledgeAmount, big0)
+	return makeSendBlock(addr, types.AddressGovernance, data, registerPledgeAmount, big0)
 }
 
 func BenchmarkVMCancelRegisterSend(b *testing.B) {
@@ -156,15 +156,15 @@ func BenchmarkVMCancelRegisterSend(b *testing.B) {
 }
 func BenchmarkVMCancelRegisterReceive(b *testing.B) {
 	sendBlock := makeCancelRegisterSendBlock(testAddr)
-	receiveBlock := makeReceiveBlock(types.AddressConsensusGroup)
+	receiveBlock := makeReceiveBlock(types.AddressGovernance)
 	benchmarkReceive(b, sendBlock, receiveBlock)
 }
 func makeCancelRegisterSendBlock(addr types.Address) *ledger.AccountBlock {
-	data, err := abi.ABIConsensusGroup.PackMethod(abi.MethodNameCancelRegister, types.SNAPSHOT_GID, "vite super snapshot producer for test 01")
+	data, err := abi.ABIGovernance.PackMethod(abi.MethodNameRevoke, types.SNAPSHOT_GID, "vite super snapshot producer for test 01")
 	if err != nil {
 		panic(err)
 	}
-	return makeSendBlock(addr, types.AddressConsensusGroup, data, big0, big0)
+	return makeSendBlock(addr, types.AddressGovernance, data, big0, big0)
 }
 
 func BenchmarkVMRewardSend(b *testing.B) {
@@ -173,15 +173,15 @@ func BenchmarkVMRewardSend(b *testing.B) {
 }
 func BenchmarkVMRewardReceive(b *testing.B) {
 	sendBlock := makeRewardSendBlock(testAddr)
-	receiveBlock := makeReceiveBlock(types.AddressConsensusGroup)
+	receiveBlock := makeReceiveBlock(types.AddressGovernance)
 	benchmarkReceive(b, sendBlock, receiveBlock)
 }
 func makeRewardSendBlock(addr types.Address) *ledger.AccountBlock {
-	data, err := abi.ABIConsensusGroup.PackMethod(abi.MethodNameReward, types.SNAPSHOT_GID, "vite super snapshot producer for test 01", addr)
+	data, err := abi.ABIGovernance.PackMethod(abi.MethodNameWithdrawReward, types.SNAPSHOT_GID, "vite super snapshot producer for test 01", addr)
 	if err != nil {
 		panic(err)
 	}
-	return makeSendBlock(addr, types.AddressConsensusGroup, data, big0, big0)
+	return makeSendBlock(addr, types.AddressGovernance, data, big0, big0)
 }
 
 func BenchmarkVMUpdateRegistrationSend(b *testing.B) {
@@ -190,7 +190,7 @@ func BenchmarkVMUpdateRegistrationSend(b *testing.B) {
 }
 func BenchmarkVMUpdateRegistrationReceive(b *testing.B) {
 	sendBlock := makeUpdateRegistrationBlock(testAddr)
-	receiveBlock := makeReceiveBlock(types.AddressConsensusGroup)
+	receiveBlock := makeReceiveBlock(types.AddressGovernance)
 	benchmarkReceive(b, sendBlock, receiveBlock)
 }
 func makeUpdateRegistrationBlock(addr types.Address) *ledger.AccountBlock {
@@ -198,11 +198,11 @@ func makeUpdateRegistrationBlock(addr types.Address) *ledger.AccountBlock {
 	if err != nil {
 		panic(err)
 	}
-	data, err := abi.ABIConsensusGroup.PackMethod(abi.MethodNameUpdateRegistration, types.SNAPSHOT_GID, "vite super snapshot producer for test 01", nodeAddr)
+	data, err := abi.ABIGovernance.PackMethod(abi.MethodNameUpdateBlockProducingAddress, types.SNAPSHOT_GID, "vite super snapshot producer for test 01", nodeAddr)
 	if err != nil {
 		panic(err)
 	}
-	return makeSendBlock(addr, types.AddressConsensusGroup, data, big0, big0)
+	return makeSendBlock(addr, types.AddressGovernance, data, big0, big0)
 }
 
 func BenchmarkVMVoteSend(b *testing.B) {
@@ -211,15 +211,15 @@ func BenchmarkVMVoteSend(b *testing.B) {
 }
 func BenchmarkVMVoteReceive(b *testing.B) {
 	sendBlock := makeVoteBlock(testAddr)
-	receiveBlock := makeReceiveBlock(types.AddressConsensusGroup)
+	receiveBlock := makeReceiveBlock(types.AddressGovernance)
 	benchmarkReceive(b, sendBlock, receiveBlock)
 }
 func makeVoteBlock(addr types.Address) *ledger.AccountBlock {
-	data, err := abi.ABIConsensusGroup.PackMethod(abi.MethodNameVote, types.SNAPSHOT_GID, "vite super snapshot producer for test 01")
+	data, err := abi.ABIGovernance.PackMethod(abi.MethodNameVote, types.SNAPSHOT_GID, "vite super snapshot producer for test 01")
 	if err != nil {
 		panic(err)
 	}
-	return makeSendBlock(addr, types.AddressConsensusGroup, data, big0, big0)
+	return makeSendBlock(addr, types.AddressGovernance, data, big0, big0)
 }
 
 func BenchmarkVMCancelVoteSend(b *testing.B) {
@@ -228,15 +228,15 @@ func BenchmarkVMCancelVoteSend(b *testing.B) {
 }
 func BenchmarkVMCancelVoteReceive(b *testing.B) {
 	sendBlock := makeCancelVoteBlock(testAddr)
-	receiveBlock := makeReceiveBlock(types.AddressConsensusGroup)
+	receiveBlock := makeReceiveBlock(types.AddressGovernance)
 	benchmarkReceive(b, sendBlock, receiveBlock)
 }
 func makeCancelVoteBlock(addr types.Address) *ledger.AccountBlock {
-	data, err := abi.ABIConsensusGroup.PackMethod(abi.MethodNameCancelVote, types.SNAPSHOT_GID)
+	data, err := abi.ABIGovernance.PackMethod(abi.MethodNameCancelVote, types.SNAPSHOT_GID)
 	if err != nil {
 		panic(err)
 	}
-	return makeSendBlock(addr, types.AddressConsensusGroup, data, big0, big0)
+	return makeSendBlock(addr, types.AddressGovernance, data, big0, big0)
 }
 
 func BenchmarkVMMintSend(b *testing.B) {
@@ -245,15 +245,15 @@ func BenchmarkVMMintSend(b *testing.B) {
 }
 func BenchmarkVMMintReceive(b *testing.B) {
 	sendBlock := makeMintBlock(testAddr)
-	receiveBlock := makeReceiveBlock(types.AddressMintage)
+	receiveBlock := makeReceiveBlock(types.AddressQuota)
 	benchmarkReceive(b, sendBlock, receiveBlock)
 }
 func makeMintBlock(addr types.Address) *ledger.AccountBlock {
-	data, err := abi.ABIMintage.PackMethod(abi.MethodNameMint, true, "vite test token minted by user for test1", "VTTMBUFT01", big.NewInt(1e4), uint8(2), big.NewInt(1e5), false)
+	data, err := abi.ABIAsset.PackMethod(abi.MethodNameIssue, true, "vite test token minted by user for test1", "VTTMBUFT01", big.NewInt(1e4), uint8(2), big.NewInt(1e5), false)
 	if err != nil {
 		panic(err)
 	}
-	return makeSendBlock(addr, types.AddressMintage, data, big0, mintFee)
+	return makeSendBlock(addr, types.AddressQuota, data, big0, mintFee)
 }
 
 func BenchmarkVMIssueSend(b *testing.B) {
@@ -262,15 +262,15 @@ func BenchmarkVMIssueSend(b *testing.B) {
 }
 func BenchmarkVMIssueReceive(b *testing.B) {
 	sendBlock := makeIssueBlock(testAddr)
-	receiveBlock := makeReceiveBlock(types.AddressMintage)
+	receiveBlock := makeReceiveBlock(types.AddressQuota)
 	benchmarkReceive(b, sendBlock, receiveBlock)
 }
 func makeIssueBlock(addr types.Address) *ledger.AccountBlock {
-	data, err := abi.ABIMintage.PackMethod(abi.MethodNameIssue, testTokenId, big.NewInt(1e4), addr)
+	data, err := abi.ABIAsset.PackMethod(abi.MethodNameIssue, testTokenId, big.NewInt(1e4), addr)
 	if err != nil {
 		panic(err)
 	}
-	return makeSendBlock(addr, types.AddressMintage, data, big0, big0)
+	return makeSendBlock(addr, types.AddressQuota, data, big0, big0)
 }
 
 func BenchmarkVMBurnSend(b *testing.B) {
@@ -279,15 +279,15 @@ func BenchmarkVMBurnSend(b *testing.B) {
 }
 func BenchmarkVMBurnReceive(b *testing.B) {
 	sendBlock := makeBurnBlock(testAddr)
-	receiveBlock := makeReceiveBlock(types.AddressMintage)
+	receiveBlock := makeReceiveBlock(types.AddressQuota)
 	benchmarkReceive(b, sendBlock, receiveBlock)
 }
 func makeBurnBlock(addr types.Address) *ledger.AccountBlock {
-	data, err := abi.ABIMintage.PackMethod(abi.MethodNameBurn)
+	data, err := abi.ABIAsset.PackMethod(abi.MethodNameBurn)
 	if err != nil {
 		panic(err)
 	}
-	return makeSendBlock(addr, types.AddressMintage, data, big.NewInt(1e3), big0)
+	return makeSendBlock(addr, types.AddressQuota, data, big.NewInt(1e3), big0)
 }
 
 func BenchmarkVMTransferOwnerSend(b *testing.B) {
@@ -296,7 +296,7 @@ func BenchmarkVMTransferOwnerSend(b *testing.B) {
 }
 func BenchmarkVMTransferOwnerReceive(b *testing.B) {
 	sendBlock := makeTransferOwnerBlock(testAddr)
-	receiveBlock := makeReceiveBlock(types.AddressMintage)
+	receiveBlock := makeReceiveBlock(types.AddressQuota)
 	benchmarkReceive(b, sendBlock, receiveBlock)
 }
 func makeTransferOwnerBlock(addr types.Address) *ledger.AccountBlock {
@@ -304,11 +304,11 @@ func makeTransferOwnerBlock(addr types.Address) *ledger.AccountBlock {
 	if err != nil {
 		panic(err)
 	}
-	data, err := abi.ABIMintage.PackMethod(abi.MethodNameTransferOwner, testTokenId, newOwner)
+	data, err := abi.ABIAsset.PackMethod(abi.MethodNameTransferOwnership, testTokenId, newOwner)
 	if err != nil {
 		panic(err)
 	}
-	return makeSendBlock(addr, types.AddressMintage, data, big0, big0)
+	return makeSendBlock(addr, types.AddressQuota, data, big0, big0)
 }
 
 func BenchmarkVMChangeTokenTypeSend(b *testing.B) {
@@ -317,15 +317,15 @@ func BenchmarkVMChangeTokenTypeSend(b *testing.B) {
 }
 func BenchmarkVMChangeTokenTypeReceive(b *testing.B) {
 	sendBlock := makeChangeTokenTypeBlock(testAddr)
-	receiveBlock := makeReceiveBlock(types.AddressMintage)
+	receiveBlock := makeReceiveBlock(types.AddressQuota)
 	benchmarkReceive(b, sendBlock, receiveBlock)
 }
 func makeChangeTokenTypeBlock(addr types.Address) *ledger.AccountBlock {
-	data, err := abi.ABIMintage.PackMethod(abi.MethodNameChangeTokenType, testTokenId)
+	data, err := abi.ABIAsset.PackMethod(abi.MethodNameDisableReIssue, testTokenId)
 	if err != nil {
 		panic(err)
 	}
-	return makeSendBlock(addr, types.AddressMintage, data, big0, big0)
+	return makeSendBlock(addr, types.AddressQuota, data, big0, big0)
 }
 
 func benchmarkSend(b *testing.B, sendBlock *ledger.AccountBlock) {
@@ -392,7 +392,7 @@ func benchmarkReceive(b *testing.B, sendBlock *ledger.AccountBlock, receiveBlock
 	}
 	globalStatus := generator.NewVMGlobalStatus(chainInstance, chainInstance.GetLatestSnapshotBlock(), types.Hash{})
 
-	cr := util.NewVmConsensusReader(mockConsensus.SBPReader())
+	cr := util.NewVMConsensusReader(mockConsensus.SBPReader())
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		db, err := vm_db.NewVmDb(chainInstance, &receiveBlock.AccountAddress, &chainInstance.GetLatestSnapshotBlock().Hash, &receiveBlock.PrevHash)
@@ -636,46 +636,46 @@ func TestPrintBlockSize(t *testing.T) {
 
 	printBlockSize("pledge",
 		makePledgeSendBlock(testAddr),
-		makeReceiveBlock(types.AddressPledge))
+		makeReceiveBlock(types.AddressQuota))
 	printBlockSize("cancelPledge",
 		makeCancelPledgeSendBlock(testAddr),
-		makeReceiveBlock(types.AddressPledge))
+		makeReceiveBlock(types.AddressQuota))
 
 	printBlockSize("register",
 		makeRegisterSendBlock(testAddr),
-		makeReceiveBlock(types.AddressConsensusGroup))
+		makeReceiveBlock(types.AddressGovernance))
 	printBlockSize("cancelRegister",
 		makeCancelRegisterSendBlock(testAddr),
-		makeReceiveBlock(types.AddressConsensusGroup))
+		makeReceiveBlock(types.AddressGovernance))
 	printBlockSize("reward",
 		makeRewardSendBlock(testAddr),
-		makeReceiveBlock(types.AddressConsensusGroup))
+		makeReceiveBlock(types.AddressGovernance))
 	printBlockSize("updateRegistration",
 		makeUpdateRegistrationBlock(testAddr),
-		makeReceiveBlock(types.AddressConsensusGroup))
+		makeReceiveBlock(types.AddressGovernance))
 
 	printBlockSize("vote",
 		makeVoteBlock(testAddr),
-		makeReceiveBlock(types.AddressConsensusGroup))
+		makeReceiveBlock(types.AddressGovernance))
 	printBlockSize("cancelVote",
 		makeCancelVoteBlock(testAddr),
-		makeReceiveBlock(types.AddressConsensusGroup))
+		makeReceiveBlock(types.AddressGovernance))
 
 	printBlockSize("mint",
 		makeMintBlock(testAddr),
-		makeReceiveBlock(types.AddressMintage))
+		makeReceiveBlock(types.AddressQuota))
 	printBlockSize("issue",
 		makeIssueBlock(testAddr),
-		makeReceiveBlock(types.AddressMintage))
+		makeReceiveBlock(types.AddressQuota))
 	printBlockSize("burn",
 		makeBurnBlock(testAddr),
-		makeReceiveBlock(types.AddressMintage))
+		makeReceiveBlock(types.AddressQuota))
 	printBlockSize("transferOwner",
 		makeTransferOwnerBlock(testAddr),
-		makeReceiveBlock(types.AddressMintage))
+		makeReceiveBlock(types.AddressQuota))
 	printBlockSize("changeTokenType",
 		makeChangeTokenTypeBlock(testAddr),
-		makeReceiveBlock(types.AddressMintage))
+		makeReceiveBlock(types.AddressQuota))
 }
 
 func TestPrintCreateContractBlockSize(t *testing.T) {
@@ -718,7 +718,7 @@ func printBlockSize(name string, sendBlock, receiveBlock *ledger.AccountBlock) {
 		receiveBlock.PrevHash = prevBlock.Hash
 	}
 	globalStatus := generator.NewVMGlobalStatus(chainInstance, chainInstance.GetLatestSnapshotBlock(), types.Hash{})
-	cr := util.NewVmConsensusReader(mockConsensus.SBPReader())
+	cr := util.NewVMConsensusReader(mockConsensus.SBPReader())
 	db, err := vm_db.NewVmDb(chainInstance, &receiveBlock.AccountAddress, &chainInstance.GetLatestSnapshotBlock().Hash, &receiveBlock.PrevHash)
 	if err != nil {
 		panic(err)

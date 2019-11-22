@@ -47,8 +47,8 @@ func (c *chain) filterUnconfirmedBlocks(snapshotBlock *ledger.SnapshotBlock, che
 	if len(blocks) <= 0 {
 		return nil
 	}
-	// check is fork point
-	if fork.IsForkPoint(snapshotBlock.Height) {
+	// check is active fork point
+	if fork.IsActiveForkPoint(snapshotBlock.Height) {
 		return blocks
 	}
 
@@ -102,6 +102,8 @@ func (c *chain) filterUnconfirmedBlocks(snapshotBlock *ledger.SnapshotBlock, che
 		if valid && checkConsensus {
 			if _, ok := invalidConsensusBlocks[block.Hash]; ok {
 				valid = false
+				c.log.Info(fmt.Sprintf("will delete block %s, height is %d, addr is %s, invalid consensus", block.Hash, block.Height, block.AccountAddress), "method",
+					"filterInvalidUnconfirmedBlocks")
 			}
 		}
 
@@ -109,10 +111,10 @@ func (c *chain) filterUnconfirmedBlocks(snapshotBlock *ledger.SnapshotBlock, che
 		if valid {
 			var err error
 			// reset quota
-			block.Quota, err = quota.CalcBlockQuota(c, block, snapshotBlock.Height)
+			block.Quota, err = quota.CalcBlockQuotaUsed(c, block, snapshotBlock.Height)
 
 			if err != nil {
-				c.log.Error(fmt.Sprintf("quota.CalcBlockQuota failed when filterUnconfirmedBlocks. Error: %s", err), "method", "filterInvalidUnconfirmedBlocks")
+				c.log.Error(fmt.Sprintf("quota.CalcBlockQuotaUsed failed when filterUnconfirmedBlocks. Error: %s", err), "method", "filterInvalidUnconfirmedBlocks")
 				valid = false
 			} else if enough, err := c.checkQuota(quotaUnusedCache, quotaUsedCache, block, snapshotBlock.Height); err != nil {
 				cErr := errors.New(fmt.Sprintf("c.checkQuota failed, block is %+v. Error: %s", block, err))
@@ -120,6 +122,8 @@ func (c *chain) filterUnconfirmedBlocks(snapshotBlock *ledger.SnapshotBlock, che
 				valid = false
 			} else if !enough {
 				valid = false
+				c.log.Info(fmt.Sprintf("will delete block %s, height is %d, addr is %s, quota is not enough.", block.Hash, block.Height, block.AccountAddress), "method",
+					"filterInvalidUnconfirmedBlocks")
 			}
 		}
 
@@ -144,12 +148,12 @@ func (c *chain) checkQuota(quotaUnusedCache map[types.Address]uint64, quotaUsedC
 	quotaUnused, ok := quotaUnusedCache[block.AccountAddress]
 	if !ok {
 
-		amount, err := c.GetPledgeBeneficialAmount(block.AccountAddress)
+		amount, err := c.GetStakeBeneficialAmount(block.AccountAddress)
 		if err != nil {
 			return false, err
 		}
 
-		quotaUnused, err = quota.CalcSnapshotCurrentQuota(c, block.AccountAddress, amount, sbHeight)
+		quotaUnused, err = quota.GetSnapshotCurrentQuota(c, block.AccountAddress, amount, sbHeight)
 		if err != nil {
 			return false, err
 		}

@@ -18,8 +18,8 @@ const bigFloatPrec = 120
 type Matcher struct {
 	db          vm_db.VmDb
 	MarketInfo  *MarketInfo
-	fundSettles map[types.Address]map[bool]*proto.FundSettle
-	feeSettles  map[types.Address]*proto.UserFeeSettle
+	fundSettles map[types.Address]map[bool]*proto.AccountSettle
+	feeSettles  map[types.Address]*proto.FeeSettle
 }
 
 type OrderTx struct {
@@ -31,13 +31,14 @@ type OrderTx struct {
 }
 
 var (
-	BaseFeeRate      int32 = 200 // 200/100,000 = 0.002
-	VipReduceFeeRate int32 = 100 // 0.001
-	MaxBrokerFeeRate int32 = 200 // 0.002
+	BaseFeeRate        int32 = 200 // 200/100,000 = 0.002
+	VipReduceFeeRate   int32 = 100 // 0.001
+	MaxOperatorFeeRate int32 = 200 // 0.002
 
 	PerPeriodDividendRate int32 = 1000 // 0.01
 
-	InviteBonusRate int32 = 5000 // 0.05
+	InviterBonusRate int32 = 5000 // 0.05
+	InviteeBonusRate int32 = 2500 // 0.025
 
 	RateCardinalNum int32 = 100000 // 100,000
 )
@@ -60,14 +61,14 @@ func NewMatcherWithMarketInfo(db vm_db.VmDb, marketInfo *MarketInfo) (mc *Matche
 func NewRawMatcher(db vm_db.VmDb) (mc *Matcher) {
 	mc = &Matcher{}
 	mc.db = db
-	mc.fundSettles = make(map[types.Address]map[bool]*proto.FundSettle)
-	mc.feeSettles = make(map[types.Address]*proto.UserFeeSettle)
+	mc.fundSettles = make(map[types.Address]map[bool]*proto.AccountSettle)
+	mc.feeSettles = make(map[types.Address]*proto.FeeSettle)
 	return
 }
 
 func (mc *Matcher) MatchOrder(taker *Order, preHash types.Hash) (err error) {
 	var bookToTake *levelDbBook
-	if bookToTake, err = mc.getMakerBookToTaker(taker.Side); err != nil {
+	if bookToTake, err = mc.getOrderBookForTaker(taker.Side); err != nil {
 		return err
 	} else {
 		defer bookToTake.release()
@@ -78,11 +79,11 @@ func (mc *Matcher) MatchOrder(taker *Order, preHash types.Hash) (err error) {
 	return nil
 }
 
-func (mc *Matcher) GetFundSettles() map[types.Address]map[bool]*proto.FundSettle {
+func (mc *Matcher) GetFundSettles() map[types.Address]map[bool]*proto.AccountSettle {
 	return mc.fundSettles
 }
 
-func (mc *Matcher) GetFees() map[types.Address]*proto.UserFeeSettle {
+func (mc *Matcher) GetFees() map[types.Address]*proto.FeeSettle {
 	return mc.feeSettles
 }
 
@@ -145,7 +146,7 @@ func (mc *Matcher) doMatchTaker(taker *Order, makerBook *levelDbBook, preHash ty
 		mc.handleTakerRes(taker)
 	} else {
 		// must not set db in recursiveTakeOrder
-		if err = mc.recursiveTakeOrder(taker, maker, makerBook, &modifiedMakers, &txs); err != nil {
+		if err = mc.recursiveTakeOrder(taker, maker, makerBook, &modifiedMakers, &txs, IsDexFeeFork(mc.db)); err != nil {
 			return
 		} else {
 			mc.handleTakerRes(taker)
@@ -158,14 +159,14 @@ func (mc *Matcher) doMatchTaker(taker *Order, makerBook *levelDbBook, preHash ty
 }
 
 //TODO add assertion for order calculation correctness
-func (mc *Matcher) recursiveTakeOrder(taker, maker *Order, makerBook *levelDbBook, modifiedMakers *[]*Order, txs *[]*OrderTx) error {
+func (mc *Matcher) recursiveTakeOrder(taker, maker *Order, makerBook *levelDbBook, modifiedMakers *[]*Order, txs *[]*OrderTx, isDexFeeFork bool) error {
 	if filterTimeout(mc.db, maker) {
 		*modifiedMakers = append(*modifiedMakers, maker)
 	} else {
 		matched, _ := matchPrice(taker, maker)
 		//fmt.Printf("recursiveTakeOrder matched for taker.id %d is %t\n", taker.Id, matched)
 		if matched {
-			tx := calculateOrderAndTx(taker, maker, mc.MarketInfo)
+			tx := calculateOrderAndTx(taker, maker, mc.MarketInfo, isDexFeeFork)
 			*txs = append(*txs, tx)
 			if taker.Status == PartialExecuted && len(*txs) >= maxTxsCountPerTaker {
 				taker.Status = Cancelled
@@ -180,7 +181,7 @@ func (mc *Matcher) recursiveTakeOrder(taker, maker *Order, makerBook *levelDbBoo
 		return nil
 	}
 	if newMaker, ok := makerBook.nextOrder(); ok {
-		return mc.recursiveTakeOrder(taker, newMaker, makerBook, modifiedMakers, txs)
+		return mc.recursiveTakeOrder(taker, newMaker, makerBook, modifiedMakers, txs, isDexFeeFork)
 	} else {
 		return nil
 	}
@@ -213,14 +214,14 @@ func (mc *Matcher) handleRefund(order *Order) {
 		case false: //buy
 			order.RefundToken = mc.MarketInfo.QuoteToken
 			refundAmount := SubBigIntAbs(order.Amount, order.ExecutedAmount)
-			refundFee := SubBigIntAbs(SubBigIntAbs(order.LockedBuyFee, order.ExecutedBaseFee), order.ExecutedBrokerFee)
+			refundFee := SubBigIntAbs(SubBigIntAbs(order.LockedBuyFee, order.ExecutedBaseFee), order.ExecutedOperatorFee)
 			order.RefundQuantity = AddBigInt(refundAmount, refundFee)
 		case true:
 			order.RefundToken = mc.MarketInfo.TradeToken
 			order.RefundQuantity = SubBigIntAbs(order.Quantity, order.ExecutedQuantity)
 		}
 		if CmpToBigZero(order.RefundQuantity) > 0 {
-			mc.updateFundSettle(order.Address, proto.FundSettle{IsTradeToken: order.Side, ReleaseLocked: order.RefundQuantity})
+			mc.updateFundSettle(order.Address, proto.AccountSettle{IsTradeToken: order.Side, ReleaseLocked: order.RefundQuantity})
 		} else {
 			order.RefundToken = nil
 			order.RefundQuantity = nil
@@ -247,7 +248,7 @@ func (mc *Matcher) emitOrderUpdate(order Order) {
 	updateInfo.ExecutedQuantity = order.ExecutedQuantity
 	updateInfo.ExecutedAmount = order.ExecutedAmount
 	updateInfo.ExecutedBaseFee = order.ExecutedBaseFee
-	updateInfo.ExecutedBrokerFee = order.ExecutedBrokerFee
+	updateInfo.ExecutedOperatorFee = order.ExecutedOperatorFee
 	updateInfo.RefundToken = order.RefundToken
 	updateInfo.RefundQuantity = order.RefundQuantity
 	event := OrderUpdateEvent{updateInfo}
@@ -265,10 +266,10 @@ func (mc *Matcher) handleTxs(txs []*OrderTx) {
 }
 
 func (mc *Matcher) handleTxFundSettle(tx OrderTx) {
-	takerInSettle := proto.FundSettle{}
-	takerOutSettle := proto.FundSettle{}
-	makerInSettle := proto.FundSettle{}
-	makerOutSettle := proto.FundSettle{}
+	takerInSettle := proto.AccountSettle{}
+	takerOutSettle := proto.AccountSettle{}
+	makerInSettle := proto.AccountSettle{}
+	makerOutSettle := proto.AccountSettle{}
 	switch tx.TakerSide {
 	case false: //buy
 		takerInSettle.IsTradeToken = true
@@ -277,15 +278,15 @@ func (mc *Matcher) handleTxFundSettle(tx OrderTx) {
 		makerOutSettle.ReduceLocked = tx.Quantity
 
 		takerOutSettle.IsTradeToken = false
-		takerOutSettle.ReduceLocked = AddBigInt(tx.Amount, AddBigInt(tx.TakerFee, tx.TakerBrokerFee))
+		takerOutSettle.ReduceLocked = AddBigInt(tx.Amount, AddBigInt(tx.TakerFee, tx.TakerOperatorFee))
 		makerInSettle.IsTradeToken = false
-		makerInSettle.IncAvailable = SubBigIntAbs(tx.Amount, AddBigInt(tx.MakerFee, tx.MakerBrokerFee))
+		makerInSettle.IncAvailable = SubBigIntAbs(tx.Amount, AddBigInt(tx.MakerFee, tx.MakerOperatorFee))
 
 	case true: //sell
 		takerInSettle.IsTradeToken = false
-		takerInSettle.IncAvailable = SubBigIntAbs(tx.Amount, AddBigInt(tx.TakerFee, tx.TakerBrokerFee))
+		takerInSettle.IncAvailable = SubBigIntAbs(tx.Amount, AddBigInt(tx.TakerFee, tx.TakerOperatorFee))
 		makerOutSettle.IsTradeToken = false
-		makerOutSettle.ReduceLocked = AddBigInt(tx.Amount, AddBigInt(tx.MakerFee, tx.MakerBrokerFee))
+		makerOutSettle.ReduceLocked = AddBigInt(tx.Amount, AddBigInt(tx.MakerFee, tx.MakerOperatorFee))
 
 		takerOutSettle.IsTradeToken = true
 		takerOutSettle.ReduceLocked = tx.Quantity
@@ -297,24 +298,24 @@ func (mc *Matcher) handleTxFundSettle(tx OrderTx) {
 	mc.updateFundSettle(tx.makerAddress, makerInSettle)
 	mc.updateFundSettle(tx.makerAddress, makerOutSettle)
 
-	mc.updateFee(tx.takerAddress, tx.TakerFee, tx.TakerBrokerFee)
-	mc.updateFee(tx.makerAddress, tx.MakerFee, tx.MakerBrokerFee)
+	mc.updateFee(tx.takerAddress, tx.TakerFee, tx.TakerOperatorFee)
+	mc.updateFee(tx.makerAddress, tx.MakerFee, tx.MakerOperatorFee)
 }
 
-func (mc *Matcher) updateFundSettle(addressBytes []byte, settle proto.FundSettle) {
+func (mc *Matcher) updateFundSettle(addressBytes []byte, settle proto.AccountSettle) {
 	var (
-		settleMap map[bool]*proto.FundSettle // token -> settle
+		settleMap map[bool]*proto.AccountSettle // token -> settle
 		ok        bool
-		ac        *proto.FundSettle
+		ac        *proto.AccountSettle
 		address   = types.Address{}
 	)
 	address.SetBytes(addressBytes)
 	if settleMap, ok = mc.fundSettles[address]; !ok {
-		settleMap = make(map[bool]*proto.FundSettle)
+		settleMap = make(map[bool]*proto.AccountSettle)
 		mc.fundSettles[address] = settleMap
 	}
 	if ac, ok = settleMap[settle.IsTradeToken]; !ok {
-		ac = &proto.FundSettle{IsTradeToken: settle.IsTradeToken}
+		ac = &proto.AccountSettle{IsTradeToken: settle.IsTradeToken}
 		settleMap[settle.IsTradeToken] = ac
 	}
 	ac.IncAvailable = AddBigInt(ac.IncAvailable, settle.IncAvailable)
@@ -322,23 +323,23 @@ func (mc *Matcher) updateFundSettle(addressBytes []byte, settle proto.FundSettle
 	ac.ReduceLocked = AddBigInt(ac.ReduceLocked, settle.ReduceLocked)
 }
 
-func (mc *Matcher) updateFee(address []byte, feeAmt, brokerFeeAmt []byte) {
+func (mc *Matcher) updateFee(address []byte, feeAmt, operatorFee []byte) {
 	var (
-		userFeeSettle *proto.UserFeeSettle
-		ok            bool
+		feeSettle *proto.FeeSettle
+		ok        bool
 	)
 	addr := types.Address{}
 	addr.SetBytes(address)
-	if userFeeSettle, ok = mc.feeSettles[addr]; !ok {
-		userFeeSettle = &proto.UserFeeSettle{Address: address, BaseFee: feeAmt, BrokerFee: brokerFeeAmt}
-		mc.feeSettles[addr] = userFeeSettle
+	if feeSettle, ok = mc.feeSettles[addr]; !ok {
+		feeSettle = &proto.FeeSettle{Address: address, BaseFee: feeAmt, OperatorFee: operatorFee}
+		mc.feeSettles[addr] = feeSettle
 	} else {
-		userFeeSettle.BaseFee = AddBigInt(userFeeSettle.BaseFee, feeAmt)
-		userFeeSettle.BrokerFee = AddBigInt(userFeeSettle.BrokerFee, brokerFeeAmt)
+		feeSettle.BaseFee = AddBigInt(feeSettle.BaseFee, feeAmt)
+		feeSettle.OperatorFee = AddBigInt(feeSettle.OperatorFee, operatorFee)
 	}
 }
 
-func (mc *Matcher) getMakerBookToTaker(takerSide bool) (*levelDbBook, error) {
+func (mc *Matcher) getOrderBookForTaker(takerSide bool) (*levelDbBook, error) {
 	return getMakerBook(mc.db, mc.MarketInfo.MarketId, !takerSide)
 }
 
@@ -361,7 +362,7 @@ func (mc *Matcher) deleteOrder(order *Order) {
 	}
 }
 
-func calculateOrderAndTx(taker, maker *Order, marketInfo *MarketInfo) (tx *OrderTx) {
+func calculateOrderAndTx(taker, maker *Order, marketInfo *MarketInfo, isDexFeeFork bool) (tx *OrderTx) {
 	tx = &OrderTx{}
 	tx.Id = generateTxId(taker.Id, maker.Id)
 	tx.TakerSide = taker.Side
@@ -373,10 +374,10 @@ func calculateOrderAndTx(taker, maker *Order, marketInfo *MarketInfo) (tx *Order
 	makerAmount := calculateOrderAmount(maker, executeQuantity, maker.Price, marketInfo.TradeTokenDecimals-marketInfo.QuoteTokenDecimals)
 	executeAmount := MinBigInt(takerAmount, makerAmount)
 	//fmt.Printf("calculateOrderAndTx executeQuantity %v, takerAmount %v, makerAmount %v, executeAmount %v\n", new(big.Int).SetBytes(executeQuantity).String(), new(big.Int).SetBytes(takerAmount).String(), new(big.Int).SetBytes(makerAmount).String(), new(big.Int).SetBytes(executeAmount).String())
-	takerFee, takerExecutedFee, takerBrokerFee, takerExecutedBrokerFee := CalculateFeeAndExecutedFee(taker, executeAmount, taker.TakerFeeRate, taker.TakerBrokerFeeRate)
-	makerFee, makerExecutedFee, makerBrokerFee, makerExecutedBrokerFee := CalculateFeeAndExecutedFee(maker, executeAmount, maker.MakerFeeRate, maker.MakerBrokerFeeRate)
-	updateOrder(taker, executeQuantity, executeAmount, takerExecutedFee, takerExecutedBrokerFee, marketInfo.TradeTokenDecimals-marketInfo.QuoteTokenDecimals)
-	updateOrder(maker, executeQuantity, executeAmount, makerExecutedFee, makerExecutedBrokerFee, marketInfo.TradeTokenDecimals-marketInfo.QuoteTokenDecimals)
+	takerFee, takerExecutedFee, takerOperatorFee, takerExecutedOperatorFee := CalculateFeeAndExecutedFee(taker, executeAmount, taker.TakerFeeRate, taker.TakerOperatorFeeRate, isDexFeeFork)
+	makerFee, makerExecutedFee, makerOperatorFee, makerExecutedOperatorFee := CalculateFeeAndExecutedFee(maker, executeAmount, maker.MakerFeeRate, maker.MakerOperatorFeeRate, isDexFeeFork)
+	updateOrder(taker, executeQuantity, executeAmount, takerExecutedFee, takerExecutedOperatorFee, marketInfo.TradeTokenDecimals-marketInfo.QuoteTokenDecimals)
+	updateOrder(maker, executeQuantity, executeAmount, makerExecutedFee, makerExecutedOperatorFee, marketInfo.TradeTokenDecimals-marketInfo.QuoteTokenDecimals)
 	tx.Quantity = executeQuantity
 	tx.Amount = executeAmount
 	tx.takerAddress = taker.Address
@@ -384,9 +385,9 @@ func calculateOrderAndTx(taker, maker *Order, marketInfo *MarketInfo) (tx *Order
 	tx.tradeToken = marketInfo.TradeToken
 	tx.quoteToken = marketInfo.QuoteToken
 	tx.TakerFee = takerFee
-	tx.TakerBrokerFee = takerBrokerFee
+	tx.TakerOperatorFee = takerOperatorFee
 	tx.MakerFee = makerFee
-	tx.MakerBrokerFee = makerBrokerFee
+	tx.MakerOperatorFee = makerOperatorFee
 	tx.Timestamp = taker.Timestamp
 	return tx
 }
@@ -399,7 +400,7 @@ func calculateOrderAmount(order *Order, quantity []byte, price []byte, decimalsD
 	return amount
 }
 
-func updateOrder(order *Order, quantity []byte, amount []byte, executedBaseFee, executedBrokerFee []byte, decimalsDiff int32) []byte {
+func updateOrder(order *Order, quantity []byte, amount []byte, executedBaseFee, executedOperatorFee []byte, decimalsDiff int32) []byte {
 	order.ExecutedAmount = AddBigInt(order.ExecutedAmount, amount)
 	if bytes.Equal(SubBigIntAbs(order.Quantity, order.ExecutedQuantity), quantity) ||
 		order.Type == Market && !order.Side && bytes.Equal(SubBigIntAbs(order.Amount, order.ExecutedAmount), amount) || // market buy order
@@ -409,7 +410,7 @@ func updateOrder(order *Order, quantity []byte, amount []byte, executedBaseFee, 
 		order.Status = PartialExecuted
 	}
 	order.ExecutedBaseFee = executedBaseFee
-	order.ExecutedBrokerFee = executedBrokerFee
+	order.ExecutedOperatorFee = executedOperatorFee
 	order.ExecutedQuantity = AddBigInt(order.ExecutedQuantity, quantity)
 	return amount
 }
@@ -439,10 +440,12 @@ func CalculateAmountForRate(amount []byte, rate int32) []byte {
 	}
 }
 
-func CalculateFeeAndExecutedFee(order *Order, amount []byte, feeRate, brokerFeeRate int32) (incBaseFee, executedBaseFee, incBrokerFee, executedBrokerFee []byte) {
+func CalculateFeeAndExecutedFee(order *Order, amount []byte, feeRate, operatorFeeRate int32, isDexFeeFork bool) (incBaseFee, executedBaseFee, incOperatorFee, executedOperatorFee []byte) {
 	var leaved bool
-	if incBaseFee, executedBaseFee, leaved = calculateExecutedFee(amount, feeRate, order.Side, order.ExecutedBaseFee, order.LockedBuyFee, order.ExecutedBaseFee, order.ExecutedBrokerFee); leaved {
-		incBrokerFee, executedBrokerFee, _ = calculateExecutedFee(amount, brokerFeeRate, order.Side, order.ExecutedBrokerFee, order.LockedBuyFee, executedBaseFee, order.ExecutedBrokerFee)
+	if incBaseFee, executedBaseFee, leaved = calculateExecutedFee(amount, feeRate, order.Side, order.ExecutedBaseFee, order.LockedBuyFee, order.ExecutedBaseFee, order.ExecutedOperatorFee); leaved {
+		incOperatorFee, executedOperatorFee, _ = calculateExecutedFee(amount, operatorFeeRate, order.Side, order.ExecutedOperatorFee, order.LockedBuyFee, executedBaseFee, order.ExecutedOperatorFee)
+	} else if isDexFeeFork {
+		executedOperatorFee = order.ExecutedOperatorFee
 	}
 	return
 }

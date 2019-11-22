@@ -3,44 +3,45 @@ package dex
 import (
 	"fmt"
 	"github.com/vitelabs/go-vite/common/types"
+	"github.com/vitelabs/go-vite/ledger"
+	cabi "github.com/vitelabs/go-vite/vm/contracts/abi"
 	"github.com/vitelabs/go-vite/vm_db"
 	"math/big"
 )
 
 //Note: allow dividend from specify periodId, former periods will be divided at that period
-func DoDivideFees(db vm_db.VmDb, periodId uint64) error {
+func DoFeesDividend(db vm_db.VmDb, periodId uint64) (blocks []*ledger.AccountBlock, err error) {
 	var (
-		feeSumsMap map[uint64]*FeeSumByPeriod
-		vxSumFunds *VxFunds
-		err        error
-		ok         bool
+		dexFeesByPeriodMap map[uint64]*DexFeesByPeriod
+		vxSumFunds         *VxFunds
+		ok                 bool
 	)
 
 	//allow divide history fees that not divided yet
-	if feeSumsMap = GetNotDividedFeeSumsByPeriodId(db, periodId); len(feeSumsMap) == 0 { // no fee to divide
-		return nil
+	if dexFeesByPeriodMap = GetNotFinishDividendDexFeesByPeriodMap(db, periodId); len(dexFeesByPeriodMap) == 0 { // no fee to divide
+		return
 	}
-	if vxSumFunds, ok = GetVxSumFunds(db); !ok {
-		return nil
+	if vxSumFunds, ok = GetVxSumFundsWithForkCheck(db); !ok {
+		return
 	}
 	foundVxSumFunds, vxSumAmtBytes, needUpdateVxSum, _ := MatchVxFundsByPeriod(vxSumFunds, periodId, false)
 	//fmt.Printf("foundVxSumFunds %v, vxSumAmtBytes %s, needUpdateVxSum %v with periodId %d\n", foundVxSumFunds, new(big.Int).SetBytes(vxSumAmtBytes).String(), needUpdateVxSum, periodId)
 	if !foundVxSumFunds { // not found vxSumFunds
-		return nil
+		return
 	}
 	if needUpdateVxSum {
-		SaveVxSumFunds(db, vxSumFunds)
+		SaveVxSumFundsWithForkCheck(db, vxSumFunds)
 	}
 	vxSumAmt := new(big.Int).SetBytes(vxSumAmtBytes)
 	if vxSumAmt.Sign() <= 0 {
-		return nil
+		return
 	}
 	// sum fees from multi period not divided
 	feeSumMap := make(map[types.TokenTypeId]*big.Int)
-	for pId, fee := range feeSumsMap {
+	for pId, fee := range dexFeesByPeriodMap {
 		for _, feeAccount := range fee.FeesForDividend {
 			if tokenId, err := types.BytesToTokenTypeId(feeAccount.Token); err != nil {
-				return err
+				return nil, err
 			} else {
 				toDividendAmt, _ := splitDividendPool(feeAccount)
 				if amt, ok := feeSumMap[tokenId]; !ok {
@@ -50,19 +51,23 @@ func DoDivideFees(db vm_db.VmDb, periodId uint64) error {
 				}
 			}
 		}
-		MarkFeeSumAsFeeDivided(db, fee, pId)
+		MarkDexFeesFinishDividend(db, fee, pId)
 	}
+	blocks = tryBurnVite(db, feeSumMap)
 
 	var (
-		userVxFundsKey, userVxFundsBytes []byte
+		userVxFundKeyPrefix, userVxFundsKey, userVxFundsBytes []byte
 	)
-
-	iterator, err := db.NewStorageIterator(VxFundKeyPrefix)
+	if IsEarthFork(db) {
+		userVxFundKeyPrefix = vxLockedFundsKeyPrefix
+	} else {
+		userVxFundKeyPrefix = vxFundKeyPrefix
+	}
+	iterator, err := db.NewStorageIterator(userVxFundKeyPrefix)
 	if err != nil {
-		return err
+		panic(err)
 	}
 	defer iterator.Release()
-
 	feeSumWithTokens := MapToAmountWithTokens(feeSumMap)
 
 	feeSumLeavedMap := make(map[types.TokenTypeId]*big.Int)
@@ -84,14 +89,14 @@ func DoDivideFees(db vm_db.VmDb, periodId uint64) error {
 			continue
 		}
 
-		addressBytes := userVxFundsKey[len(VxFundKeyPrefix):]
+		addressBytes := userVxFundsKey[len(userVxFundKeyPrefix):]
 		address := types.Address{}
 		if err = address.SetBytes(addressBytes); err != nil {
-			return err
+			return
 		}
 		userVxFunds := &VxFunds{}
 		if err = userVxFunds.DeSerialize(userVxFundsBytes); err != nil {
-			return err
+			return
 		}
 
 		var userFeeDividend = make(map[types.TokenTypeId]*big.Int)
@@ -100,9 +105,9 @@ func DoDivideFees(db vm_db.VmDb, periodId uint64) error {
 			continue
 		}
 		if needDeleteVxFunds {
-			DeleteVxFunds(db, address.Bytes())
+			DeleteVxFundsWithForkCheck(db, address.Bytes())
 		} else if needUpdateVxFunds {
-			SaveVxFunds(db, address.Bytes(), userVxFunds)
+			SaveVxFundsWithForkCheck(db, address.Bytes(), userVxFunds)
 		}
 		userVxAmount := new(big.Int).SetBytes(userVxAmtBytes)
 		//fmt.Printf("address %s, userVxAmount %s, needDeleteVxFunds %v\n", string(address.Bytes()), userVxAmount.String(), needDeleteVxFunds)
@@ -127,46 +132,46 @@ func DoDivideFees(db vm_db.VmDb, periodId uint64) error {
 			}
 			AddFeeDividendEvent(db, address, feeSumWtTk.Token, userVxAmount, userFeeDividend[feeSumWtTk.Token])
 		}
-		if err = BatchSaveUserFund(db, address, userFeeDividend); err != nil {
-			return err
+		if err = BatchUpdateFund(db, address, userFeeDividend); err != nil {
+			return
 		}
 	}
-	return err
+	return
 }
 
-func DoDivideBrokerFees(db vm_db.VmDb, periodId uint64) error {
-	iterator, err := db.NewStorageIterator(append(brokerFeeSumKeyPrefix, Uint64ToBytes(periodId)...))
+func DoOperatorFeesDividend(db vm_db.VmDb, periodId uint64) error {
+	iterator, err := db.NewStorageIterator(append(operatorFeesKeyPrefix, Uint64ToBytes(periodId)...))
 	if err != nil {
-		return err
+		panic(err)
 	}
 	defer iterator.Release()
 	for {
-		var brokerFeeSumKey, brokerFeeSumBytes []byte
+		var operatorFeesKey, operatorFeesBytes []byte
 		if !iterator.Next() {
 			if iterator.Error() != nil {
 				panic(iterator.Error())
 			}
 			break
 		}
-		brokerFeeSumKey = iterator.Key() //3+8+21
-		brokerFeeSumBytes = iterator.Value()
-		if len(brokerFeeSumBytes) == 0 {
+		operatorFeesKey = iterator.Key() //3+8+21
+		operatorFeesBytes = iterator.Value()
+		if len(operatorFeesBytes) == 0 {
 			continue
 		}
-		if len(brokerFeeSumKey) != 32 {
-			panic(fmt.Errorf("invalid broker fee type"))
+		if len(operatorFeesKey) != 32 {
+			panic(fmt.Errorf("invalid opearator fees key type"))
 		}
-		DeleteBrokerFeeSumByKey(db, brokerFeeSumKey)
-		brokerFeeSum := &BrokerFeeSumByPeriod{}
-		if err = brokerFeeSum.DeSerialize(brokerFeeSumBytes); err != nil {
+		DeleteOperatorFeesByKey(db, operatorFeesKey)
+		operatorFeesByPeriod := &OperatorFeesByPeriod{}
+		if err = operatorFeesByPeriod.DeSerialize(operatorFeesBytes); err != nil {
 			panic(err)
 		}
-		addr, err := types.BytesToAddress(brokerFeeSumKey[11:])
+		addr, err := types.BytesToAddress(operatorFeesKey[11:])
 		if err != nil {
 			panic(err)
 		}
 		userFund := make(map[types.TokenTypeId]*big.Int)
-		for _, feeAcc := range brokerFeeSum.BrokerFees {
+		for _, feeAcc := range operatorFeesByPeriod.OperatorFees {
 			tokenId, err := types.BytesToTokenTypeId(feeAcc.Token)
 			if err != nil {
 				panic(err)
@@ -177,10 +182,10 @@ func DoDivideBrokerFees(db vm_db.VmDb, periodId uint64) error {
 				} else {
 					userFund[tokenId] = new(big.Int).SetBytes(mkFee.Amount)
 				}
-				AddBrokerFeeDividendEvent(db, addr, mkFee)
+				AddOperatorFeeDividendEvent(db, addr, mkFee)
 			}
 		}
-		BatchSaveUserFund(db, addr, userFund)
+		BatchUpdateFund(db, addr, userFund)
 	}
 	return nil
 }
@@ -198,4 +203,32 @@ func DivideByProportion(totalReferAmt, partReferAmt, dividedReferAmt, toDivideTo
 		toDivideLeaveAmt.Set(toDivideLeaveNewAmt)
 	}
 	return proportionAmt, finished
+}
+
+func tryBurnVite(db vm_db.VmDb, feeSumMap map[types.TokenTypeId]*big.Int) []*ledger.AccountBlock {
+	if IsEarthFork(db) {
+		for token, amt := range feeSumMap {
+			if token == ledger.ViteTokenId {
+				if amt.Sign() == 0 {
+					return nil
+				}
+				delete(feeSumMap, token)
+				if burnData, err := cabi.ABIAsset.PackMethod(cabi.MethodNameBurn); err != nil {
+					panic(err)
+				} else {
+					burnBlock := &ledger.AccountBlock{
+						AccountAddress: types.AddressDexFund,
+						ToAddress:      types.AddressAsset,
+						BlockType:      ledger.BlockTypeSendCall,
+						TokenId:        ledger.ViteTokenId,
+						Amount:         amt,
+						Data:           burnData,
+					}
+					AddBurnViteEvent(db, BurnForDexViteFee, amt)
+					return []*ledger.AccountBlock{burnBlock}
+				}
+			}
+		}
+	}
+	return nil
 }

@@ -117,34 +117,34 @@ func makeDexSettleOrdersBlock(addr types.Address) *ledger.AccountBlock {
 	settleActions := &dexproto.SettleActions{}
 	settleActions.TradeToken = tradeToken.Bytes()
 	settleActions.QuoteToken = ledger.ViteTokenId.Bytes()
-	fundSettles1 := &dexproto.UserFundSettle{}
-	fundSt1 := &dexproto.FundSettle{}
-	fundSt1.IsTradeToken = true
-	fundSt1.IncAvailable = big1e18.Bytes()
-	fundSt1.ReduceLocked = big1e18.Bytes()
-	fundSt1.ReleaseLocked = big0.Bytes()
-	fundSt2 := &dexproto.FundSettle{}
+	fundSettles1 := &dexproto.FundSettle{}
+	accSt1 := &dexproto.AccountSettle{}
+	accSt1.IsTradeToken = true
+	accSt1.IncAvailable = big1e18.Bytes()
+	accSt1.ReduceLocked = big1e18.Bytes()
+	accSt1.ReleaseLocked = big0.Bytes()
+	fundSt2 := &dexproto.AccountSettle{}
 	fundSt2.IsTradeToken = false
 	fundSt2.IncAvailable = big1e18.Bytes()
 	fundSt2.ReduceLocked = big1e18.Bytes()
 	fundSt2.ReleaseLocked = big0.Bytes()
 	fundSettles1.Address = addr.Bytes()
-	fundSettles1.FundSettles = []*dexproto.FundSettle{fundSt1, fundSt2}
-	fundSettles2 := &dexproto.UserFundSettle{}
+	fundSettles1.AccountSettles = []*dexproto.AccountSettle{accSt1, fundSt2}
+	fundSettles2 := &dexproto.FundSettle{}
 	fundSettles2.Address = addr.Bytes()
-	fundSettles2.FundSettles = []*dexproto.FundSettle{fundSt1, fundSt2}
-	settleActions.FundActions = []*dexproto.UserFundSettle{fundSettles1, fundSettles2}
+	fundSettles2.AccountSettles = []*dexproto.AccountSettle{accSt1, fundSt2}
+	settleActions.FundActions = []*dexproto.FundSettle{fundSettles1, fundSettles2}
 
-	feeSettle1 := &dexproto.UserFeeSettle{}
+	feeSettle1 := &dexproto.FeeSettle{}
 	feeSettle1.Address = dexAddr.Bytes()
 	feeSettle1.BaseFee = big1e18.Bytes()
-	feeSettle1.BrokerFee = big1e18.Bytes()
+	feeSettle1.OperatorFee = big1e18.Bytes()
 
-	feeSettle2 := &dexproto.UserFeeSettle{}
+	feeSettle2 := &dexproto.FeeSettle{}
 	feeSettle2.Address = dexAddr.Bytes()
 	feeSettle2.BaseFee = big1e18.Bytes()
-	feeSettle2.BrokerFee = big1e18.Bytes()
-	settleActions.FeeActions = []*dexproto.UserFeeSettle{feeSettle1, feeSettle2}
+	feeSettle2.OperatorFee = big1e18.Bytes()
+	settleActions.FeeActions = []*dexproto.FeeSettle{feeSettle1, feeSettle2}
 	settleData, err := proto.Marshal(settleActions)
 	if err != nil {
 		panic(err)
@@ -173,21 +173,21 @@ func makeDexPeriodJobBlock(addr types.Address) *ledger.AccountBlock {
 	return makeSendBlock(addr, types.AddressDexFund, data, big0, big0)
 }
 
-//part of PledgeForVx[entry]
-func BenchmarkVMDexPledgeForVxSend(b *testing.B) {
-	sendBlock := makeDexPledgeForVxBlock(testAddr)
+//part of StakeForMining[entry]
+func BenchmarkVMDexStakeForMiningSend(b *testing.B) {
+	sendBlock := makeDexStakeForMiningBlock(testAddr)
 	benchmarkSend(b, sendBlock)
 }
 
-//part of PledgeForVx
-func BenchmarkVMDexPledgeForVxReceive(b *testing.B) {
-	sendBlock := makeDexPledgeForVxBlock(testAddr)
+//part of StakeForMining
+func BenchmarkVMDexStakeForMiningReceive(b *testing.B) {
+	sendBlock := makeDexStakeForMiningBlock(testAddr)
 	receiveBlock := makeReceiveBlock(types.AddressDexFund)
 	benchmarkReceive(b, sendBlock, receiveBlock)
 }
-func makeDexPledgeForVxBlock(addr types.Address) *ledger.AccountBlock {
+func makeDexStakeForMiningBlock(addr types.Address) *ledger.AccountBlock {
 	amount := new(big.Int).Mul(big.NewInt(500), big1e18)
-	data, err := abi.ABIDexFund.PackMethod(abi.MethodNameDexFundPledgeForVx, uint8(1), amount)
+	data, err := abi.ABIDexFund.PackMethod(abi.MethodNameDexFundStakeForMining, uint8(1), amount)
 	if err != nil {
 		panic(err)
 	}
@@ -215,14 +215,14 @@ func makeDexPledgeForVipBlock(addr types.Address) *ledger.AccountBlock {
 	return makeSendBlock(addr, types.AddressDexFund, data, amount, big0)
 }
 
-//part of PledgeForVx
+//part of StakeForMining
 //part of PledgeForVip
 func BenchmarkVMDexPledgeCallbackSend(b *testing.B) {
 	sendBlock := makeDexPledgeCallbackBlock(dexAddr)
 	benchmarkSend(b, sendBlock)
 }
 
-//part of PledgeForVx
+//part of StakeForMining
 //part of PledgeForVip
 func BenchmarkVMDexPledgeCallbackReceive(b *testing.B) {
 	sendBlock := makeDexPledgeCallbackBlock(dexAddr)
@@ -231,21 +231,21 @@ func BenchmarkVMDexPledgeCallbackReceive(b *testing.B) {
 }
 func makeDexPledgeCallbackBlock(addr types.Address) *ledger.AccountBlock {
 	amount := new(big.Int).Mul(big.NewInt(500), big1e18)
-	data, err := abi.ABIPledge.PackCallback(abi.MethodNameAgentPledge, addr, types.AddressDexFund, amount, uint8(dex.PledgeForVx), true)
+	data, err := abi.ABIQuota.PackCallback(abi.MethodNameStake, addr, types.AddressDexFund, amount, uint8(dex.StakeForMining), true)
 	if err != nil {
 		panic(err)
 	}
-	return makeSendBlock(types.AddressPledge, types.AddressDexFund, data, big0, big0)
+	return makeSendBlock(types.AddressQuota, types.AddressDexFund, data, big0, big0)
 }
 
-//part of PledgeForVx
+//part of StakeForMining
 //part of PledgeForVip
 func BenchmarkVMDexCancelPledgeCallbackSend(b *testing.B) {
 	sendBlock := makeDexCancelPledgeCallbackBlock(testAddr)
 	benchmarkSend(b, sendBlock)
 }
 
-//part of PledgeForVx
+//part of StakeForMining
 //part of PledgeForVip
 func BenchmarkVMDexCancelPledgeCallBackReceive(b *testing.B) {
 	sendBlock := makeDexCancelPledgeCallbackBlock(testAddr)
@@ -254,27 +254,27 @@ func BenchmarkVMDexCancelPledgeCallBackReceive(b *testing.B) {
 }
 func makeDexCancelPledgeCallbackBlock(addr types.Address) *ledger.AccountBlock {
 	amount := new(big.Int).Mul(big.NewInt(500), big1e18)
-	data, err := abi.ABIPledge.PackCallback(abi.MethodNameAgentCancelPledge, addr, types.AddressDexFund, amount, uint8(dex.PledgeForVx), true)
+	data, err := abi.ABIQuota.PackCallback(abi.MethodNameCancelStake, addr, types.AddressDexFund, amount, uint8(dex.StakeForMining), true)
 	if err != nil {
 		panic(err)
 	}
-	return makeSendBlock(types.AddressPledge, types.AddressDexFund, data, amount, big0)
+	return makeSendBlock(types.AddressQuota, types.AddressDexFund, data, amount, big0)
 }
 
 //part of NewMarket
 func BenchmarkVMDexGetTokenInfoCallbackSend(b *testing.B) {
-	sendBlock := makeDexGetTokenInfoCallbackBlock(types.AddressMintage)
+	sendBlock := makeDexGetTokenInfoCallbackBlock(types.AddressAsset)
 	benchmarkSend(b, sendBlock)
 }
 
 //part of NewMarket
 func BenchmarkVMDexGetTokenInfoCallBackReceive(b *testing.B) {
-	sendBlock := makeDexGetTokenInfoCallbackBlock(types.AddressMintage)
+	sendBlock := makeDexGetTokenInfoCallbackBlock(types.AddressAsset)
 	receiveBlock := makeReceiveBlock(types.AddressDexFund)
 	benchmarkReceive(b, sendBlock, receiveBlock)
 }
 func makeDexGetTokenInfoCallbackBlock(addr types.Address) *ledger.AccountBlock {
-	data, err := abi.ABIMintage.PackCallback(abi.MethodNameGetTokenInfo, notExistsNewTradeToken, uint8(dex.GetTokenForTransferOwner), true, uint8(18), "VCC", uint16(1), testAddr)
+	data, err := abi.ABIAsset.PackCallback(abi.MethodNameGetTokenInfo, notExistsNewTradeToken, uint8(dex.GetTokenForTransferOwner), true, uint8(18), "VCC", uint16(1), testAddr)
 	if err != nil {
 		panic(err)
 	}
@@ -291,7 +291,7 @@ func BenchmarkVMDexOwnerConfigReceive(b *testing.B) {
 	benchmarkReceive(b, sendBlock, receiveBlock)
 }
 func makeDexOwnerConfigBlock(addr types.Address) *ledger.AccountBlock {
-	data, err := abi.ABIDexFund.PackMethod(abi.MethodNameDexFundOwnerConfig, uint8(dex.OwnerConfigOwner+dex.OwnerConfigTimer+dex.OwnerConfigTrigger+dex.OwnerConfigMakerMineProxy+dex.OwnerConfigMaintainer), dexAddr, dexAddr, dexAddr, false, dexAddr, dexAddr)
+	data, err := abi.ABIDexFund.PackMethod(abi.MethodNameDexFundOwnerConfig, uint8(dex.AdminConfigOwner+dex.AdminConfigTimeOracle+dex.AdminConfigPeriodJobTrigger+dex.AdminConfigMakerMiningAdmin+dex.AdminConfigMaintainer), dexAddr, dexAddr, dexAddr, false, dexAddr, dexAddr)
 	if err != nil {
 		panic(err)
 	}
@@ -308,7 +308,7 @@ func BenchmarkVMDexOwnerConfigTradeReceive(b *testing.B) {
 	benchmarkReceive(b, sendBlock, receiveBlock)
 }
 func makeDexOwnerConfigTradeBlock(addr types.Address) *ledger.AccountBlock {
-	data, err := abi.ABIDexFund.PackMethod(abi.MethodNameDexFundOwnerConfigTrade, uint8(dex.OwnerConfigMineMarket), tradeToken, ledger.ViteTokenId, false, ledger.ViteTokenId, uint8(1), uint8(1), big.NewInt(0), uint8(1), big.NewInt(0))
+	data, err := abi.ABIDexFund.PackMethod(abi.MethodNameDexFundOwnerConfigTrade, uint8(dex.TradeAdminConfigMineMarket), tradeToken, ledger.ViteTokenId, false, ledger.ViteTokenId, uint8(1), uint8(1), big.NewInt(0), uint8(1), big.NewInt(0))
 	if err != nil {
 		panic(err)
 	}
@@ -460,7 +460,7 @@ func BenchmarkVMDexPledgeForSuperVipReceive(b *testing.B) {
 	benchmarkReceive(b, sendBlock, receiveBlock)
 }
 func makeDexPledgeForSuperVipBlock(addr types.Address) *ledger.AccountBlock {
-	data, err := abi.ABIDexFund.PackMethod(abi.MethodNameDexFundPledgeForSuperVip, uint8(dex.Pledge))
+	data, err := abi.ABIDexFund.PackMethod(abi.MethodNameDexFundStakeForSuperVip, uint8(dex.Stake))
 	if err != nil {
 		panic(err)
 	}
@@ -530,8 +530,8 @@ func makeDexTradeNewOrderBlock(addr types.Address) *ledger.AccountBlock {
 	order.Price = dex.PriceToBytes("20")
 	order.TakerFeeRate = 200
 	order.MakerFeeRate = 200
-	order.TakerBrokerFeeRate = 100
-	order.MakerBrokerFeeRate = 100
+	order.TakerOperatorFeeRate = 100
+	order.MakerOperatorFeeRate = 100
 	order.Quantity = big1e18.Bytes()
 	order.Amount = big1e18.Bytes()
 	order.LockedBuyFee = big0.Bytes()
@@ -590,9 +590,9 @@ func makeDexTradeNotifyNewMarketBlock(addr types.Address) *ledger.AccountBlock {
 	marketInfo.QuoteTokenType = 1
 	marketInfo.TradeTokenDecimals = 18
 	marketInfo.QuoteTokenDecimals = 18
-	marketInfo.TakerBrokerFeeRate = 18
-	marketInfo.MakerBrokerFeeRate = 18
-	marketInfo.AllowMine = true
+	marketInfo.TakerOperatorFeeRate = 18
+	marketInfo.MakerOperatorFeeRate = 18
+	marketInfo.AllowMining = true
 	marketInfo.Valid = true
 	marketInfo.Owner = testAddr.Bytes()
 	marketInfo.Creator = testAddr.Bytes()
@@ -676,8 +676,8 @@ func TestPrintDexBlockSize(t *testing.T) {
 	printBlockSize("dexFundPeriodJob",
 		makeDexPeriodJobBlock(dexAddr),
 		makeReceiveBlock(types.AddressDexFund))
-	printBlockSize("dexFundPledgeForVx",
-		makeDexPledgeForVxBlock(testAddr),
+	printBlockSize("dexFundStakeForMining",
+		makeDexStakeForMiningBlock(testAddr),
 		makeReceiveBlock(types.AddressDexFund))
 	printBlockSize("dexFundPledgeForVip",
 		makeDexPledgeForVipBlock(dexAddr),
@@ -689,7 +689,7 @@ func TestPrintDexBlockSize(t *testing.T) {
 		makeDexCancelPledgeCallbackBlock(testAddr),
 		makeReceiveBlock(types.AddressDexFund))
 	printBlockSize("dexFundGetTokenInfoCallback",
-		makeDexGetTokenInfoCallbackBlock(types.AddressMintage),
+		makeDexGetTokenInfoCallbackBlock(types.AddressAsset),
 		makeReceiveBlock(types.AddressDexFund))
 	printBlockSize("dexFundOwnerConfig",
 		makeDexOwnerConfigBlock(dexAddr),
