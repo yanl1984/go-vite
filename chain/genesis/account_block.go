@@ -392,6 +392,9 @@ func newDexFundContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock,
 				info.Principal = stake.Principal.Bytes()
 			}
 			info.Amount = stake.Amount.Bytes()
+			if info.StakeType == dex.StakeForMining {
+				dex.SaveMiningStakedV2Amount(vmdb, stake.Address, stake.Amount)
+			}
 			info.Status = stake.Status
 			info.SerialNo = stake.SerialNo
 			infoBytes, _ := info.Serialize()
