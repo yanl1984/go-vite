@@ -1,0 +1,17 @@
+syntax="proto3";
+
+package proto;
+
+//storage
+message Account {
+    bytes Token = 1;
+    bytes Available = 2;
+    bytes Locked   = 3;
+    bytes VxLocked = 4; // lock for dividend, will release after 7 days
+    bytes VxUnlocking = 5;
+}
+
+message Loan {
+    uint64 PeriodId = 1;
+    bytes Amount = 2;
+}

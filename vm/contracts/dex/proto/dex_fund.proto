@@ -2,31 +2,25 @@ syntax="proto3";
 
 package proto;
 
+message InvestAccount {
+    bytes Available = 1;
+    bytes Invested = 2;
+}
+
 //storage
 message Account {
     bytes Token = 1;
-    bytes Available = 2;
-    bytes Locked   = 3;
-    bytes VxLocked = 4; // lock for dividend, will release after 7 days
-    bytes VxUnlocking = 5;
-}
-
-message VxUnlock {
-    uint64 PeriodId = 1;
-    bytes Amount = 2;
-}
-
-message VxUnlocks {
-    repeated VxUnlock Unlocks = 1;
+    InvestAccount BaseAccount = 2;
+    InvestAccount LoanAccount = 3;
 }
 
 //storage
 message Fund {
-    bytes Address = 1;
+    bytes Address = 1; // not set on save
     repeated Account Accounts = 2;
 }
 
-message AccountSettle {
+message Loan {
     bool IsTradeToken = 1;
     bytes IncAvailable = 2;
     bytes ReduceLocked = 3;
