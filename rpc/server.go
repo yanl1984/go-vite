@@ -22,6 +22,7 @@ import (
 	"github.com/vitelabs/go-vite/rpcapi/api"
 	"reflect"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -315,6 +316,7 @@ func (s *Server) handle(ctx context.Context, codec ServerCodec, req *serverReque
 
 	defer func() {
 		if err := recover(); err != nil {
+			debug.PrintStack()
 			log.Error(fmt.Sprintf("%v\n", err))
 			result = codec.CreateErrorResponse(req.id, &executePanicError{})
 			f = nil
