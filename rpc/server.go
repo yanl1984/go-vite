@@ -22,7 +22,6 @@ import (
 	"github.com/vitelabs/go-vite/rpcapi/api"
 	"reflect"
 	"runtime"
-	"runtime/debug"
 	"strings"
 	"sync"
 	"sync/atomic"
