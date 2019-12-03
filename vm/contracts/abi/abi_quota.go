@@ -1,6 +1,8 @@
 package abi
 
 import (
+	"encoding/hex"
+	"github.com/ontio/ontology/common/log"
 	"github.com/vitelabs/go-vite/common/helper"
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/vm/abi"
@@ -228,6 +230,10 @@ func GetStakeInfo(db StorageDatabase, stakeAddr, beneficiary, delegateAddr types
 			continue
 		}
 		stakeInfo, _ := UnpackStakeInfo(iterator.Value())
+		if stakeInfo == nil {
+			log.Error("unpack stake info failed", hex.EncodeToString(iterator.Key()), hex.EncodeToString(iterator.Value()))
+			continue
+		}
 		if stakeInfo.Beneficiary == beneficiary && stakeInfo.IsDelegated == isDelegated &&
 			stakeInfo.DelegateAddress == delegateAddr && stakeInfo.Bid == bid {
 			return stakeInfo, nil
