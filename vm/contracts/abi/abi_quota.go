@@ -2,9 +2,9 @@ package abi
 
 import (
 	"encoding/hex"
-	"github.com/ontio/ontology/common/log"
 	"github.com/vitelabs/go-vite/common/helper"
 	"github.com/vitelabs/go-vite/common/types"
+	log "github.com/vitelabs/go-vite/log15"
 	"github.com/vitelabs/go-vite/vm/abi"
 	"github.com/vitelabs/go-vite/vm/util"
 	"math/big"
