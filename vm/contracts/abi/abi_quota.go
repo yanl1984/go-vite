@@ -1,10 +1,8 @@
 package abi
 
 import (
-	"encoding/hex"
 	"github.com/vitelabs/go-vite/common/helper"
 	"github.com/vitelabs/go-vite/common/types"
-	log "github.com/vitelabs/go-vite/log15"
 	"github.com/vitelabs/go-vite/vm/abi"
 	"github.com/vitelabs/go-vite/vm/util"
 	"math/big"
@@ -231,7 +229,6 @@ func GetStakeInfo(db StorageDatabase, stakeAddr, beneficiary, delegateAddr types
 		}
 		stakeInfo, _ := UnpackStakeInfo(iterator.Value())
 		if stakeInfo == nil {
-			log.Error("unpack stake info failed", hex.EncodeToString(iterator.Key()), hex.EncodeToString(iterator.Value()))
 			continue
 		}
 		if stakeInfo.Beneficiary == beneficiary && stakeInfo.IsDelegated == isDelegated &&
