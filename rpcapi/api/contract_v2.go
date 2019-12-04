@@ -159,6 +159,8 @@ func (c *ContractApi) GetContractStorage(addr types.Address, prefix string) (map
 		}
 		if len(iter.Key()) > 0 && len(iter.Value()) > 0 {
 			m[hex.EncodeToString(iter.Key())] = hex.EncodeToString(iter.Value())
+		} else {
+			c.log.Error("vmdb iterator returns empty", "key", hex.EncodeToString(iter.Key()), "value", hex.EncodeToString(iter.Value()))
 		}
 	}
 }
