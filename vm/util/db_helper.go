@@ -82,7 +82,7 @@ func GetContractCode(db dbInterface, addr *types.Address, status GlobalStatus) (
 	return nil, nil
 }
 
-func GetOriginalRequestHash(db dbInterface, requestHash types.Hash) *types.Hash {
+func GetOriginalSendHash(db dbInterface, requestHash types.Hash) *types.Hash {
 	ab, err := db.GetCompleteBlockByHash(requestHash)
 	DealWithErr(err)
 	return &ab.FromBlockHash
