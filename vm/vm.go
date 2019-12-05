@@ -471,7 +471,6 @@ func (vm *VM) sendCall(db vm_db.VmDb, block *ledger.AccountBlock, useQuota bool,
 	// check can make transaction
 	quotaLeft := quotaTotal
 	if p, ok, err := contracts.GetBuiltinContractMethod(block.ToAddress, block.Data, vm.latestSnapshotHeight); ok {
-		// TODO need fork if p == nil return error
 		if err != nil {
 			return nil, err
 		}
