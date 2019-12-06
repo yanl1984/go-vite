@@ -467,7 +467,7 @@ func UnlockListToRpc(unlocks *dex.VxUnlocks, pageIndex int, pageSize int, chain 
 		if i >= pageIndex*pageSize && i < (pageIndex+1)*pageSize {
 			unlock := new(VxUnlock)
 			unlock.Amount = amt.String()
-			unlock.ExpirationTime = genesisTime + int64((ul.PeriodId+uint64(dex.VxUnlockScheduleDays))*3600*24)
+			unlock.ExpirationTime = genesisTime + int64((ul.PeriodId+uint64(dex.VxUnlockScheduleDays+1))*3600*24)
 			vxUnlockList.Unlocks = append(vxUnlockList.Unlocks, unlock)
 		}
 		total.Add(total, amt)

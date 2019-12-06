@@ -8,6 +8,7 @@ import (
 	"github.com/vitelabs/go-vite/ledger"
 	"github.com/vitelabs/go-vite/log15"
 	cabi "github.com/vitelabs/go-vite/vm/contracts/abi"
+	"github.com/vitelabs/go-vite/vm/contracts/common"
 	"github.com/vitelabs/go-vite/vm/contracts/dex"
 	dexproto "github.com/vitelabs/go-vite/vm/contracts/dex/proto"
 	"github.com/vitelabs/go-vite/vm/util"
@@ -1105,22 +1106,22 @@ func (md MethodDexFundDexAdminConfig) DoReceive(db vm_db.VmDb, block *ledger.Acc
 		return handleDexReceiveErr(fundLogger, md.MethodName, err, sendBlock)
 	}
 	if dex.IsOwner(db, sendBlock.AccountAddress) {
-		if dex.IsOperationValidWithMask(param.OperationCode, dex.AdminConfigOwner) {
+		if common.IsOperationValidWithMask(param.OperationCode, dex.AdminConfigOwner) {
 			dex.SetOwner(db, param.Owner)
 		}
-		if dex.IsOperationValidWithMask(param.OperationCode, dex.AdminConfigTimeOracle) {
+		if common.IsOperationValidWithMask(param.OperationCode, dex.AdminConfigTimeOracle) {
 			dex.SetTimeOracle(db, param.TimeOracle)
 		}
-		if dex.IsOperationValidWithMask(param.OperationCode, dex.AdminConfigPeriodJobTrigger) {
+		if common.IsOperationValidWithMask(param.OperationCode, dex.AdminConfigPeriodJobTrigger) {
 			dex.SetPeriodJobTrigger(db, param.PeriodJobTrigger)
 		}
-		if dex.IsOperationValidWithMask(param.OperationCode, dex.AdminConfigStopDex) {
+		if common.IsOperationValidWithMask(param.OperationCode, dex.AdminConfigStopDex) {
 			dex.SaveDexStopped(db, param.StopDex)
 		}
-		if dex.IsOperationValidWithMask(param.OperationCode, dex.AdminConfigMakerMiningAdmin) {
+		if common.IsOperationValidWithMask(param.OperationCode, dex.AdminConfigMakerMiningAdmin) {
 			dex.SaveMakerMiningAdmin(db, param.MakerMiningAdmin)
 		}
-		if dex.IsOperationValidWithMask(param.OperationCode, dex.AdminConfigMaintainer) {
+		if common.IsOperationValidWithMask(param.OperationCode, dex.AdminConfigMaintainer) {
 			dex.SaveMaintainer(db, param.Maintainer)
 		}
 	} else {
@@ -1159,7 +1160,7 @@ func (md MethodDexFundTradeAdminConfig) DoReceive(db vm_db.VmDb, block *ledger.A
 		return handleDexReceiveErr(fundLogger, md.MethodName, err, sendBlock)
 	}
 	if dex.IsOwner(db, sendBlock.AccountAddress) {
-		if dex.IsOperationValidWithMask(param.OperationCode, dex.TradeAdminConfigMineMarket) {
+		if common.IsOperationValidWithMask(param.OperationCode, dex.TradeAdminConfigMineMarket) {
 			if marketInfo, ok := dex.GetMarketInfo(db, param.TradeToken, param.QuoteToken); ok && marketInfo.Valid {
 				if param.AllowMining != marketInfo.AllowMining {
 					marketInfo.AllowMining = param.AllowMining
@@ -1176,7 +1177,7 @@ func (md MethodDexFundTradeAdminConfig) DoReceive(db vm_db.VmDb, block *ledger.A
 				return handleDexReceiveErr(fundLogger, md.MethodName, dex.TradeMarketNotExistsErr, sendBlock)
 			}
 		}
-		if dex.IsOperationValidWithMask(param.OperationCode, dex.TradeAdminConfigNewQuoteToken) {
+		if common.IsOperationValidWithMask(param.OperationCode, dex.TradeAdminConfigNewQuoteToken) {
 			if param.QuoteTokenType < dex.ViteTokenType || param.QuoteTokenType > dex.UsdTokenType {
 				return handleDexReceiveErr(fundLogger, md.MethodName, dex.InvalidQuoteTokenTypeErr, sendBlock)
 			} else {
@@ -1206,16 +1207,16 @@ func (md MethodDexFundTradeAdminConfig) DoReceive(db vm_db.VmDb, block *ledger.A
 				}
 			}
 		}
-		if dex.IsOperationValidWithMask(param.OperationCode, dex.TradeAdminConfigTradeThreshold) {
+		if common.IsOperationValidWithMask(param.OperationCode, dex.TradeAdminConfigTradeThreshold) {
 			dex.SaveTradeThreshold(db, param.TokenTypeForTradeThreshold, param.MinTradeThreshold)
 		}
-		if dex.IsOperationValidWithMask(param.OperationCode, dex.TradeAdminConfigMineThreshold) {
+		if common.IsOperationValidWithMask(param.OperationCode, dex.TradeAdminConfigMineThreshold) {
 			dex.SaveMineThreshold(db, param.TokenTypeForMiningThreshold, param.MinMiningThreshold)
 		}
-		if dex.IsEarthFork(db) && dex.IsOperationValidWithMask(param.OperationCode, dex.TradeAdminStartNormalMine) && !dex.IsNormalMiningStarted(db) {
+		if dex.IsEarthFork(db) && common.IsOperationValidWithMask(param.OperationCode, dex.TradeAdminStartNormalMine) && !dex.IsNormalMiningStarted(db) {
 			dex.StartNormalMine(db)
 		}
-		if dex.IsEarthFork(db) && dex.IsOperationValidWithMask(param.OperationCode, dex.TradeAdminBurnExtraVx) && dex.GetVxBurnAmount(db).Sign() == 0 {
+		if dex.IsEarthFork(db) && common.IsOperationValidWithMask(param.OperationCode, dex.TradeAdminBurnExtraVx) && dex.GetVxBurnAmount(db).Sign() == 0 {
 			if blocks, err = dex.BurnExtraVx(db); err != nil {
 				return handleDexReceiveErr(fundLogger, md.MethodName, err, sendBlock)
 			} else {
@@ -1269,22 +1270,22 @@ func (md MethodDexFundMarketAdminConfig) DoReceive(db vm_db.VmDb, block *ledger.
 		if param.OperationCode == 0 {
 			return nil, nil
 		}
-		if dex.IsOperationValidWithMask(param.OperationCode, dex.MarketOwnerTransferOwner) {
+		if common.IsOperationValidWithMask(param.OperationCode, dex.MarketOwnerTransferOwner) {
 			marketInfo.Owner = param.MarketOwner.Bytes()
 		}
-		if dex.IsOperationValidWithMask(param.OperationCode, dex.MarketOwnerConfigTakerRate) {
+		if common.IsOperationValidWithMask(param.OperationCode, dex.MarketOwnerConfigTakerRate) {
 			if !dex.ValidOperatorFeeRate(param.TakerFeeRate) {
 				return handleDexReceiveErr(fundLogger, md.MethodName, dex.InvalidOperatorFeeRateErr, sendBlock)
 			}
 			marketInfo.TakerOperatorFeeRate = param.TakerFeeRate
 		}
-		if dex.IsOperationValidWithMask(param.OperationCode, dex.MarketOwnerConfigMakerRate) {
+		if common.IsOperationValidWithMask(param.OperationCode, dex.MarketOwnerConfigMakerRate) {
 			if !dex.ValidOperatorFeeRate(param.MakerFeeRate) {
 				return handleDexReceiveErr(fundLogger, md.MethodName, dex.InvalidOperatorFeeRateErr, sendBlock)
 			}
 			marketInfo.MakerOperatorFeeRate = param.MakerFeeRate
 		}
-		if dex.IsOperationValidWithMask(param.OperationCode, dex.MarketOwnerStopMarket) {
+		if common.IsOperationValidWithMask(param.OperationCode, dex.MarketOwnerStopMarket) {
 			marketInfo.Stopped = param.StopMarket
 		}
 		dex.SaveMarketInfo(db, marketInfo, param.TradeToken, param.QuoteToken)

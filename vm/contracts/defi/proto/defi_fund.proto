@@ -3,15 +3,114 @@ syntax="proto3";
 package proto;
 
 //storage
-message Account {
-    bytes Token = 1;
-    bytes Available = 2;
-    bytes Locked   = 3;
-    bytes VxLocked = 4; // lock for dividend, will release after 7 days
-    bytes VxUnlocking = 5;
+message BaseAccount {
+    bytes Available = 1;
+    bytes Subscribed = 2;
+    bytes Invested = 3;
+    bytes Locked = 4; //locked for loan interest to pay
 }
 
+message LoanAccount {
+    bytes Available = 1;
+    bytes Invested = 2;
+}
+
+message Account {
+    bytes Token = 1;
+    BaseAccount BaseAccount = 2;
+    LoanAccount LoanAccount = 3;
+}
+
+message Fund {
+    bytes Address = 1; // not set on save
+    repeated Account Accounts = 2;
+}
+
+//newLoanEvent
 message Loan {
-    uint64 PeriodId = 1;
-    bytes Amount = 2;
+    uint64 Id = 1;
+    bytes Address = 2;
+    bytes Token = 3;
+    bytes ShareAmount = 4;
+    int64 Shares = 5;
+    bytes Interest = 6;
+    uint64 DayRate = 7;
+    uint64 SubscribeDays = 8;
+    uint64 ExpireDays = 9;
+    uint64 SubscribedShares = 10;
+    uint64 ExpireHeight = 11;
+    bytes Invested = 12;
+    int32 Status = 13;
+    int64 Created = 14;
+    int64 StartTime = 15;
+    int64 Updated = 16;
+}
+
+//storage+event
+message Subscription {
+    uint64 Id = 1;
+    uint64 LoanId = 2;
+    bytes Address = 3;
+    bytes Token = 4;
+    bytes ShareAmount = 5;
+    uint64 Shares = 6;
+    bytes Interest = 7;
+    uint64 Status = 8;
+    int64 Created = 9;
+    int64 Updated = 10;
+}
+
+message Invest {
+    uint64 Id = 1;
+    uint64 LoadId = 2;
+    bytes Address = 3;
+    bytes LoadAmount = 4;
+    bytes BaseAmount = 5;
+    int32 BizType = 6;
+    bytes Beneficial = 7;
+    uint64 UpdateHeight = 8;
+    uint64 ExpireHeight = 9;
+    int32 Status = 11;
+    int64 Created = 12;
+    int64 Updated = 13;
+}
+
+message SBPRegistration {
+    uint64 InvestId = 1;
+    string Name = 2;
+    bytes ProducingAddress = 3;
+    bytes RewardWithdrawAddress = 4;
+}
+
+//event
+message LoanUpdate {
+    uint64 Id = 1;
+    uint64 SubscribedShares = 2;
+    bytes Invested = 3;
+    int32 Status = 4;
+    int64 Timestamp = 5;
+}
+
+message SubscriptionUpdate {
+    uint64 Id = 1;
+    uint64 Shares = 2;
+    int32 Status = 3;
+}
+
+message InvestUpdate {
+    uint64 Id = 1;
+    uint64 Status = 2;
+}
+
+message BaseAccountUpdate {
+    bytes Address = 1;
+    //1 deposit, 2 withdraw, 3 subscribe, 4 invest, 5 interest settle, 5 refund expire sub, 7 refund
+    uint64 BizType = 2;
+    bytes Amount = 3;
+}
+
+message LoanAccountUpdate {
+    bytes Address = 1;
+    uint64 BizType = 2;
+    bytes Amount = 3;
 }
