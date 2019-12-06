@@ -40,6 +40,7 @@ message Loan {
     uint64 SubscribedShares = 10;
     uint64 ExpireHeight = 11;
     bytes Invested = 12;
+    // 1 open, 2 success, 3 failed, 4 expired, 5 fail refunded, 6 expire refunded
     int32 Status = 13;
     int64 Created = 14;
     int64 StartTime = 15;
@@ -55,6 +56,7 @@ message Subscription {
     bytes ShareAmount = 5;
     uint64 Shares = 6;
     bytes Interest = 7;
+    // 1 open, 2 success, 3 failed, 4 expired, 5 fail refunded, 6 expire refunded
     uint64 Status = 8;
     int64 Created = 9;
     int64 Updated = 10;
@@ -68,8 +70,9 @@ message Invest {
     bytes BaseAmount = 5;
     int32 BizType = 6;
     bytes Beneficial = 7;
-    uint64 UpdateHeight = 8;
+    uint64 CreateHeight = 8;
     uint64 ExpireHeight = 9;
+    // 1 pending, 2 success, 3 failed, 4 expired, 5 fail refunded, 6 expire refunded
     int32 Status = 11;
     int64 Created = 12;
     int64 Updated = 13;
@@ -104,13 +107,20 @@ message InvestUpdate {
 
 message BaseAccountUpdate {
     bytes Address = 1;
-    //1 deposit, 2 withdraw, 3 subscribe, 4 invest, 5 interest settle, 5 refund expire sub, 7 refund
+    // 1 deposit, 2 withdraw, 3 subscribe, 4 invest,
+    // 5 interest lock, 6 interest reduce, 7 interest release, 8 interest settle,
+    // 9 refund expire sub, 10 refund failed sub, 11 refund invest
     uint64 BizType = 2;
-    bytes Amount = 3;
+    // 1. reg sbp, 2 SVIP stake, 3 mining stake, 4 quota stake
+    uint64 InvestType = 3;
+    bytes Amount = 4;
 }
 
 message LoanAccountUpdate {
     bytes Address = 1;
+    // 1 new success loan, 2 refund loan, 3 invest, 4 refund invest
     uint64 BizType = 2;
-    bytes Amount = 3;
+    // 1. reg sbp, 2 SVIP stake, 3 mining stake, 4 quota stake
+    uint64 InvestType = 3;
+    bytes Amount = 4;
 }
