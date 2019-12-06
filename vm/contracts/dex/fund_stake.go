@@ -6,6 +6,7 @@ import (
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/interfaces"
 	"github.com/vitelabs/go-vite/ledger"
+	"github.com/vitelabs/go-vite/log15"
 	"github.com/vitelabs/go-vite/vm/contracts/abi"
 	dexproto "github.com/vitelabs/go-vite/vm/contracts/dex/proto"
 	"github.com/vitelabs/go-vite/vm/util"
@@ -13,9 +14,14 @@ import (
 	"math/big"
 )
 
+var storageLogger = log15.New("module", "fund_stake")
+
 func HandleStakeAction(db vm_db.VmDb, stakeType, actionType uint8, address, principal types.Address, amount *big.Int, stakeHeight uint64, block *ledger.AccountBlock) ([]*ledger.AccountBlock, error) {
-	if actionType == Stake { // handle v1 + v2 stake
+	storageLogger.Error("dex stake", "stakeType", stakeType, "actionType", actionType, "address", address.String(), "principal", principal.String(), "amount", amount.String(), "stakeHeight", stakeHeight)
+	if actionType == Stake { // handle v1 + v2
+		storageLogger.Error("dex stake", "stakeType", "Stake")
 		if methodData, err := stakeRequest(db, address, principal, stakeType, amount, stakeHeight); err != nil {
+			storageLogger.Error("dex stake", "stakeRequest.error", err.Error())
 			return []*ledger.AccountBlock{}, err
 		} else {
 			blocks := []*ledger.AccountBlock{
@@ -35,6 +41,7 @@ func HandleStakeAction(db vm_db.VmDb, stakeType, actionType uint8, address, prin
 			return blocks, nil
 		}
 	} else { //only handle v1 cancel stake
+		storageLogger.Error("dex stake", "stakeType", "CancelStake")
 		return DoCancelStakeV1(db, address, stakeType, amount)
 	}
 }
