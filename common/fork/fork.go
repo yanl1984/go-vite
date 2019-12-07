@@ -2,10 +2,11 @@ package fork
 
 import (
 	"fmt"
-	"github.com/vitelabs/go-vite/common/db/xleveldb/errors"
-	"github.com/vitelabs/go-vite/config"
 	"reflect"
 	"sort"
+
+	"github.com/vitelabs/go-vite/common/db/xleveldb/errors"
+	"github.com/vitelabs/go-vite/config"
 )
 
 var forkPoints config.ForkPoints
@@ -252,5 +253,7 @@ func GetLastForkPoint() *ForkPointItem {
 }
 
 func IsForkActive(point ForkPointItem) bool {
-	return activeChecker.IsForkActive(point)
+	// TODO Suppose all point active, develop fork point active in the future.
+	return true
+	// return activeChecker.IsForkActive(point)
 }
