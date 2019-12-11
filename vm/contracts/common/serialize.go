@@ -1,7 +1,9 @@
 package common
 
 import (
+	gc "github.com/vitelabs/go-vite/common"
 	"github.com/vitelabs/go-vite/common/types"
+	"github.com/vitelabs/go-vite/ledger"
 	"github.com/vitelabs/go-vite/vm_db"
 )
 
@@ -29,7 +31,6 @@ func SerializeToDb(db vm_db.VmDb, key []byte, serializable Serializable) {
 	}
 }
 
-
 func GetValueFromDb(db vm_db.VmDb, key []byte) []byte {
 	if data, err := db.GetValue(key); err != nil {
 		panic(err)
@@ -48,4 +49,17 @@ type DexEvent interface {
 	GetTopicId() types.Hash
 	ToDataBytes() []byte
 	FromBytes([]byte) interface{}
+}
+
+func DoEmitEventLog(db vm_db.VmDb, event DexEvent) {
+	log := &ledger.VmLog{}
+	log.Topics = append(log.Topics, event.GetTopicId())
+	log.Data = event.ToDataBytes()
+	db.AddLog(log)
+}
+
+func FromNameToHash(name string) types.Hash {
+	hs := types.Hash{}
+	hs.SetBytes(gc.RightPadBytes([]byte(name), types.HashSize))
+	return hs
 }

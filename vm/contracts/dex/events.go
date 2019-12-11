@@ -3,8 +3,8 @@ package dex
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
-	"github.com/vitelabs/go-vite/common"
 	"github.com/vitelabs/go-vite/common/types"
+	"github.com/vitelabs/go-vite/vm/contracts/common"
 	dexproto "github.com/vitelabs/go-vite/vm/contracts/dex/proto"
 )
 
@@ -101,7 +101,7 @@ type ErrEvent struct {
 }
 
 func (od NewOrderEvent) GetTopicId() types.Hash {
-	return fromNameToHash(newOrderEventName)
+	return common.FromNameToHash(newOrderEventName)
 }
 
 func (od NewOrderEvent) ToDataBytes() []byte {
@@ -119,7 +119,7 @@ func (od NewOrderEvent) FromBytes(data []byte) interface{} {
 }
 
 func (od OrderUpdateEvent) GetTopicId() types.Hash {
-	return fromNameToHash(orderUpdateEventName)
+	return common.FromNameToHash(orderUpdateEventName)
 }
 
 func (od OrderUpdateEvent) ToDataBytes() []byte {
@@ -137,7 +137,7 @@ func (od OrderUpdateEvent) FromBytes(data []byte) interface{} {
 }
 
 func (tx TransactionEvent) GetTopicId() types.Hash {
-	return fromNameToHash(txEventName)
+	return common.FromNameToHash(txEventName)
 }
 
 func (tx TransactionEvent) ToDataBytes() []byte {
@@ -155,7 +155,7 @@ func (tx TransactionEvent) FromBytes(data []byte) interface{} {
 }
 
 func (te TokenEvent) GetTopicId() types.Hash {
-	return fromNameToHash(tokenEventName)
+	return common.FromNameToHash(tokenEventName)
 }
 
 func (te TokenEvent) ToDataBytes() []byte {
@@ -173,7 +173,7 @@ func (te TokenEvent) FromBytes(data []byte) interface{} {
 }
 
 func (me MarketEvent) GetTopicId() types.Hash {
-	return fromNameToHash(marketEventName)
+	return common.FromNameToHash(marketEventName)
 }
 
 func (me MarketEvent) ToDataBytes() []byte {
@@ -191,7 +191,7 @@ func (me MarketEvent) FromBytes(data []byte) interface{} {
 }
 
 func (pb PeriodJobWithBizEvent) GetTopicId() types.Hash {
-	return fromNameToHash(periodJobWithBizEventName)
+	return common.FromNameToHash(periodJobWithBizEventName)
 }
 
 func (pb PeriodJobWithBizEvent) ToDataBytes() []byte {
@@ -209,7 +209,7 @@ func (pb PeriodJobWithBizEvent) FromBytes(data []byte) interface{} {
 }
 
 func (fde FeeDividendEvent) GetTopicId() types.Hash {
-	return fromNameToHash(feeDividendForVxHolderEventName)
+	return common.FromNameToHash(feeDividendForVxHolderEventName)
 }
 
 func (fde FeeDividendEvent) ToDataBytes() []byte {
@@ -227,7 +227,7 @@ func (fde FeeDividendEvent) FromBytes(data []byte) interface{} {
 }
 
 func (bfd OperatorFeeDividendEvent) GetTopicId() types.Hash {
-	return fromNameToHash(operatorFeeDividendEventName)
+	return common.FromNameToHash(operatorFeeDividendEventName)
 }
 
 func (bfd OperatorFeeDividendEvent) ToDataBytes() []byte {
@@ -245,7 +245,7 @@ func (bfd OperatorFeeDividendEvent) FromBytes(data []byte) interface{} {
 }
 
 func (mtf MinedVxForTradeFeeEvent) GetTopicId() types.Hash {
-	return fromNameToHash(minedVxForTradeFeeEventName)
+	return common.FromNameToHash(minedVxForTradeFeeEventName)
 }
 
 func (mtf MinedVxForTradeFeeEvent) ToDataBytes() []byte {
@@ -263,7 +263,7 @@ func (mtf MinedVxForTradeFeeEvent) FromBytes(data []byte) interface{} {
 }
 
 func (mif MinedVxForInviteeFeeEvent) GetTopicId() types.Hash {
-	return fromNameToHash(minedVxForInviteeFeeEventName)
+	return common.FromNameToHash(minedVxForInviteeFeeEventName)
 }
 
 func (mif MinedVxForInviteeFeeEvent) ToDataBytes() []byte {
@@ -281,7 +281,7 @@ func (mif MinedVxForInviteeFeeEvent) FromBytes(data []byte) interface{} {
 }
 
 func (mp MinedVxForStakingEvent) GetTopicId() types.Hash {
-	return fromNameToHash(minedVxForStakingEventName)
+	return common.FromNameToHash(minedVxForStakingEventName)
 }
 
 func (mp MinedVxForStakingEvent) ToDataBytes() []byte {
@@ -299,7 +299,7 @@ func (mp MinedVxForStakingEvent) FromBytes(data []byte) interface{} {
 }
 
 func (mo MinedVxForOperationEvent) GetTopicId() types.Hash {
-	return fromNameToHash(minedVxForOperationEventName)
+	return common.FromNameToHash(minedVxForOperationEventName)
 }
 
 func (mo MinedVxForOperationEvent) ToDataBytes() []byte {
@@ -317,7 +317,7 @@ func (mo MinedVxForOperationEvent) FromBytes(data []byte) interface{} {
 }
 
 func (ir InviteRelationEvent) GetTopicId() types.Hash {
-	return fromNameToHash(inviteRelationEventName)
+	return common.FromNameToHash(inviteRelationEventName)
 }
 
 func (ir InviteRelationEvent) ToDataBytes() []byte {
@@ -335,7 +335,7 @@ func (ir InviteRelationEvent) FromBytes(data []byte) interface{} {
 }
 
 func (smmv SettleMakerMinedVxEvent) GetTopicId() types.Hash {
-	return fromNameToHash(settleMakerMinedVxEventName)
+	return common.FromNameToHash(settleMakerMinedVxEventName)
 }
 
 func (smmv SettleMakerMinedVxEvent) ToDataBytes() []byte {
@@ -353,7 +353,7 @@ func (smmv SettleMakerMinedVxEvent) FromBytes(data []byte) interface{} {
 }
 
 func (gmta GrantMarketToAgentEvent) GetTopicId() types.Hash {
-	return fromNameToHash(grantMarketToAgentEventName)
+	return common.FromNameToHash(grantMarketToAgentEventName)
 }
 
 func (gmta GrantMarketToAgentEvent) ToDataBytes() []byte {
@@ -371,7 +371,7 @@ func (gmta GrantMarketToAgentEvent) FromBytes(data []byte) interface{} {
 }
 
 func (rmfa RevokeMarketFromAgentEvent) GetTopicId() types.Hash {
-	return fromNameToHash(revokeMarketFromAgentEventName)
+	return common.FromNameToHash(revokeMarketFromAgentEventName)
 }
 
 func (rmfa RevokeMarketFromAgentEvent) ToDataBytes() []byte {
@@ -389,7 +389,7 @@ func (rmfa RevokeMarketFromAgentEvent) FromBytes(data []byte) interface{} {
 }
 
 func (bv BurnViteEvent) GetTopicId() types.Hash {
-	return fromNameToHash(burnViteEventName)
+	return common.FromNameToHash(burnViteEventName)
 }
 
 func (bv BurnViteEvent) ToDataBytes() []byte {
@@ -407,7 +407,7 @@ func (bv BurnViteEvent) FromBytes(data []byte) interface{} {
 }
 
 func (err ErrEvent) GetTopicId() types.Hash {
-	return fromNameToHash(errEventName)
+	return common.FromNameToHash(errEventName)
 }
 
 func (err ErrEvent) ToDataBytes() []byte {
@@ -416,10 +416,4 @@ func (err ErrEvent) ToDataBytes() []byte {
 
 func (err ErrEvent) FromBytes(data []byte) interface{} {
 	return ErrEvent{fmt.Errorf(string(data))}
-}
-
-func fromNameToHash(name string) types.Hash {
-	hs := types.Hash{}
-	hs.SetBytes(common.RightPadBytes([]byte(name), types.HashSize))
-	return hs
 }

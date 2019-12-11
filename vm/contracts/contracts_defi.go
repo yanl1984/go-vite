@@ -125,10 +125,7 @@ func (md *MethodDeFiNewLoan) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) e
 	if err = cabi.ABIDeFi.UnpackMethod(param, md.MethodName, block.Data); err != nil {
 		return err
 	}
-	if param.Amount.Sign() <= 0 || block.TokenId != ledger.ViteTokenId {
-		return defi.InvalidInputParamErr
-	}
-	return nil
+	return defi.CheckLoanParam(param)
 }
 
 func (md *MethodDeFiNewLoan) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) ([]*ledger.AccountBlock, error) {
@@ -137,20 +134,15 @@ func (md *MethodDeFiNewLoan) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock
 		err   error
 	)
 	cabi.ABIDeFi.UnpackMethod(param, md.MethodName, sendBlock.Data)
-	if _, err = defi.OnWithdraw(db, sendBlock.AccountAddress, param.Token.Bytes(), param.Amount); err != nil {
+	interest := defi.CalculateInterest(param.Shares, param.ShareAmount, param.DayRate, param.ExpireDays)
+	if _, err = defi.OnNewLoan(db, sendBlock.AccountAddress, interest); err != nil {
 		return nil, err
 	} else {
-		return []*ledger.AccountBlock{
-			{
-				AccountAddress: types.AddressDeFi,
-				ToAddress:      sendBlock.AccountAddress,
-				BlockType:      ledger.BlockTypeSendCall,
-				Amount:         param.Amount,
-				TokenId:        param.Token,
-				Data:           []byte{},
-			},
-		}, nil
+		loan := defi.NewLoan(sendBlock.AccountAddress, db, param, interest)
+		defi.SaveLoan(db, loan)
+		defi.AddNewLoanEvent(db, loan)
 	}
+	return nil, nil
 }
 
 func handleDeFiReceiveErr(logger log15.Logger, method string, err error, sendBlock *ledger.AccountBlock) ([]*ledger.AccountBlock, error) {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"github.com/golang/protobuf/proto"
 	"github.com/vitelabs/go-vite/common/types"
+	"github.com/vitelabs/go-vite/ledger"
 	"github.com/vitelabs/go-vite/vm/contracts/common"
 	defiproto "github.com/vitelabs/go-vite/vm/contracts/defi/proto"
 	"github.com/vitelabs/go-vite/vm_db"
@@ -13,10 +14,22 @@ import (
 var (
 	fundKeyPrefix         = []byte("fd:")   //fund:address
 	loanKeyPrefix         = []byte("ln:")   //loan:loanId 3+8
-	loanSerialNoKey       = []byte("lnSn:") //loan:loanId 3+8
+	loanSerialNoKey       = []byte("lnSn:")
 	subscriptionKeyPrefix = []byte("sb:")   //subscription:loanId+address 3+8+20 = 31
-	investKeyPrefix       = []byte("fd:")   // invest:loanId+serialNo 3+8+8 = 19
-	investSerialNoKey     = []byte("lnSn:") //loan:loanId 3+8
+	investKeyPrefix       = []byte("ivt:")   // invest:serialNo 4+8 = 19
+	investSerialNoKey     = []byte("ivtSn:") //invest:
+
+	defiTimestampKey = []byte("tmst:")
+)
+
+const (
+	Open = iota + 1
+	Success
+	Failed
+	Expired
+	FailedRefunded
+	ExpiredRefuned
+
 )
 
 type ParamWithdraw struct {
@@ -25,11 +38,10 @@ type ParamWithdraw struct {
 }
 
 type ParamNewLoan struct {
-	Address       types.Address
 	Token         types.TokenTypeId
-	ShareAmount   *big.Int
-	Shares        uint64
 	DayRate       int32
+	ShareAmount   *big.Int
+	Shares        int32
 	SubscribeDays int32
 	ExpireDays    int32
 }
@@ -174,6 +186,19 @@ func OnWithdraw(db vm_db.VmDb, address types.Address, tokenId []byte, amount *bi
 	})
 }
 
+func OnNewLoan(db vm_db.VmDb, address types.Address, interest *big.Int) (*defiproto.Account, error) {
+	return updateFund(db, address, ledger.ViteTokenId.Bytes(), func(acc *defiproto.Account) (*defiproto.Account, error) {
+		available := new(big.Int).SetBytes(acc.BaseAccount.Available)
+		if available.Cmp(interest) < 0 {
+			return nil, ExceedFundAvailableErr
+		} else {
+			acc.BaseAccount.Available = available.Sub(available, interest).Bytes()
+			acc.BaseAccount.Locked = common.AddBigInt(acc.BaseAccount.Locked, interest.Bytes())
+		}
+		return acc, nil
+	})
+}
+
 func OnSubscribe(db vm_db.VmDb, address types.Address, tokenId []byte, amount *big.Int) (*defiproto.Account, error) {
 	return updateFund(db, address, tokenId, func(acc *defiproto.Account) (*defiproto.Account, error) {
 		available := new(big.Int).SetBytes(acc.BaseAccount.Available)
@@ -248,12 +273,12 @@ func GetFundKey(address types.Address) []byte {
 	return append(fundKeyPrefix, address.Bytes()...)
 }
 
-func newAccount(token []byte) *defiproto.Account {
-	account := &defiproto.Account{}
-	account.Token = token
-	account.BaseAccount = &defiproto.BaseAccount{}
-	account.LoanAccount = &defiproto.LoanAccount{}
-	return account
+func SaveLoan(db vm_db.VmDb, loan *Loan) {
+	common.SerializeToDb(db, getLoanKey(loan.Id), loan)
+}
+
+func getLoanKey(loanId uint64) []byte {
+	return append(loanKeyPrefix, common.Uint64ToBytes(loanId)...)
 }
 
 func NewLoanSerialNo(db vm_db.VmDb) (serialNo uint64) {
@@ -262,6 +287,23 @@ func NewLoanSerialNo(db vm_db.VmDb) (serialNo uint64) {
 
 func NewInvestSerialNo(db vm_db.VmDb) (serialNo uint64) {
 	return newSerialNo(db, investSerialNoKey)
+}
+
+
+func GetDeFiTimestamp(db vm_db.VmDb) int64 {
+	if bs := common.GetValueFromDb(db, defiTimestampKey); len(bs) == 8 {
+		return int64(common.BytesToUint64(bs))
+	} else {
+		return 0
+	}
+}
+
+func newAccount(token []byte) *defiproto.Account {
+	account := &defiproto.Account{}
+	account.Token = token
+	account.BaseAccount = &defiproto.BaseAccount{}
+	account.LoanAccount = &defiproto.LoanAccount{}
+	return account
 }
 
 func newSerialNo(db vm_db.VmDb, key []byte) (serialNo uint64) {

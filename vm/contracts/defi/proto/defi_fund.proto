@@ -32,12 +32,12 @@ message Loan {
     bytes Address = 2;
     bytes Token = 3;
     bytes ShareAmount = 4;
-    int64 Shares = 5;
+    int32 Shares = 5;
     bytes Interest = 6;
-    uint64 DayRate = 7;
-    uint64 SubscribeDays = 8;
-    uint64 ExpireDays = 9;
-    uint64 SubscribedShares = 10;
+    int32 DayRate = 7;
+    int32 SubscribeDays = 8;
+    int32 ExpireDays = 9;
+    int32 SubscribedShares = 10;
     uint64 ExpireHeight = 11;
     bytes Invested = 12;
     // 1 open, 2 success, 3 failed, 4 expired, 5 fail refunded, 6 expire refunded
@@ -107,11 +107,12 @@ message InvestUpdate {
 
 message BaseAccountUpdate {
     bytes Address = 1;
-    // 1 deposit, 2 withdraw, 3 subscribe, 4 invest,
-    // 5 interest lock, 6 interest reduce, 7 interest release, 8 interest settle,
-    // 9 refund expire sub, 10 refund failed sub, 11 refund invest
+    // 1 deposit, 2 withdraw,
+    // 3 subscribe lock, 4 subscribe reduce, 5 subscribe failed release, 6 subscribe expire refund
+    // 7 loan interest lock, 8 loan interest reduce, 9 loan interest release, 10 subscribe interest income,
+    // 11 invest reduce, 12 invest refund
     uint64 BizType = 2;
-    // 1. reg sbp, 2 SVIP stake, 3 mining stake, 4 quota stake
+    // 1. reg SBP, 2 SVIP stake, 3 mining stake, 4 quota stake
     uint64 InvestType = 3;
     uint64 LoanId = 4;
     bytes Amount = 5;
@@ -119,9 +120,9 @@ message BaseAccountUpdate {
 
 message LoanAccountUpdate {
     bytes Address = 1;
-    // 1 new success loan, 2 refund loan, 3 invest, 4 refund invest
+    // 1 new success loan, 2 loan refund, 3 invest reduce, 4 invest refund
     uint64 BizType = 2;
-    // 1. reg sbp, 2 SVIP stake, 3 mining stake, 4 quota stake
+    // 1. reg SBP, 2 SVIP stake, 3 mining stake, 4 quota stake
     uint64 InvestType = 3;
     uint64 LoanId = 4;
     bytes Amount = 5;
