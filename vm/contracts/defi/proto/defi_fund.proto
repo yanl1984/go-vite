@@ -113,7 +113,8 @@ message BaseAccountUpdate {
     uint64 BizType = 2;
     // 1. reg sbp, 2 SVIP stake, 3 mining stake, 4 quota stake
     uint64 InvestType = 3;
-    bytes Amount = 4;
+    uint64 LoanId = 4;
+    bytes Amount = 5;
 }
 
 message LoanAccountUpdate {
@@ -122,5 +123,6 @@ message LoanAccountUpdate {
     uint64 BizType = 2;
     // 1. reg sbp, 2 SVIP stake, 3 mining stake, 4 quota stake
     uint64 InvestType = 3;
-    bytes Amount = 4;
+    uint64 LoanId = 4;
+    bytes Amount = 5;
 }

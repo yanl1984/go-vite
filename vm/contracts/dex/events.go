@@ -27,11 +27,6 @@ const revokeMarketFromAgentEventName = "revokeMarketFromAgentEvent"
 const burnViteEventName = "burnViteEvent"
 const errEventName = "errEvent"
 
-type DexEvent interface {
-	GetTopicId() types.Hash
-	toDataBytes() []byte
-	FromBytes([]byte) interface{}
-}
 
 type NewOrderEvent struct {
 	dexproto.NewOrderInfo
@@ -109,7 +104,7 @@ func (od NewOrderEvent) GetTopicId() types.Hash {
 	return fromNameToHash(newOrderEventName)
 }
 
-func (od NewOrderEvent) toDataBytes() []byte {
+func (od NewOrderEvent) ToDataBytes() []byte {
 	data, _ := proto.Marshal(&od.NewOrderInfo)
 	return data
 }
@@ -127,7 +122,7 @@ func (od OrderUpdateEvent) GetTopicId() types.Hash {
 	return fromNameToHash(orderUpdateEventName)
 }
 
-func (od OrderUpdateEvent) toDataBytes() []byte {
+func (od OrderUpdateEvent) ToDataBytes() []byte {
 	data, _ := proto.Marshal(&od.OrderUpdateInfo)
 	return data
 }
@@ -145,7 +140,7 @@ func (tx TransactionEvent) GetTopicId() types.Hash {
 	return fromNameToHash(txEventName)
 }
 
-func (tx TransactionEvent) toDataBytes() []byte {
+func (tx TransactionEvent) ToDataBytes() []byte {
 	data, _ := proto.Marshal(&tx.Transaction)
 	return data
 }
@@ -163,7 +158,7 @@ func (te TokenEvent) GetTopicId() types.Hash {
 	return fromNameToHash(tokenEventName)
 }
 
-func (te TokenEvent) toDataBytes() []byte {
+func (te TokenEvent) ToDataBytes() []byte {
 	data, _ := proto.Marshal(&te.TokenInfo)
 	return data
 }
@@ -181,7 +176,7 @@ func (me MarketEvent) GetTopicId() types.Hash {
 	return fromNameToHash(marketEventName)
 }
 
-func (me MarketEvent) toDataBytes() []byte {
+func (me MarketEvent) ToDataBytes() []byte {
 	data, _ := proto.Marshal(&me.MarketInfo)
 	return data
 }
@@ -199,7 +194,7 @@ func (pb PeriodJobWithBizEvent) GetTopicId() types.Hash {
 	return fromNameToHash(periodJobWithBizEventName)
 }
 
-func (pb PeriodJobWithBizEvent) toDataBytes() []byte {
+func (pb PeriodJobWithBizEvent) ToDataBytes() []byte {
 	data, _ := proto.Marshal(&pb.PeriodJobForBiz)
 	return data
 }
@@ -217,7 +212,7 @@ func (fde FeeDividendEvent) GetTopicId() types.Hash {
 	return fromNameToHash(feeDividendForVxHolderEventName)
 }
 
-func (fde FeeDividendEvent) toDataBytes() []byte {
+func (fde FeeDividendEvent) ToDataBytes() []byte {
 	data, _ := proto.Marshal(&fde.FeeDividendForVxHolder)
 	return data
 }
@@ -235,7 +230,7 @@ func (bfd OperatorFeeDividendEvent) GetTopicId() types.Hash {
 	return fromNameToHash(operatorFeeDividendEventName)
 }
 
-func (bfd OperatorFeeDividendEvent) toDataBytes() []byte {
+func (bfd OperatorFeeDividendEvent) ToDataBytes() []byte {
 	data, _ := proto.Marshal(&bfd.OperatorFeeDividend)
 	return data
 }
@@ -253,7 +248,7 @@ func (mtf MinedVxForTradeFeeEvent) GetTopicId() types.Hash {
 	return fromNameToHash(minedVxForTradeFeeEventName)
 }
 
-func (mtf MinedVxForTradeFeeEvent) toDataBytes() []byte {
+func (mtf MinedVxForTradeFeeEvent) ToDataBytes() []byte {
 	data, _ := proto.Marshal(&mtf.MinedVxForFee)
 	return data
 }
@@ -271,7 +266,7 @@ func (mif MinedVxForInviteeFeeEvent) GetTopicId() types.Hash {
 	return fromNameToHash(minedVxForInviteeFeeEventName)
 }
 
-func (mif MinedVxForInviteeFeeEvent) toDataBytes() []byte {
+func (mif MinedVxForInviteeFeeEvent) ToDataBytes() []byte {
 	data, _ := proto.Marshal(&mif.MinedVxForFee)
 	return data
 }
@@ -289,7 +284,7 @@ func (mp MinedVxForStakingEvent) GetTopicId() types.Hash {
 	return fromNameToHash(minedVxForStakingEventName)
 }
 
-func (mp MinedVxForStakingEvent) toDataBytes() []byte {
+func (mp MinedVxForStakingEvent) ToDataBytes() []byte {
 	data, _ := proto.Marshal(&mp.MinedVxForStaking)
 	return data
 }
@@ -307,7 +302,7 @@ func (mo MinedVxForOperationEvent) GetTopicId() types.Hash {
 	return fromNameToHash(minedVxForOperationEventName)
 }
 
-func (mo MinedVxForOperationEvent) toDataBytes() []byte {
+func (mo MinedVxForOperationEvent) ToDataBytes() []byte {
 	data, _ := proto.Marshal(&mo.MinedVxForOperation)
 	return data
 }
@@ -325,7 +320,7 @@ func (ir InviteRelationEvent) GetTopicId() types.Hash {
 	return fromNameToHash(inviteRelationEventName)
 }
 
-func (ir InviteRelationEvent) toDataBytes() []byte {
+func (ir InviteRelationEvent) ToDataBytes() []byte {
 	data, _ := proto.Marshal(&ir.InviteRelation)
 	return data
 }
@@ -343,7 +338,7 @@ func (smmv SettleMakerMinedVxEvent) GetTopicId() types.Hash {
 	return fromNameToHash(settleMakerMinedVxEventName)
 }
 
-func (smmv SettleMakerMinedVxEvent) toDataBytes() []byte {
+func (smmv SettleMakerMinedVxEvent) ToDataBytes() []byte {
 	data, _ := proto.Marshal(&smmv.SettleMakerMinedVx)
 	return data
 }
@@ -361,7 +356,7 @@ func (gmta GrantMarketToAgentEvent) GetTopicId() types.Hash {
 	return fromNameToHash(grantMarketToAgentEventName)
 }
 
-func (gmta GrantMarketToAgentEvent) toDataBytes() []byte {
+func (gmta GrantMarketToAgentEvent) ToDataBytes() []byte {
 	data, _ := proto.Marshal(&gmta.MarketAgentRelation)
 	return data
 }
@@ -379,7 +374,7 @@ func (rmfa RevokeMarketFromAgentEvent) GetTopicId() types.Hash {
 	return fromNameToHash(revokeMarketFromAgentEventName)
 }
 
-func (rmfa RevokeMarketFromAgentEvent) toDataBytes() []byte {
+func (rmfa RevokeMarketFromAgentEvent) ToDataBytes() []byte {
 	data, _ := proto.Marshal(&rmfa.MarketAgentRelation)
 	return data
 }
@@ -397,7 +392,7 @@ func (bv BurnViteEvent) GetTopicId() types.Hash {
 	return fromNameToHash(burnViteEventName)
 }
 
-func (bv BurnViteEvent) toDataBytes() []byte {
+func (bv BurnViteEvent) ToDataBytes() []byte {
 	data, _ := proto.Marshal(&bv.BurnVite)
 	return data
 }
@@ -415,7 +410,7 @@ func (err ErrEvent) GetTopicId() types.Hash {
 	return fromNameToHash(errEventName)
 }
 
-func (err ErrEvent) toDataBytes() []byte {
+func (err ErrEvent) ToDataBytes() []byte {
 	return []byte(err.Error())
 }
 

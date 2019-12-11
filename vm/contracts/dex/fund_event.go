@@ -3,6 +3,7 @@ package dex
 import (
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/ledger"
+	"github.com/vitelabs/go-vite/vm/contracts/common"
 	dexproto "github.com/vitelabs/go-vite/vm/contracts/dex/proto"
 	"github.com/vitelabs/go-vite/vm_db"
 	"math/big"
@@ -125,9 +126,9 @@ func AddErrEvent(db vm_db.VmDb, err error) {
 	doEmitEventLog(db, event)
 }
 
-func doEmitEventLog(db vm_db.VmDb, event DexEvent) {
+func doEmitEventLog(db vm_db.VmDb, event common.DexEvent) {
 	log := &ledger.VmLog{}
 	log.Topics = append(log.Topics, event.GetTopicId())
-	log.Data = event.toDataBytes()
+	log.Data = event.ToDataBytes()
 	db.AddLog(log)
 }

@@ -1,6 +1,9 @@
 package common
 
-import "github.com/vitelabs/go-vite/vm_db"
+import (
+	"github.com/vitelabs/go-vite/common/types"
+	"github.com/vitelabs/go-vite/vm_db"
+)
 
 type Serializable interface {
 	Serialize() ([]byte, error)
@@ -39,4 +42,10 @@ func SetValueToDb(db vm_db.VmDb, key, value []byte) {
 	if err := db.SetValue(key, value); err != nil {
 		panic(err)
 	}
+}
+
+type DexEvent interface {
+	GetTopicId() types.Hash
+	ToDataBytes() []byte
+	FromBytes([]byte) interface{}
 }
