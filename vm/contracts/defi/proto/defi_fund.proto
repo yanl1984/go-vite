@@ -49,17 +49,16 @@ message Loan {
 
 //storage+event
 message Subscription {
-    uint64 Id = 1;
-    uint64 LoanId = 2;
-    bytes Address = 3;
-    bytes Token = 4;
-    bytes ShareAmount = 5;
-    uint64 Shares = 6;
-    bytes Interest = 7;
+    uint64 LoanId = 1;
+    bytes Address = 2;
+    bytes Token = 3;
+    bytes ShareAmount = 4;
+    int32 Shares = 5;
+    bytes Interest = 6;
     // 1 open, 2 success, 3 failed, 4 expired, 5 fail refunded, 6 expire refunded
-    uint64 Status = 8;
-    int64 Created = 9;
-    int64 Updated = 10;
+    int32 Status = 7;
+    int64 Created = 8;
+    int64 Updated = 9;
 }
 
 message Invest {
@@ -88,7 +87,7 @@ message SBPRegistration {
 //event
 message LoanUpdate {
     uint64 Id = 1;
-    uint64 SubscribedShares = 2;
+    int32 SubscribedShares = 2;
     bytes Invested = 3;
     int32 Status = 4;
     int64 Timestamp = 5;
@@ -96,13 +95,13 @@ message LoanUpdate {
 
 message SubscriptionUpdate {
     uint64 Id = 1;
-    uint64 Shares = 2;
+    int32 Shares = 2;
     int32 Status = 3;
 }
 
 message InvestUpdate {
     uint64 Id = 1;
-    uint64 Status = 2;
+    int32 Status = 2;
 }
 
 message BaseAccountUpdate {
@@ -111,9 +110,9 @@ message BaseAccountUpdate {
     // 3 subscribe lock, 4 subscribe reduce, 5 subscribe failed release, 6 subscribe expire refund
     // 7 loan interest lock, 8 loan interest reduce, 9 loan interest release, 10 subscribe interest income,
     // 11 invest reduce, 12 invest refund
-    uint64 BizType = 2;
+    int32 BizType = 2;
     // 1. reg SBP, 2 SVIP stake, 3 mining stake, 4 quota stake
-    uint64 InvestType = 3;
+    int32 InvestType = 3;
     uint64 LoanId = 4;
     bytes Amount = 5;
 }
@@ -121,9 +120,9 @@ message BaseAccountUpdate {
 message LoanAccountUpdate {
     bytes Address = 1;
     // 1 new success loan, 2 loan refund, 3 invest reduce, 4 invest refund
-    uint64 BizType = 2;
+    int32 BizType = 2;
     // 1. reg SBP, 2 SVIP stake, 3 mining stake, 4 quota stake
-    uint64 InvestType = 3;
+    int32 InvestType = 3;
     uint64 LoanId = 4;
     bytes Amount = 5;
 }

@@ -45,13 +45,13 @@ func SetValueToDb(db vm_db.VmDb, key, value []byte) {
 	}
 }
 
-type DexEvent interface {
+type Event interface {
 	GetTopicId() types.Hash
 	ToDataBytes() []byte
 	FromBytes([]byte) interface{}
 }
 
-func DoEmitEventLog(db vm_db.VmDb, event DexEvent) {
+func DoEmitEventLog(db vm_db.VmDb, event Event) {
 	log := &ledger.VmLog{}
 	log.Topics = append(log.Topics, event.GetTopicId())
 	log.Data = event.ToDataBytes()

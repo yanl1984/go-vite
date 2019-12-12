@@ -239,9 +239,10 @@ type QuotaTable struct {
 	DexFundDelegateStakeCallbackV2Quota       uint64
 	DexFundDelegateCancelStakeCallbackV2Quota uint64
 
-	DeFiDepositQuota  uint64
-	DeFiWithdrawQuota uint64
-	DeFiNewLoanQuota uint64
+	DeFiDepositQuota   uint64
+	DeFiWithdrawQuota  uint64
+	DeFiNewLoanQuota   uint64
+	DeFiSubscribeQuota uint64
 }
 
 // QuotaTableByHeight returns different quota table by hard fork version

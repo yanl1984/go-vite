@@ -7,5 +7,10 @@ import (
 var (
 	InvalidInputParamErr = errors.New("invalid input param")
 
-	ExceedFundAvailableErr       = errors.New("exceed fund available")
+	LoanNotExistsErr              = errors.New("loan not exists")
+	LoanSubscribeFailed           = errors.New("loan subscribe failed")
+	InvalidLoanStatusForCancelErr = errors.New("invalid loan status for cancel")
+	OnlyOwnerAllowErr = errors.New("only owner allow")
+
+	ExceedFundAvailableErr = errors.New("exceed fund available")
 )
