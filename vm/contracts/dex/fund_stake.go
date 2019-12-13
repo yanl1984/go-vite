@@ -160,12 +160,24 @@ func IsVipStakingWithId(staking *VIPStaking) bool {
 	}
 }
 
-func OnMiningStakeSuccess(db vm_db.VmDb, reader util.ConsensusReader, address types.Address, amount, updatedAmount, updatedV2Amount *big.Int) error {
-	return doChangeMiningStakedAmount(db, reader, address, amount, new(big.Int).Add(updatedAmount, updatedV2Amount))
+func OnMiningStakeSuccess(db vm_db.VmDb, reader util.ConsensusReader, address types.Address, amount, updatedAmount *big.Int) error {
+	return doChangeMiningStakedAmount(db, reader, address, amount, new(big.Int).Add(updatedAmount, GetMiningStakedV2Amount(db, address)))
 }
 
-func OnCancelMiningStakeSuccess(db vm_db.VmDb, reader util.ConsensusReader, address types.Address, amount, updatedAmount, updatedV2Amount *big.Int) error {
-	return doChangeMiningStakedAmount(db, reader, address, new(big.Int).Neg(amount), new(big.Int).Add(updatedAmount, updatedV2Amount))
+func OnMiningStakeSuccessV2(db vm_db.VmDb, reader util.ConsensusReader, address types.Address, amount, updatedAmountV2 *big.Int) error {
+	return doChangeMiningStakedAmount(db, reader, address, amount, new(big.Int).Add(GetMiningStakedAmount(db, address), updatedAmountV2))
+}
+
+func OnCancelMiningStakeSuccess(db vm_db.VmDb, reader util.ConsensusReader, address types.Address, amount, updatedAmount *big.Int) error {
+	if IsEarthFork(db) {
+		AddCancelStake(db, reader, address, amount)
+	}
+	return doChangeMiningStakedAmount(db, reader, address, new(big.Int).Neg(amount), new(big.Int).Add(updatedAmount, GetMiningStakedV2Amount(db, address)))
+}
+
+func OnCancelMiningStakeSuccessV2(db vm_db.VmDb, reader util.ConsensusReader, address types.Address, amount, updatedAmountV2 *big.Int) error {
+	AddCancelStake(db, reader, address, amount)
+	return doChangeMiningStakedAmount(db, reader, address, new(big.Int).Neg(amount), new(big.Int).Add(GetMiningStakedAmount(db, address), updatedAmountV2))
 }
 
 func doChangeMiningStakedAmount(db vm_db.VmDb, reader util.ConsensusReader, address types.Address, amtChange, updatedAmount *big.Int) error {

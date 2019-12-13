@@ -281,7 +281,7 @@ func (md *MethodDeFiInvest) GetReceiveQuota(gasTable *util.QuotaTable) uint64 {
 
 func (md *MethodDeFiInvest) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
 	var err error
-	param := new(defi.ParamInvest)
+	param := new(defi.ParamInvest)   contracts/contracts_dex_fund.go
 	if err = cabi.ABIDeFi.UnpackMethod(param, md.MethodName, block.Data); err != nil {
 		return err
 	} else {

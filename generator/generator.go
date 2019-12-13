@@ -117,13 +117,14 @@ func (gen *Generator) GenerateWithOnRoad(sendBlock *ledger.AccountBlock, produce
 func (gen *Generator) generateBlock(block *ledger.AccountBlock, fromBlock *ledger.AccountBlock, producer *types.Address, signFunc SignFunc) (result *GenResult, resultErr error) {
 	defer func() {
 		if err := recover(); err != nil {
+			// debug.PrintStack()
 			errDetail := fmt.Sprintf("block(addr:%v prevHash:%v)", block.AccountAddress, block.PrevHash)
 			if fromBlock != nil {
 				errDetail += fmt.Sprintf("fromBlock(addr:%v hash:%v)", fromBlock.AccountAddress, fromBlock.Hash)
 			}
 			gen.log.Error(fmt.Sprintf("generator_vm panic error %v", err), "detail", errDetail)
 			result = &GenResult{}
-			resultErr = errors.New("generator_vm panic error")
+			resultErr = ErrVmRunPanic
 		}
 	}()
 	var state *VMGlobalStatus

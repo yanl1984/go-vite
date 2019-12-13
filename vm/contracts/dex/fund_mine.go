@@ -140,7 +140,7 @@ func DoMineVxForStaking(db vm_db.VmDb, reader util.ConsensusReader, periodId uin
 		dexMiningStakings      *MiningStakings
 		dividedStakedAmountSum = big.NewInt(0)
 		amtLeavedToMine        = new(big.Int).Set(amountToMine)
-		ok                     bool
+		ok               bool
 	)
 	if amountToMine == nil {
 		return nil, nil
@@ -163,7 +163,6 @@ func DoMineVxForStaking(db vm_db.VmDb, reader util.ConsensusReader, periodId uin
 	var (
 		miningStakingsKey, miningStakingsValue []byte
 	)
-
 	iterator, err := db.NewStorageIterator(miningStakingsKeyPrefix)
 	if err != nil {
 		panic(err)
