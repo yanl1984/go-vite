@@ -470,10 +470,10 @@ func calculateExecutedFee(amount []byte, feeRate int32, side bool, originExecute
 	return
 }
 
-func newLog(event DexEvent) *ledger.VmLog {
+func newLog(event common.Event) *ledger.VmLog {
 	log := &ledger.VmLog{}
 	log.Topics = append(log.Topics, event.GetTopicId())
-	log.Data = event.toDataBytes()
+	log.Data = event.ToDataBytes()
 	return log
 }
 

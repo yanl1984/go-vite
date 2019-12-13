@@ -4,6 +4,8 @@ import (
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/ledger"
 	"github.com/vitelabs/go-vite/vm/contracts/common"
+	defiproto "github.com/vitelabs/go-vite/vm/contracts/defi/proto"
+	"github.com/vitelabs/go-vite/vm/contracts/dex"
 	"github.com/vitelabs/go-vite/vm/util"
 	"github.com/vitelabs/go-vite/vm_db"
 	"math/big"
@@ -12,7 +14,7 @@ import (
 var (
 	LoanRateCardinalNum int32 = 1e6
 	MinDayRate          int32 = 1 // 1/1,000,000
-	MaxDayRate          int32 = LoanRateCardinalNum
+	MaxDayRate                = LoanRateCardinalNum
 
 	MinSubDays int32 = 1
 	MaxSubDays int32 = 7
@@ -59,14 +61,14 @@ func NewSubscription(address types.Address, db vm_db.VmDb, param *ParamSubscribe
 	return sub
 }
 
-func OnLoanSubscribed(db vm_db.VmDb, gs util.GlobalStatus, loan *Loan, shares int32) {
+func DoSubscribe(db vm_db.VmDb, gs util.GlobalStatus, loan *Loan, shares int32) {
 	loan.SubscribedShares = loan.SubscribedShares + shares
 	loan.Updated = GetDeFiTimestamp(db)
 	if loan.Shares == loan.SubscribedShares {
 		loan.Status = Success
 		loan.ExpireHeight = GetExpireHeight(gs, loan.ExpireDays)
 		loan.StartTime = loan.Updated
-		OnAccLoanSuccess(db, loan.Address, loan.Interest)
+		OnAccLoanSuccess(db, loan.Address, loan)
 	}
 	SaveLoan(db, loan)
 	AddLoanUpdateEvent(db, loan)
@@ -108,6 +110,83 @@ func OnLoanSubscribed(db vm_db.VmDb, gs util.GlobalStatus, loan *Loan, shares in
 			SaveSubscription(db, sub)
 		}
 	}
+}
+
+func DoInvest(db vm_db.VmDb, address types.Address, param *ParamInvest, leavedAmount, stakeAmountMin *big.Int, availableHeight, stakeHeight, stakeSVIPHeight uint64) (loanInvested, baseInvested *big.Int, durationHeight uint64, err error) {
+	var (
+		baseAvailable = new(big.Int)
+		fund          *Fund
+		acc           *defiproto.Account
+		ok            bool
+	)
+	if fund, ok = GetFund(db, address); ok {
+		if acc, ok = GetAccountInfo(fund, ledger.ViteTokenId); ok {
+			baseAvailable.SetBytes(acc.BaseAccount.Available)
+		}
+	}
+	totalAmount := new(big.Int).Add(leavedAmount, baseAvailable)
+
+	switch param.BizType {
+	case StakeForMining:
+		if totalAmount.Cmp(dex.StakeForMiningMinAmount) < 0 {
+			err = InvestAmountNotValidErr
+			return
+		} else if availableHeight < stakeHeight {
+			err = AvailableHeightNotValidForInvestErr
+			return
+		}
+		durationHeight = stakeHeight
+		loanInvested, baseInvested = getInvestedAmount(leavedAmount, dex.StakeForMiningMinAmount)
+	case StakeForSVIP:
+		if totalAmount.Cmp(dex.StakeForSuperVIPAmount) < 0 {
+			err = InvestAmountNotValidErr
+			return
+		} else if availableHeight < stakeSVIPHeight {
+			err = AvailableHeightNotValidForInvestErr
+			return
+		}
+		durationHeight = stakeSVIPHeight
+		loanInvested, baseInvested = getInvestedAmount(leavedAmount, dex.StakeForSuperVIPAmount)
+	case StakeForQuota:
+		if totalAmount.Cmp(stakeAmountMin) < 0 {
+			err = InvestAmountNotValidErr
+			return
+		} else if availableHeight < stakeHeight {
+			err = AvailableHeightNotValidForInvestErr
+			return
+		}
+		durationHeight = stakeHeight
+		loanInvested, baseInvested = getInvestedAmount(leavedAmount, dex.StakeForSuperVIPAmount)
+	}
+	_, err = OnAccInvest(db, address, loanInvested, baseInvested)
+	return
+}
+
+func getInvestedAmount(leavedLoanAmount *big.Int, needInvestAmount *big.Int) (loanInvested, baseInvested *big.Int) {
+	if leavedLoanAmount.Cmp(needInvestAmount) < 0 {
+		loanInvested = new(big.Int).Set(leavedLoanAmount)
+		baseInvested = new(big.Int).Sub(needInvestAmount, loanInvested)
+	} else {
+		loanInvested = needInvestAmount
+		baseInvested = new(big.Int)
+	}
+	return
+}
+
+func NewInvest(db vm_db.VmDb, gs util.GlobalStatus, address types.Address, loan *Loan, param *ParamInvest, loanInvested, baseInvested *big.Int, durationHeight uint64) *Invest {
+	invest := &Invest{}
+	invest.Id = NewInvestSerialNo(db)
+	invest.LoanId = loan.Id
+	invest.Address = address.Bytes()
+	invest.LoanAmount = loanInvested.Bytes()
+	invest.BaseAmount = baseInvested.Bytes()
+	invest.BizType = param.BizType
+	invest.Beneficial = param.Beneficiary.Bytes()
+	invest.CreateHeight = gs.SnapshotBlock().Height
+	invest.ExpireHeight = invest.CreateHeight + durationHeight
+	invest.Status = InvestPending
+	invest.Created = GetDeFiTimestamp(db)
+	return invest
 }
 
 func CalculateInterest(shares int32, shareAmount *big.Int, dayRate, days int32) *big.Int {

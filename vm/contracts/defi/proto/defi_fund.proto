@@ -63,18 +63,18 @@ message Subscription {
 
 message Invest {
     uint64 Id = 1;
-    uint64 LoadId = 2;
+    uint64 LoanId = 2;
     bytes Address = 3;
-    bytes LoadAmount = 4;
+    bytes LoanAmount = 4;
     bytes BaseAmount = 5;
     int32 BizType = 6;
     bytes Beneficial = 7;
     uint64 CreateHeight = 8;
     uint64 ExpireHeight = 9;
     // 1 pending, 2 success, 3 failed, 4 expired, 5 fail refunded, 6 expire refunded
-    int32 Status = 11;
-    int64 Created = 12;
-    int64 Updated = 13;
+    int32 Status = 10;
+    int64 Created = 11;
+    int64 Updated = 12;
 }
 
 message SBPRegistration {
@@ -94,9 +94,10 @@ message LoanUpdate {
 }
 
 message SubscriptionUpdate {
-    uint64 Id = 1;
-    int32 Shares = 2;
-    int32 Status = 3;
+    uint64 LoanId = 1;
+    bytes Address = 2;
+    int32 Shares = 3;
+    int32 Status = 4;
 }
 
 message InvestUpdate {

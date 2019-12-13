@@ -32,6 +32,20 @@ const (
 	ExpiredRefuned
 )
 
+//invest type
+const (
+	StakeForMining = iota + 1
+	StakeForSVIP
+	RegistSBP
+	StakeForQuota
+)
+
+//invest status
+const (
+	InvestPending = iota +1
+	InvestSuccess
+)
+
 type ParamWithdraw struct {
 	Token  types.TokenTypeId
 	Amount *big.Int
@@ -49,6 +63,13 @@ type ParamNewLoan struct {
 type ParamSubscribe struct {
 	LoanId uint64
 	Shares int32
+}
+
+type ParamInvest struct {
+	LoanId      uint64
+	BizType     int32
+	Amount      *big.Int
+	Beneficiary types.Address
 }
 
 type ParamStakeForMining struct {
@@ -204,21 +225,22 @@ func OnAccNewLoan(db vm_db.VmDb, address types.Address, interest *big.Int) (*def
 	})
 }
 
-func OnAccLoanSuccess(db vm_db.VmDb, address []byte, interest []byte) (*defiproto.Account, error) {
+func OnAccLoanSuccess(db vm_db.VmDb, address []byte, loan *Loan) (*defiproto.Account, error) {
 	addr, _ := types.BytesToAddress(address)
 	return updateFund(db, addr, ledger.ViteTokenId.Bytes(), func(acc *defiproto.Account) (*defiproto.Account, error) {
-		if common.CmpForBigInt(acc.BaseAccount.Locked, interest)< 0 {
+		if common.CmpForBigInt(acc.BaseAccount.Locked, loan.Interest) < 0 {
 			return nil, ExceedFundAvailableErr
 		} else {
-			acc.BaseAccount.Locked = common.SubBigInt(acc.BaseAccount.Locked, interest).Bytes()
+			acc.BaseAccount.Locked = common.SubBigInt(acc.BaseAccount.Locked, loan.Interest).Bytes()
 		}
+		acc.LoanAccount.Available = common.AddBigInt(acc.LoanAccount.Available, CalculateAmount(loan.Shares, loan.ShareAmount).Bytes())
 		return acc, nil
 	})
 }
 
 func OnAccLoanCancelled(db vm_db.VmDb, address types.Address, interest []byte) (*defiproto.Account, error) {
 	return updateFund(db, address, ledger.ViteTokenId.Bytes(), func(acc *defiproto.Account) (*defiproto.Account, error) {
-		if common.CmpForBigInt(acc.BaseAccount.Locked, interest)< 0 {
+		if common.CmpForBigInt(acc.BaseAccount.Locked, interest) < 0 {
 			return nil, ExceedFundAvailableErr
 		} else {
 			acc.BaseAccount.Available = common.AddBigInt(acc.BaseAccount.Available, interest)
@@ -254,9 +276,9 @@ func OnAccSubscribeSuccess(db vm_db.VmDb, address []byte, interest, amount *big.
 	})
 }
 
-func OnAccInvest(db vm_db.VmDb, address types.Address, tokenId []byte, baseInvest, loanInvest *big.Int) (*defiproto.Account, error) {
-	return updateFund(db, address, tokenId, func(acc *defiproto.Account) (*defiproto.Account, error) {
-		if baseInvest != nil {
+func OnAccInvest(db vm_db.VmDb, address types.Address, baseInvest, loanInvest *big.Int) (*defiproto.Account, error) {
+	return updateFund(db, address, ledger.ViteTokenId.Bytes(), func(acc *defiproto.Account) (*defiproto.Account, error) {
+		if baseInvest.Sign() != 0{
 			baseAvailable := new(big.Int).SetBytes(acc.BaseAccount.Available)
 			if baseAvailable.Cmp(baseInvest) < 0 {
 				return nil, ExceedFundAvailableErr
@@ -265,7 +287,7 @@ func OnAccInvest(db vm_db.VmDb, address types.Address, tokenId []byte, baseInves
 				acc.BaseAccount.Invested = common.AddBigInt(acc.BaseAccount.Invested, baseInvest.Bytes())
 			}
 		}
-		if loanInvest != nil {
+		if loanInvest.Sign() != 0 {
 			loanAvailable := new(big.Int).SetBytes(acc.LoanAccount.Available)
 			if loanAvailable.Cmp(loanInvest) < 0 {
 				return nil, ExceedFundAvailableErr
@@ -319,9 +341,19 @@ func SaveLoan(db vm_db.VmDb, loan *Loan) {
 	common.SerializeToDb(db, getLoanKey(loan.Id), loan)
 }
 
+func DeleteLoan(db vm_db.VmDb, loan *Loan) {
+	common.SerializeToDb(db, getLoanKey(loan.Id), loan)
+}
+
 func GetLoanById(db vm_db.VmDb, loanId uint64) (loan *Loan, ok bool) {
 	loan = &Loan{}
 	ok = common.DeserializeFromDb(db, getLoanKey(loanId), loan)
+	return
+}
+
+func GetLoanAvailable(gs util.GlobalStatus, loan *Loan) (available *big.Int, availableHeight uint64) {
+	available = new(big.Int).Sub(CalculateAmount(loan.Shares, loan.ShareAmount), new(big.Int).SetBytes(loan.Invested))
+	availableHeight = loan.ExpireHeight - gs.SnapshotBlock().Height
 	return
 }
 
@@ -344,15 +376,25 @@ func GetSubscription(db vm_db.VmDb, loanId uint64, address []byte) (sub *Subscri
 }
 
 func getSubscriptionKey(loanId uint64, address []byte) []byte {
-	return append(common.Uint64ToBytes(loanId), address...)
+	return append(subscriptionKeyPrefix, append(common.Uint64ToBytes(loanId), address...)...)
+}
+
+func SaveInvest(db vm_db.VmDb, invest *Invest) {
+	common.SerializeToDb(db, getInvestKey(invest.LoanId, invest.Id), invest)
+}
+
+func GetInvest(db vm_db.VmDb, loanId, investId uint64) (invest *Invest, ok bool) {
+	invest = &Invest{}
+	ok = common.DeserializeFromDb(db, getInvestKey(loanId, investId), invest)
+	return
+}
+
+func getInvestKey(loanId, investId uint64) []byte {
+	return append(append(investKeyPrefix, common.Uint64ToBytes(loanId)...), common.Uint64ToBytes(investId)...)
 }
 
 func NewLoanSerialNo(db vm_db.VmDb) (serialNo uint64) {
 	return newSerialNo(db, loanSerialNoKey)
-}
-
-func NewSubscriptionSerialNo(db vm_db.VmDb) (serialNo uint64) {
-	return newSerialNo(db, investSerialNoKey)
 }
 
 func NewInvestSerialNo(db vm_db.VmDb) (serialNo uint64) {

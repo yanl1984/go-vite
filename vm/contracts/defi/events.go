@@ -37,9 +37,10 @@ func AddNewSubscriptionEvent(db vm_db.VmDb, sub *Subscription) {
 
 func AddSubscriptionUpdateEvent(db vm_db.VmDb, sub *Subscription) {
 	event := &SubscriptionUpdateEvent{}
+	event.LoanId = sub.LoanId
+	event.Address = sub.Address
 	event.Shares = sub.Shares
-	event.Status = sub.
-
+	event.Status = sub.Status
 	common.DoEmitEventLog(db, event)
 }
 
