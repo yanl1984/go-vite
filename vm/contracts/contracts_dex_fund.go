@@ -9,6 +9,7 @@ import (
 	"github.com/vitelabs/go-vite/log15"
 	cabi "github.com/vitelabs/go-vite/vm/contracts/abi"
 	"github.com/vitelabs/go-vite/vm/contracts/common"
+	"github.com/vitelabs/go-vite/vm/contracts/defi"
 	"github.com/vitelabs/go-vite/vm/contracts/dex"
 	dexproto "github.com/vitelabs/go-vite/vm/contracts/dex/proto"
 	"github.com/vitelabs/go-vite/vm/util"
@@ -343,7 +344,7 @@ func (md MethodDexFundTriggerPeriodJob) DoReceive(db vm_db.VmDb, block *ledger.A
 		case dex.FinishVxUnlock:
 			err = dex.DoFinishVxUnlock(db, param.PeriodId)
 		case dex.FinishCancelMiningStake:
-			err = dex.DoFinishCancelMiningStake(db, param.PeriodId)
+			blocks, err = dex.DoFinishCancelMiningStake(db, param.PeriodId)
 		}
 		if err != nil {
 			return handleDexReceiveErr(fundLogger, md.MethodName, err, sendBlock)
@@ -436,7 +437,7 @@ func (md MethodDexFundStakeForMining) DoReceive(db vm_db.VmDb, block *ledger.Acc
 	if !dex.IsDexMiningFork(db) && dex.IsEarthFork(db) {
 		stakeHeight = 1
 	}
-	if appendBlocks, err := dex.HandleStakeAction(db, dex.StakeForMining, param.ActionType, sendBlock.AccountAddress, types.ZERO_ADDRESS, param.Amount, stakeHeight, block); err != nil {
+	if appendBlocks, _, err := dex.HandleStakeAction(db, dex.StakeForMining, param.ActionType, sendBlock.AccountAddress, types.ZERO_ADDRESS, param.Amount, stakeHeight, block); err != nil {
 		return handleDexReceiveErr(fundLogger, md.MethodName, err, sendBlock)
 	} else {
 		return appendBlocks, nil
@@ -480,7 +481,7 @@ func (md *MethodDexFundStakeForVIP) DoSend(db vm_db.VmDb, block *ledger.AccountB
 func (md MethodDexFundStakeForVIP) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) ([]*ledger.AccountBlock, error) {
 	var param = new(dex.ParamStakeForVIP)
 	cabi.ABIDexFund.UnpackMethod(param, md.MethodName, sendBlock.Data)
-	if appendBlocks, err := dex.HandleStakeAction(db, dex.StakeForVIP, param.ActionType, sendBlock.AccountAddress, types.ZERO_ADDRESS, dex.StakeForVIPAmount, nodeConfig.params.DexVipStakeHeight, block); err != nil {
+	if appendBlocks, _, err := dex.HandleStakeAction(db, dex.StakeForVIP, param.ActionType, sendBlock.AccountAddress, types.ZERO_ADDRESS, dex.StakeForVIPAmount, nodeConfig.params.DexVipStakeHeight, block); err != nil {
 		return handleDexReceiveErr(fundLogger, md.MethodName, err, sendBlock)
 	} else {
 		return appendBlocks, nil
@@ -524,7 +525,7 @@ func (md *MethodDexFundStakeForSVIP) DoSend(db vm_db.VmDb, block *ledger.Account
 func (md MethodDexFundStakeForSVIP) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) ([]*ledger.AccountBlock, error) {
 	var param = new(dex.ParamStakeForVIP)
 	cabi.ABIDexFund.UnpackMethod(param, md.MethodName, sendBlock.Data)
-	if appendBlocks, err := dex.HandleStakeAction(db, dex.StakeForSuperVIP, param.ActionType, sendBlock.AccountAddress, types.ZERO_ADDRESS, dex.StakeForSuperVIPAmount, nodeConfig.params.DexSuperVipStakeHeight, block); err != nil {
+	if appendBlocks, _, err := dex.HandleStakeAction(db, dex.StakeForSuperVIP, param.ActionType, sendBlock.AccountAddress, types.ZERO_ADDRESS, dex.StakeForSuperVIPAmount, nodeConfig.params.DexSuperVipStakeHeight, block); err != nil {
 		return handleDexReceiveErr(fundLogger, md.MethodName, err, sendBlock)
 	} else {
 		return appendBlocks, nil
@@ -568,7 +569,7 @@ func (md *MethodDexFundStakeForPrincipalSVIP) DoSend(db vm_db.VmDb, block *ledge
 func (md MethodDexFundStakeForPrincipalSVIP) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) ([]*ledger.AccountBlock, error) {
 	var principal = new(types.Address)
 	cabi.ABIDexFund.UnpackMethod(principal, md.MethodName, sendBlock.Data)
-	if appendBlocks, err := dex.HandleStakeAction(db, dex.StakeForPrincipalSuperVIP, dex.Stake, sendBlock.AccountAddress, *principal, dex.StakeForSuperVIPAmount, nodeConfig.params.DexSuperVipStakeHeight, block); err != nil {
+	if appendBlocks, _, err := dex.HandleStakeAction(db, dex.StakeForPrincipalSuperVIP, dex.Stake, sendBlock.AccountAddress, *principal, dex.StakeForSuperVIPAmount, nodeConfig.params.DexSuperVipStakeHeight, block); err != nil {
 		return handleDexReceiveErr(fundLogger, md.MethodName, err, sendBlock)
 	} else {
 		return appendBlocks, nil
@@ -879,8 +880,12 @@ func (md MethodDexFundDelegateStakeCallbackV2) DoReceive(db vm_db.VmDb, block *l
 				return handleDexReceiveErr(fundLogger, md.MethodName, dex.InvalidAmountForStakeCallbackErr, sendBlock)
 			}
 		}
-		dex.DepositAccount(db, address, ledger.ViteTokenId, sendBlock.Amount)
 		dex.DeleteDelegateStakeInfo(db, param.Id.Bytes())
+		if info.InvestId == 0 {
+			dex.DepositAccount(db, address, ledger.ViteTokenId, sendBlock.Amount)
+		} else {
+			blocks, err = dex.DoRefundInvest(db, common.Uint64ToBytes(info.InvestId), defi.RefundFailedInvest, sendBlock.Amount)
+		}
 	}
 	return
 }
@@ -912,7 +917,7 @@ func (md *MethodDexFundCancelDelegateStakeCallbackV2) DoSend(db vm_db.VmDb, bloc
 	return cabi.ABIDexFund.UnpackMethod(new(dex.ParamDelegateStakeCallbackV2), md.MethodName, block.Data)
 }
 
-func (md MethodDexFundCancelDelegateStakeCallbackV2) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) ([]*ledger.AccountBlock, error) {
+func (md MethodDexFundCancelDelegateStakeCallbackV2) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) (blocks []*ledger.AccountBlock, err error) {
 	var param = new(dex.ParamDelegateStakeCallbackV2)
 	cabi.ABIDexFund.UnpackMethod(param, md.MethodName, sendBlock.Data)
 	var (
@@ -938,7 +943,7 @@ func (md MethodDexFundCancelDelegateStakeCallbackV2) DoReceive(db vm_db.VmDb, bl
 			} else {
 				dex.SaveMiningStakedV2Amount(db, address, leaved)
 			}
-			if err := dex.OnCancelMiningStakeSuccessV2(db, vm.ConsensusReader(), address, sendBlock.Amount, leaved); err != nil {
+			if err = dex.OnCancelMiningStakeSuccessV2(db, vm.ConsensusReader(), address, sendBlock.Amount, leaved, info.InvestId); err != nil {
 				return handleDexReceiveErr(fundLogger, md.MethodName, err, sendBlock)
 			}
 		case dex.StakeForVIP:
@@ -979,13 +984,23 @@ func (md MethodDexFundCancelDelegateStakeCallbackV2) DoReceive(db vm_db.VmDb, bl
 				return handleDexReceiveErr(fundLogger, md.MethodName, dex.SuperVIPStakingNotExistsErr, sendBlock)
 			}
 		}
-		if info.StakeType == dex.StakeForPrincipalSuperVIP {
-			stakeAddress, _ := types.BytesToAddress(info.Address) // address
-			dex.DepositAccount(db, stakeAddress, ledger.ViteTokenId, sendBlock.Amount)
-		} else if info.StakeType == dex.StakeForMining {
+		if info.StakeType == dex.StakeForMining {
 			dex.ScheduleCancelStake(db, address, sendBlock.Amount)
+			if info.InvestId != 0 {
+				dex.CancellingInvestStakeInfo(db, info.InvestId)
+			}
 		} else {
-			dex.DepositAccount(db, address, ledger.ViteTokenId, sendBlock.Amount)
+			var refundAddress types.Address
+			if info.StakeType == dex.StakeForPrincipalSuperVIP {
+				refundAddress, _ = types.BytesToAddress(info.Address) // address
+			} else {
+				refundAddress = address
+			}
+			if info.InvestId == 0 {
+				dex.DepositAccount(db, refundAddress, ledger.ViteTokenId, sendBlock.Amount)
+			} else {
+				blocks, err = dex.DoRefundInvest(db, common.Uint64ToBytes(info.InvestId), defi.RefundCancelledInvest, sendBlock.Amount)
+			}
 		}
 		dex.DeleteDelegateStakeInfo(db, param.Id.Bytes())
 		dex.DeleteDelegateStakeAddressIndex(db, info.Address, info.SerialNo)
@@ -1799,6 +1814,122 @@ func (md MethodDexFundSwitchConfig) DoReceive(db vm_db.VmDb, block *ledger.Accou
 		dex.SetAutoLockMinedVx(db, sendBlock.AccountAddress.Bytes(), param.Enable)
 	}
 	return nil, nil
+}
+
+type MethodDelegateInvest struct {
+	MethodName string
+}
+
+func (md *MethodDelegateInvest) GetFee(block *ledger.AccountBlock) (*big.Int, error) {
+	return big.NewInt(0), nil
+}
+
+func (md *MethodDelegateInvest) GetRefundData(sendBlock *ledger.AccountBlock, sbHeight uint64) ([]byte, bool) {
+	return []byte{}, false
+}
+
+func (md *MethodDelegateInvest) GetSendQuota(data []byte, gasTable *util.QuotaTable) (uint64, error) {
+	return gasTable.GetTokenInfoQuota, nil
+}
+
+func (md *MethodDelegateInvest) GetReceiveQuota(gasTable *util.QuotaTable) uint64 {
+	return 0
+}
+
+func (md *MethodDelegateInvest) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
+	param := new(dex.ParamDelegateInvest)
+	err := cabi.ABIDexFund.UnpackMethod(param, md.MethodName, block.Data)
+	if err != nil {
+		return err
+	}
+	if block.TokenId != ledger.ViteTokenId || block.Amount.Cmp(dex.StakeForMiningMinAmount) < 0 {
+		return dex.InvalidInputParamErr
+	}
+	switch param.BizType {
+	case dex.StakeForMining:
+		return nil
+	case dex.StakeForSuperVIP:
+		if block.Amount.Cmp(dex.StakeForSuperVIPAmount) != 0 {
+			return dex.InvalidInputParamErr
+		} else {
+			return nil
+		}
+	default:
+		return dex.InvalidInputParamErr
+	}
+}
+
+func (md *MethodDelegateInvest) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) (blocks []*ledger.AccountBlock, err error) {
+	var (
+		param   = new(dex.ParamDelegateInvest)
+		stakeId types.Hash
+	)
+	cabi.ABIDexFund.UnpackMethod(param, md.MethodName, sendBlock.Data)
+	dex.DepositAccount(db, param.Address, ledger.ViteTokenId, sendBlock.Amount)
+	switch param.BizType {
+	case dex.StakeForMining:
+		blocks, stakeId, err = dex.HandleStakeAction(db, param.BizType, dex.Stake, param.Address, types.ZERO_ADDRESS, sendBlock.Amount, nodeConfig.params.StakeHeight, block)
+	case dex.StakeForSuperVIP:
+		blocks, stakeId, err = dex.HandleStakeAction(db, param.BizType, dex.StakeForPrincipalSuperVIP, param.Address, param.Beneficiary, sendBlock.Amount, nodeConfig.params.DexSuperVipStakeHeight, block)
+	}
+	if err == nil {
+		dex.SaveInvestStakeInfo(db, sendBlock, stakeId, param)
+		dex.SetInvestIdForDelegateStakeInfo(db, stakeId, param.InvestId)
+		return blocks, nil
+	} else {
+		return handleDexReceiveErr(fundLogger, md.MethodName, err, sendBlock)
+	}
+}
+
+type MethodCancelDelegateInvest struct {
+	MethodName string
+}
+
+func (md *MethodCancelDelegateInvest) GetFee(block *ledger.AccountBlock) (*big.Int, error) {
+	return big.NewInt(0), nil
+}
+
+func (md *MethodCancelDelegateInvest) GetRefundData(sendBlock *ledger.AccountBlock, sbHeight uint64) ([]byte, bool) {
+	return []byte{}, false
+}
+
+func (md *MethodCancelDelegateInvest) GetSendQuota(data []byte, gasTable *util.QuotaTable) (uint64, error) {
+	return gasTable.GetTokenInfoQuota, nil
+}
+
+func (md *MethodCancelDelegateInvest) GetReceiveQuota(gasTable *util.QuotaTable) uint64 {
+	return 0
+}
+
+func (md *MethodCancelDelegateInvest) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
+	if block.AccountAddress != types.AddressDeFi {
+		return dex.InvalidSourceAddressErr
+	}
+	var investId = new(uint64)
+	if err := cabi.ABIDexFund.UnpackMethod(investId, md.MethodName, block.Data); err != nil {
+		return err
+	} else if *investId == 0 {
+		return defi.InvalidInputParamErr
+	}
+	return nil
+}
+
+func (md *MethodCancelDelegateInvest) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) (blocks []*ledger.AccountBlock, err error) {
+	var (
+		investId     = new(uint64)
+		info         *dex.InvestInfo
+		delegateInfo *dex.DelegateStakeInfo
+		ok           bool
+	)
+	cabi.ABIDexFund.UnpackMethod(investId, md.MethodName, sendBlock.Data)
+	if info, ok = dex.GetInvestStakeInfo(db, *investId); !ok || info.Status != dex.Normal {
+		return handleDexReceiveErr(fundLogger, md.MethodName, defi.InvestNotExistsErr, sendBlock)
+	} else if delegateInfo, ok = dex.GetDelegateStakeInfo(db, info.StakeId); !ok || delegateInfo.Status != dex.StakeConfirmed {
+		return handleDexReceiveErr(fundLogger, md.MethodName, dex.StakingInfoByIdNotExistsErr, sendBlock)
+	}
+	address, _ := types.BytesToAddress(delegateInfo.Address)
+	stakeId, _ := types.BytesToHash(delegateInfo.Id)
+	return dex.DoCancelStakeV2(db, address, stakeId)
 }
 
 func handleDexReceiveErr(logger log15.Logger, method string, err error, sendBlock *ledger.AccountBlock) ([]*ledger.AccountBlock, error) {

@@ -281,7 +281,7 @@ func (md *MethodDeFiInvest) GetReceiveQuota(gasTable *util.QuotaTable) uint64 {
 
 func (md *MethodDeFiInvest) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
 	var err error
-	param := new(defi.ParamInvest)   contracts/contracts_dex_fund.go
+	param := new(defi.ParamInvest)
 	if err = cabi.ABIDeFi.UnpackMethod(param, md.MethodName, block.Data); err != nil {
 		return err
 	} else {
@@ -295,6 +295,7 @@ func (md *MethodDeFiInvest) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) er
 func (md *MethodDeFiInvest) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) ([]*ledger.AccountBlock, error) {
 	var (
 		param                      = new(defi.ParamInvest)
+		blocks                     []*ledger.AccountBlock
 		loanInvested, baseInvested *big.Int
 		durationHeight             uint64
 		loan                       *defi.Loan
@@ -306,17 +307,22 @@ func (md *MethodDeFiInvest) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock,
 		return handleDexReceiveErr(deFiLogger, md.MethodName, defi.LoanNotExistsErr, sendBlock)
 	}
 	leavedAmount, availableHeight := defi.GetLoanAvailable(vm.GlobalStatus(), loan)
-	if loanInvested, baseInvested, durationHeight, err = defi.DoInvest(db, sendBlock.AccountAddress, param, leavedAmount, stakeAmountMin, availableHeight, nodeConfig.params.StakeHeight, nodeConfig.params.DexSuperVipStakeHeight); err != nil {
+	if loanInvested, baseInvested, durationHeight, err = defi.PrepareInvest(db, sendBlock.AccountAddress, param, leavedAmount, stakeAmountMin, availableHeight, nodeConfig.params.StakeHeight, nodeConfig.params.DexSuperVipStakeHeight); err != nil {
 		return handleDeFiReceiveErr(deFiLogger, md.MethodName, err, sendBlock)
 	}
 	invest := defi.NewInvest(db, vm.GlobalStatus(), sendBlock.AccountAddress, loan, param, loanInvested, baseInvested, durationHeight)
 	defi.SaveInvest(db, invest)
 	switch param.BizType {
 	case defi.StakeForMining:
-
+		blocks, err = defi.DoStakeForMining(db)
 	case defi.StakeForSVIP:
 
 	case defi.StakeForQuota:
+
+	}
+	if err != nil {
+		handleDeFiReceiveErr(deFiLogger, md.MethodName, err, sendBlock)
+	} else {
 
 	}
 	return nil, nil

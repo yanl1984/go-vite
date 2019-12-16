@@ -14,5 +14,6 @@ var (
 	InvestAmountNotValidErr             = errors.New("invest amount not valid")
 	AvailableHeightNotValidForInvestErr = errors.New("loan expire height not valid for invest")
 
+	InvestNotExistsErr     = errors.New("invest not exists")
 	ExceedFundAvailableErr = errors.New("exceed fund available")
 )

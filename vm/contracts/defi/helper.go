@@ -112,7 +112,7 @@ func DoSubscribe(db vm_db.VmDb, gs util.GlobalStatus, loan *Loan, shares int32) 
 	}
 }
 
-func DoInvest(db vm_db.VmDb, address types.Address, param *ParamInvest, leavedAmount, stakeAmountMin *big.Int, availableHeight, stakeHeight, stakeSVIPHeight uint64) (loanInvested, baseInvested *big.Int, durationHeight uint64, err error) {
+func PrepareInvest(db vm_db.VmDb, address types.Address, param *ParamInvest, leavedAmount, stakeAmountMin *big.Int, availableHeight, stakeHeight, stakeSVIPHeight uint64) (loanInvested, baseInvested *big.Int, durationHeight uint64, err error) {
 	var (
 		baseAvailable = new(big.Int)
 		fund          *Fund
@@ -125,7 +125,6 @@ func DoInvest(db vm_db.VmDb, address types.Address, param *ParamInvest, leavedAm
 		}
 	}
 	totalAmount := new(big.Int).Add(leavedAmount, baseAvailable)
-
 	switch param.BizType {
 	case StakeForMining:
 		if totalAmount.Cmp(dex.StakeForMiningMinAmount) < 0 {
@@ -160,6 +159,14 @@ func DoInvest(db vm_db.VmDb, address types.Address, param *ParamInvest, leavedAm
 	}
 	_, err = OnAccInvest(db, address, loanInvested, baseInvested)
 	return
+}
+
+func DoStakeForMining(db vm_db.VmDb) ([]*ledger.AccountBlock, error) {
+
+}
+
+func DoStakeForSVIP(db vm_db.VmDb) ([]*ledger.AccountBlock, error) {
+
 }
 
 func getInvestedAmount(leavedLoanAmount *big.Int, needInvestAmount *big.Int) (loanInvested, baseInvested *big.Int) {

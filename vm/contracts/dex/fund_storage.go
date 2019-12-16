@@ -65,6 +65,8 @@ var (
 	delegateStakeAddressIndexPrefix  = []byte("dA:")
 	delegateStakeIndexSerialNoPrefix = []byte("dsISN:")
 
+	investStakeInfoPrefix = []byte("ivSt:")
+
 	miningStakingsKeyPrefix       = []byte("pldsVx:")  // miningStakings: types.Address
 	dexMiningStakingsKey          = []byte("pldsVxS:") // dexMiningStakings
 	miningStakedAmountKeyPrefix   = []byte("pldVx:")   // miningStakedAmount: types.Address
@@ -232,6 +234,12 @@ const (
 	StakeConfirmed
 )
 
+//Invest status
+const (
+	Normal = iota + 1
+	Cancelling
+)
+
 type QuoteTokenTypeInfo struct {
 	Decimals              int32
 	DefaultTradeThreshold *big.Int
@@ -364,6 +372,13 @@ type ParamCancelStakeById struct {
 type ParamDelegateStakeCallbackV2 struct {
 	Id      types.Hash
 	Success bool
+}
+
+type ParamDelegateInvest struct {
+	InvestId    uint64
+	Address     types.Address
+	BizType     uint8
+	Beneficiary types.Address
 }
 
 type Fund struct {
@@ -672,6 +687,24 @@ func (cs *CancelStakes) DeSerialize(data []byte) error {
 	}
 }
 
+type InvestInfo struct {
+	dexproto.InvestInfo
+}
+
+func (iv *InvestInfo) Serialize() (data []byte, err error) {
+	return proto.Marshal(&iv.InvestInfo)
+}
+
+func (iv *InvestInfo) DeSerialize(data []byte) error {
+	investInfo := dexproto.InvestInfo{}
+	if err := proto.Unmarshal(data, &investInfo); err != nil {
+		return err
+	} else {
+		iv.InvestInfo = investInfo
+		return nil
+	}
+}
+
 func GetAccountByToken(fund *Fund, token types.TokenTypeId) (account *dexproto.Account, exists bool) {
 	for _, a := range fund.Accounts {
 		if bytes.Equal(token.Bytes(), a.Token) {
@@ -720,87 +753,88 @@ func SaveFund(db vm_db.VmDb, address types.Address, fund *Fund) {
 }
 
 func ReduceAccount(db vm_db.VmDb, address types.Address, tokenId []byte, amount *big.Int) (*dexproto.Account, error) {
-	return updateFund(db, address, tokenId, amount, func(acc *dexproto.Account, amt *big.Int) (*dexproto.Account, error) {
+	return updateFund(db, address, tokenId, func(acc *dexproto.Account) (*dexproto.Account, error) {
 		available := new(big.Int).SetBytes(acc.Available)
-		if available.Cmp(amt) < 0 {
+		if available.Cmp(amount) < 0 {
 			return nil, ExceedFundAvailableErr
 		} else {
-			acc.Available = available.Sub(available, amt).Bytes()
+			acc.Available = available.Sub(available, amount).Bytes()
 		}
 		return acc, nil
 	})
 }
 
 func LockVxForDividend(db vm_db.VmDb, address types.Address, amount *big.Int) (*dexproto.Account, error) {
-	return updateFund(db, address, VxTokenId.Bytes(), amount, func(acc *dexproto.Account, amt *big.Int) (*dexproto.Account, error) {
+	return updateFund(db, address, VxTokenId.Bytes(), func(acc *dexproto.Account) (*dexproto.Account, error) {
 		available := new(big.Int).SetBytes(acc.Available)
-		if available.Cmp(amt) < 0 {
+		if available.Cmp(amount) < 0 {
 			return nil, ExceedFundAvailableErr
 		} else {
-			acc.Available = available.Sub(available, amt).Bytes()
-			acc.VxLocked = common.AddBigInt(acc.VxLocked, amt.Bytes())
+			acc.Available = available.Sub(available, amount).Bytes()
+			acc.VxLocked = common.AddBigInt(acc.VxLocked, amount.Bytes())
 		}
 		return acc, nil
 	})
 }
 
 func ScheduleVxUnlockForDividend(db vm_db.VmDb, address types.Address, amount *big.Int) (updatedAcc *dexproto.Account, err error) {
-	return updateFund(db, address, VxTokenId.Bytes(), amount, func(acc *dexproto.Account, amt *big.Int) (*dexproto.Account, error) {
+	return updateFund(db, address, VxTokenId.Bytes(), func(acc *dexproto.Account) (*dexproto.Account, error) {
 		vxLocked := new(big.Int).SetBytes(acc.VxLocked)
-		if vxLocked.Cmp(amt) < 0 {
+		if vxLocked.Cmp(amount) < 0 {
 			return nil, ExceedFundAvailableErr
 		} else {
-			vxLocked.Sub(vxLocked, amt)
+			vxLocked.Sub(vxLocked, amount)
 			if vxLocked.Sign() != 0 && vxLocked.Cmp(VxDividendThreshold) < 0 {
 				return nil, LockedVxAmountLeavedNotValidErr
 			}
 			acc.VxLocked = vxLocked.Bytes()
-			acc.VxUnlocking = common.AddBigInt(acc.VxUnlocking, amt.Bytes())
+			acc.VxUnlocking = common.AddBigInt(acc.VxUnlocking, amount.Bytes())
 		}
 		return acc, nil
 	})
 }
 
 func FinishVxUnlockForDividend(db vm_db.VmDb, address types.Address, amount *big.Int) (*dexproto.Account, error) {
-	return updateFund(db, address, VxTokenId.Bytes(), amount, func(acc *dexproto.Account, amt *big.Int) (*dexproto.Account, error) {
+	return updateFund(db, address, VxTokenId.Bytes(), func(acc *dexproto.Account) (*dexproto.Account, error) {
 		vxUnlocking := new(big.Int).SetBytes(acc.VxUnlocking)
-		if vxUnlocking.Cmp(amt) < 0 {
+		if vxUnlocking.Cmp(amount) < 0 {
 			return nil, ExceedFundAvailableErr
 		} else {
-			acc.VxUnlocking = vxUnlocking.Sub(vxUnlocking, amt).Bytes()
-			acc.Available = common.AddBigInt(acc.Available, amt.Bytes())
+			acc.VxUnlocking = vxUnlocking.Sub(vxUnlocking, amount).Bytes()
+			acc.Available = common.AddBigInt(acc.Available, amount.Bytes())
 		}
 		return acc, nil
 	})
 }
 
 func ScheduleCancelStake(db vm_db.VmDb, address types.Address, amount *big.Int) (updatedAcc *dexproto.Account, err error) {
-	return updateFund(db, address, ledger.ViteTokenId.Bytes(), amount, func(acc *dexproto.Account, amt *big.Int) (*dexproto.Account, error) {
+	return updateFund(db, address, ledger.ViteTokenId.Bytes(), func(acc *dexproto.Account) (*dexproto.Account, error) {
 		acc.CancellingStake = common.AddBigInt(acc.CancellingStake, amount.Bytes())
 		return acc, nil
 	})
 }
 
-func FinishCancelStake(db vm_db.VmDb, address types.Address, amount *big.Int) (updatedAcc *dexproto.Account, err error) {
-	return updateFund(db, address, ledger.ViteTokenId.Bytes(), amount, func(acc *dexproto.Account, amt *big.Int) (*dexproto.Account, error) {
+func FinishCancelStake(db vm_db.VmDb, address types.Address, amount, investAmount *big.Int) (updatedAcc *dexproto.Account, err error) {
+	return updateFund(db, address, ledger.ViteTokenId.Bytes(), func(acc *dexproto.Account) (*dexproto.Account, error) {
+		total := new(big.Int).Add(amount, investAmount)
 		cancellingStakeAmount := new(big.Int).SetBytes(acc.CancellingStake)
-		if cancellingStakeAmount.Cmp(amt) < 0 {
+		if cancellingStakeAmount.Cmp(total) < 0 {
 			return nil, ExceedFundAvailableErr
 		} else {
-			acc.CancellingStake = cancellingStakeAmount.Sub(cancellingStakeAmount, amt).Bytes()
-			acc.Available = common.AddBigInt(acc.Available, amt.Bytes())
+			acc.CancellingStake = cancellingStakeAmount.Sub(cancellingStakeAmount, total).Bytes()
+			acc.Available = common.AddBigInt(acc.Available, amount.Bytes())
 		}
 		return acc, nil
 	})
 }
 
-func updateFund(db vm_db.VmDb, address types.Address, tokenId []byte, amount *big.Int, updateAccFunc func(*dexproto.Account, *big.Int) (*dexproto.Account, error)) (updatedAcc *dexproto.Account, err error) {
+func updateFund(db vm_db.VmDb, address types.Address, tokenId []byte, updateAccFunc func(*dexproto.Account) (*dexproto.Account, error)) (updatedAcc *dexproto.Account, err error) {
 	if fund, ok := GetFund(db, address); ok {
 		var foundAcc bool
 		for _, acc := range fund.Accounts {
 			if bytes.Equal(acc.Token, tokenId) {
 				foundAcc = true
-				if updatedAcc, err = updateAccFunc(acc, amount); err != nil {
+				if updatedAcc, err = updateAccFunc(acc); err != nil {
 					return
 				}
 				break
@@ -1912,6 +1946,12 @@ func SaveDelegateStakeInfo(db vm_db.VmDb, hash types.Hash, stakeType uint8, addr
 	common.SerializeToDb(db, GetDelegateStakeInfoKey(hash.Bytes()), info)
 }
 
+func SetInvestIdForDelegateStakeInfo(db vm_db.VmDb, stakeId types.Hash, investId uint64) {
+	info, _ := GetDelegateStakeInfo(db, stakeId.Bytes())
+	info.InvestId = investId
+	common.SerializeToDb(db, GetDelegateStakeInfoKey(stakeId.Bytes()), info)
+}
+
 func ConfirmDelegateStakeInfo(db vm_db.VmDb, hash types.Hash, info *DelegateStakeInfo, serialNo uint64) {
 	info.Status = int32(StakeConfirmed)
 	info.SerialNo = serialNo
@@ -1956,6 +1996,36 @@ func NewDelegateStakeIndexSerialNo(db vm_db.VmDb, address []byte) (serialNo uint
 
 func GetDelegateStakeIndexSerialNoKey(address []byte) []byte {
 	return append(delegateStakeIndexSerialNoPrefix, address...)
+}
+
+func GetInvestStakeInfo(db vm_db.VmDb, investId uint64) (info *InvestInfo, ok bool) {
+	info = &InvestInfo{}
+	ok = common.DeserializeFromDb(db, GetInvestStakeInfoKey(investId), info)
+	return
+}
+
+func SaveInvestStakeInfo(db vm_db.VmDb, sendBlock *ledger.AccountBlock, stakeId types.Hash, param *ParamDelegateInvest) {
+	info := &InvestInfo{}
+	info.StakeId = stakeId.Bytes()
+	info.BizType = int32(param.BizType)
+	info.Amount = sendBlock.Amount.Bytes()
+	info.Status = Normal
+	common.SerializeToDb(db, GetInvestStakeInfoKey(param.InvestId), info)
+}
+
+func CancellingInvestStakeInfo(db vm_db.VmDb, investId uint64) {
+	GetInvestStakeInfo(db, investId)
+	info := &InvestInfo{}
+	info.Status = Cancelling
+	common.SerializeToDb(db, GetInvestStakeInfoKey(investId), info)
+}
+
+func DeleteInvestStakeInfo(db vm_db.VmDb, investId uint64) {
+	common.SetValueToDb(db, GetInvestStakeInfoKey(investId), nil)
+}
+
+func GetInvestStakeInfoKey(investId uint64) []byte {
+	return append(investStakeInfoPrefix, common.Uint64ToBytes(investId)...)
 }
 
 func GetTimestampInt64(db vm_db.VmDb) int64 {
@@ -2205,20 +2275,31 @@ func GetCancelStakes(db vm_db.VmDb, address types.Address) (cancelStakes *Cancel
 	return
 }
 
-func AddCancelStake(db vm_db.VmDb, reader util.ConsensusReader, address types.Address, amount *big.Int) {
+func AddCancelStake(db vm_db.VmDb, reader util.ConsensusReader, address types.Address, amount *big.Int, investId uint64) {
 	cancelStakes := &CancelStakes{}
 	currentPeriodId := GetCurrentPeriodId(db, reader)
 	var updated bool
 	if ok := deserializeFromDb(db, GetCancelStakesKey(address), cancelStakes); ok {
 		size := len(cancelStakes.Cancels)
 		if cancelStakes.Cancels[size-1].PeriodId == currentPeriodId {
-			cancelStakes.Cancels[size-1].Amount = common.AddBigInt(cancelStakes.Cancels[size-1].Amount, amount.Bytes())
+			if investId == 0 {
+				cancelStakes.Cancels[size-1].Amount = common.AddBigInt(cancelStakes.Cancels[size-1].Amount, amount.Bytes())
+			} else {
+				cancelStakes.Cancels[size-1].InvestedAmount = common.AddBigInt(cancelStakes.Cancels[size-1].InvestedAmount, amount.Bytes())
+				cancelStakes.Cancels[size-1].InvestIds = append(cancelStakes.Cancels[size-1].InvestIds, investId)
+			}
 			updated = true
 		}
 	}
 	if !updated {
 		newCancel := &dexproto.CancelStake{}
 		newCancel.Amount = amount.Bytes()
+		if investId == 0 {
+			newCancel.Amount = amount.Bytes()
+		} else {
+			newCancel.InvestedAmount = amount.Bytes()
+			newCancel.InvestIds = append(newCancel.InvestIds, investId)
+		}
 		newCancel.PeriodId = currentPeriodId
 		cancelStakes.Cancels = append(cancelStakes.Cancels, newCancel)
 	}

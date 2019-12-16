@@ -46,6 +46,11 @@ const (
 	InvestSuccess
 )
 
+const (
+	RefundFailedInvest = iota + 1
+	RefundCancelledInvest
+)
+
 type ParamWithdraw struct {
 	Token  types.TokenTypeId
 	Amount *big.Int

@@ -3,6 +3,10 @@ package dex
 import (
 	"fmt"
 	"github.com/vitelabs/go-vite/common/types"
+	"github.com/vitelabs/go-vite/interfaces"
+	"github.com/vitelabs/go-vite/ledger"
+	"github.com/vitelabs/go-vite/vm/contracts/common"
+	"github.com/vitelabs/go-vite/vm/contracts/defi"
 	"github.com/vitelabs/go-vite/vm_db"
 	"math/big"
 )
@@ -30,7 +34,7 @@ func DoFinishVxUnlock(db vm_db.VmDb, periodId uint64) error {
 		if len(vxUnlocksValue) == 0 {
 			continue
 		}
-		if len(vxUnlocksKey) != len(vxUnlocksKeyPrefix) + types.AddressSize {
+		if len(vxUnlocksKey) != len(vxUnlocksKeyPrefix)+types.AddressSize {
 			panic(fmt.Errorf("invalid vx unlocks key"))
 		}
 		address, _ := types.BytesToAddress(vxUnlocksKey[len(vxUnlocksKeyPrefix):])
@@ -60,14 +64,19 @@ func DoFinishVxUnlock(db vm_db.VmDb, periodId uint64) error {
 }
 
 //periodId is finish period
-func DoFinishCancelMiningStake(db vm_db.VmDb, periodId uint64) error {
+func DoFinishCancelMiningStake(db vm_db.VmDb, periodId uint64) (blocks []*ledger.AccountBlock, err error) {
 	if !IsEarthFork(db) {
-		return nil
+		return
 	}
-	iterator, err := db.NewStorageIterator(cancelStakesKeyPrefix)
+	var iterator interfaces.StorageIterator
+	iterator, err = db.NewStorageIterator(cancelStakesKeyPrefix)
 	if err != nil {
 		panic(err)
 	}
+	var (
+		investAmount  = new(big.Int)
+		investIdBytes = make([]byte, 0, 320)
+	)
 	defer iterator.Release()
 	for {
 		var cancelStakesKey, cancelStakesValue []byte
@@ -82,19 +91,27 @@ func DoFinishCancelMiningStake(db vm_db.VmDb, periodId uint64) error {
 		if len(cancelStakesValue) == 0 {
 			continue
 		}
-		if len(cancelStakesKey) != len(cancelStakesKeyPrefix) + types.AddressSize {
+		if len(cancelStakesKey) != len(cancelStakesKeyPrefix)+types.AddressSize {
 			panic(fmt.Errorf("invalid cancel stakes key"))
 		}
 		address, _ := types.BytesToAddress(cancelStakesKey[len(cancelStakesKeyPrefix):])
 		cancelStakes := &CancelStakes{}
-		if err := cancelStakes.DeSerialize(cancelStakesValue); err != nil {
+		if err = cancelStakes.DeSerialize(cancelStakesValue); err != nil {
 			panic(err)
 		}
-		var i = 0
-		var amount = new(big.Int)
+		var (
+			i      = 0
+			amount = new(big.Int)
+		)
 		for _, cl := range cancelStakes.Cancels {
 			if cl.PeriodId+uint64(SchedulePeriods) <= periodId {
 				amount.Add(amount, new(big.Int).SetBytes(cl.Amount))
+				investAmount.Add(investAmount, new(big.Int).SetBytes(cl.InvestedAmount))
+				if len(cl.InvestIds) > 0 {
+					for _, iv := range cl.InvestIds {
+						investIdBytes = append(investIdBytes, common.Uint64ToBytes(iv)...)
+					}
+				}
 				i++
 			} else {
 				break
@@ -103,10 +120,13 @@ func DoFinishCancelMiningStake(db vm_db.VmDb, periodId uint64) error {
 		if i > 0 {
 			cancelStakes.Cancels = cancelStakes.Cancels[i:]
 			UpdateCancelStakes(db, address, cancelStakes)
-			if _, err = FinishCancelStake(db, address, amount); err != nil {
-				return err
+			if _, err = FinishCancelStake(db, address, amount, investAmount); err != nil {
+				return
 			}
 		}
 	}
-	return nil
+	if len(investIdBytes) > 0 {
+		return DoRefundInvest(db, investIdBytes, defi.RefundCancelledInvest, investAmount)
+	}
+	return
 }
