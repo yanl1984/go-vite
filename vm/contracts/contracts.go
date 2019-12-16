@@ -243,6 +243,13 @@ func GetBuiltinContractMethod(addr types.Address, methodSelector []byte, sbHeigh
 	}
 	p, addrExists := contractsMap[addr]
 	if addrExists {
+		if len(methodSelector) == 0 {
+			c, methodExists := p.m[defaultMethodName]
+			if methodExists {
+				return c, methodExists, nil
+			}
+			return nil, addrExists, util.ErrAbiMethodNotFound
+		}
 		if method, err := p.abi.MethodById(methodSelector); err == nil {
 			c, methodExists := p.m[method.Name]
 			if methodExists {

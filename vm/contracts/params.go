@@ -24,6 +24,8 @@ const (
 	rewardTimeLimit   int64  = 3600 // Cannot get snapshot block reward of current few blocks, for latest snapshot block could be reverted
 
 	stakeHeightMax uint64 = 3600 * 24 * 365
+
+	defaultMethodName string = "_DEFAULT"
 )
 
 var (
