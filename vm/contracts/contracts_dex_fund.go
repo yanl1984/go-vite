@@ -1905,10 +1905,10 @@ func (md *MethodCancelDelegateInvest) DoSend(db vm_db.VmDb, block *ledger.Accoun
 	if block.AccountAddress != types.AddressDeFi {
 		return dex.InvalidSourceAddressErr
 	}
-	var investId = new(uint64)
-	if err := cabi.ABIDexFund.UnpackMethod(investId, md.MethodName, block.Data); err != nil {
+	var investIds = new([]byte)
+	if err := cabi.ABIDexFund.UnpackMethod(investIds, md.MethodName, block.Data); err != nil {
 		return err
-	} else if *investId == 0 {
+	} else if len(*investIds) == 0 {
 		return defi.InvalidInputParamErr
 	}
 	return nil
@@ -1916,20 +1916,25 @@ func (md *MethodCancelDelegateInvest) DoSend(db vm_db.VmDb, block *ledger.Accoun
 
 func (md *MethodCancelDelegateInvest) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) (blocks []*ledger.AccountBlock, err error) {
 	var (
-		investId     = new(uint64)
-		info         *dex.InvestInfo
-		delegateInfo *dex.DelegateStakeInfo
-		ok           bool
+		investIds      = new([]byte)
+		stakeInfo *dex.DelegateStakeInfo
 	)
-	cabi.ABIDexFund.UnpackMethod(investId, md.MethodName, sendBlock.Data)
-	if info, ok = dex.GetInvestStakeInfo(db, *investId); !ok || info.Status != dex.Normal {
-		return handleDexReceiveErr(fundLogger, md.MethodName, defi.InvestNotExistsErr, sendBlock)
-	} else if delegateInfo, ok = dex.GetDelegateStakeInfo(db, info.StakeId); !ok || delegateInfo.Status != dex.StakeConfirmed {
-		return handleDexReceiveErr(fundLogger, md.MethodName, dex.StakingInfoByIdNotExistsErr, sendBlock)
+	cabi.ABIDexFund.UnpackMethod(investIds, md.MethodName, sendBlock.Data)
+	for i:= 0; i < len(*investIds)/8; i++ {
+		iv := (*investIds)[i*8 : (i+1)*8]
+		if investInfo, ok := dex.GetInvestStakeInfo(db, common.BytesToUint64(iv)); !ok || investInfo.Status != dex.Normal {
+			return handleDexReceiveErr(fundLogger, md.MethodName, defi.InvestNotExistsErr, sendBlock)
+		} else if stakeInfo, ok = dex.GetDelegateStakeInfo(db, investInfo.StakeId); !ok || stakeInfo.Status != dex.StakeConfirmed {
+			return handleDexReceiveErr(fundLogger, md.MethodName, dex.StakingInfoByIdNotExistsErr, sendBlock)
+		}
+		stakeId, _ := types.BytesToHash(stakeInfo.Id)
+		if blks, err := dex.DoRawCancelStakeV2(stakeId); err != nil {
+			return handleDexReceiveErr(fundLogger, md.MethodName, err, sendBlock)
+		} else {
+			blocks = append(blocks, blks...)
+		}
 	}
-	address, _ := types.BytesToAddress(delegateInfo.Address)
-	stakeId, _ := types.BytesToHash(delegateInfo.Id)
-	return dex.DoCancelStakeV2(db, address, stakeId)
+	return
 }
 
 func handleDexReceiveErr(logger log15.Logger, method string, err error, sendBlock *ledger.AccountBlock) ([]*ledger.AccountBlock, error) {

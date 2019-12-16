@@ -220,6 +220,17 @@ func newEarthContracts() map[types.Address]*builtinContract {
 
 func newDefiContracts() map[types.Address]*builtinContract {
 	contracts := newEarthContracts()
+
+
+	contracts[types.AddressDeFi].m[cabi.MethodNameDeFiDeposit] = &MethodDeFiDeposit{cabi.MethodNameDeFiDeposit}
+	contracts[types.AddressDeFi].m[cabi.MethodNameDeFiWithdraw] = &MethodDeFiWithdraw{cabi.MethodNameDeFiWithdraw}
+	contracts[types.AddressDeFi].m[cabi.MethodNameDeFiNewLoan] = &MethodDeFiNewLoan{cabi.MethodNameDeFiNewLoan}
+	contracts[types.AddressDeFi].m[cabi.MethodNameDeFiCancelLoan] = &MethodDeFiCancelLoan{cabi.MethodNameDeFiCancelLoan}
+	contracts[types.AddressDeFi].m[cabi.MethodNameDeFiSubscribe] = &MethodDeFiSubscribe{cabi.MethodNameDeFiSubscribe}
+	contracts[types.AddressDeFi].m[cabi.MethodNameDeFiInvest] = &MethodDeFiInvest{cabi.MethodNameDeFiInvest}
+	contracts[types.AddressDeFi].m[cabi.MethodNameDeFiCancelInvest] = &MethodDeFiCancelInvest{cabi.MethodNameDeFiCancelInvest}
+	contracts[types.AddressDeFi].m[cabi.MethodNameDeFiRefundInvest] = &MethodDeFiRefundInvest{cabi.MethodNameDeFiRefundInvest}
+
 	contracts[types.AddressDexFund].m[cabi.MethodNameDexFundDelegateInvest] = &MethodDelegateInvest{cabi.MethodNameDexFundDelegateInvest}
 	contracts[types.AddressDexFund].m[cabi.MethodNameDexFundCancelDelegateInvest] = &MethodCancelDelegateInvest{cabi.MethodNameDexFundCancelDelegateInvest}
 	return contracts

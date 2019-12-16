@@ -3,6 +3,7 @@ package defi
 import (
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/ledger"
+	"github.com/vitelabs/go-vite/vm/contracts/abi"
 	"github.com/vitelabs/go-vite/vm/contracts/common"
 	defiproto "github.com/vitelabs/go-vite/vm/contracts/defi/proto"
 	"github.com/vitelabs/go-vite/vm/contracts/dex"
@@ -126,7 +127,7 @@ func PrepareInvest(db vm_db.VmDb, address types.Address, param *ParamInvest, lea
 	}
 	totalAmount := new(big.Int).Add(leavedAmount, baseAvailable)
 	switch param.BizType {
-	case StakeForMining:
+	case InvestForMining:
 		if totalAmount.Cmp(dex.StakeForMiningMinAmount) < 0 {
 			err = InvestAmountNotValidErr
 			return
@@ -136,7 +137,7 @@ func PrepareInvest(db vm_db.VmDb, address types.Address, param *ParamInvest, lea
 		}
 		durationHeight = stakeHeight
 		loanInvested, baseInvested = getInvestedAmount(leavedAmount, dex.StakeForMiningMinAmount)
-	case StakeForSVIP:
+	case InvestForSVIP:
 		if totalAmount.Cmp(dex.StakeForSuperVIPAmount) < 0 {
 			err = InvestAmountNotValidErr
 			return
@@ -146,7 +147,7 @@ func PrepareInvest(db vm_db.VmDb, address types.Address, param *ParamInvest, lea
 		}
 		durationHeight = stakeSVIPHeight
 		loanInvested, baseInvested = getInvestedAmount(leavedAmount, dex.StakeForSuperVIPAmount)
-	case StakeForQuota:
+	case InvestForQuota:
 		if totalAmount.Cmp(stakeAmountMin) < 0 {
 			err = InvestAmountNotValidErr
 			return
@@ -161,12 +162,83 @@ func PrepareInvest(db vm_db.VmDb, address types.Address, param *ParamInvest, lea
 	return
 }
 
-func DoStakeForMining(db vm_db.VmDb) ([]*ledger.AccountBlock, error) {
-
+func DoDexInvest(invest *Invest, bizType uint8, amount *big.Int) ([]*ledger.AccountBlock, error) {
+	if data, err := abi.ABIDexFund.PackMethod(abi.MethodNameDexFundDelegateInvest, invest.Id, invest.Address, uint8(bizType), invest.Beneficial); err != nil {
+		return nil, err
+	} else {
+		return []*ledger.AccountBlock{
+			{
+				AccountAddress: types.AddressDeFi,
+				ToAddress:      types.AddressDexFund,
+				BlockType:      ledger.BlockTypeSendCall,
+				Amount:         amount,
+				TokenId:        ledger.ViteTokenId,
+				Data:           data,
+			},
+		}, nil
+	}
 }
 
-func DoStakeForSVIP(db vm_db.VmDb) ([]*ledger.AccountBlock, error) {
+func DoCancelDexInvest(investId uint64) (blocks []*ledger.AccountBlock, err error) {
+	if data, err := abi.ABIDexFund.PackMethod(abi.MethodNameDexFundCancelDelegateInvest, investId); err != nil {
+		return nil, err
+	} else {
+		return []*ledger.AccountBlock{
+			{
+				AccountAddress: types.AddressDeFi,
+				ToAddress:      types.AddressDexFund,
+				BlockType:      ledger.BlockTypeSendCall,
+				Amount:         big.NewInt(0),
+				TokenId:        ledger.ViteTokenId,
+				Data:           data,
+			},
+		}, nil
+	}
+}
 
+func DoQuotaInvest(db vm_db.VmDb, invest *Invest, amount *big.Int, stakeHeight uint64, block *ledger.AccountBlock) (blocks []*ledger.AccountBlock, err error) {
+	var (
+		data    []byte
+		stakeId types.Hash
+	)
+	if data, err = abi.ABIQuota.PackMethod(abi.MethodNameStakeWithCallback, types.AddressDeFi, stakeHeight); err != nil {
+		return nil, err
+	}
+	blocks = []*ledger.AccountBlock{
+		{
+			AccountAddress: types.AddressDeFi,
+			ToAddress:      types.AddressQuota,
+			BlockType:      ledger.BlockTypeSendCall,
+			Amount:         amount,
+			TokenId:        ledger.ViteTokenId,
+			Data:           data,
+		},
+	}
+	stakeId = util.ComputeSendBlockHash(block, blocks[0], 0)
+	SaveInvestQuotaInfo(db, stakeId, invest, amount)
+	SaveInvestQuotaIndex(db, invest.Id, stakeId)
+	return
+}
+
+func DoCancelQuotaInvest(investId types.Hash) (blocks []*ledger.AccountBlock, err error) {
+	if data, err := abi.ABIQuota.PackMethod(abi.MethodNameCancelStakeWithCallback, investId); err != nil {
+		return nil, err
+	} else {
+		return []*ledger.AccountBlock{
+			{
+				AccountAddress: types.AddressDeFi,
+				ToAddress:      types.AddressQuota,
+				BlockType:      ledger.BlockTypeSendCall,
+				Amount:         big.NewInt(0),
+				TokenId:        ledger.ViteTokenId,
+				Data:           data,
+			},
+		}, nil
+	}
+}
+
+func IsInvestExpired(gs util.GlobalStatus, invest *Invest) bool {
+	return gs.SnapshotBlock().Height >= invest.ExpireHeight
 }
 
 func getInvestedAmount(leavedLoanAmount *big.Int, needInvestAmount *big.Int) (loanInvested, baseInvested *big.Int) {

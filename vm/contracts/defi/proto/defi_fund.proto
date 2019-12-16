@@ -77,6 +77,14 @@ message Invest {
     int64 Updated = 12;
 }
 
+message InvestQuotaInfo {
+    bytes Address = 1;
+    bytes Amount = 2;
+    int32 Status = 3; // 0 pending, 1 confirmed, 2 cancelling
+    bytes Id = 4; //not set on serialize
+    uint64 InvestId = 5; // investId from sendBlock.Hash
+}
+
 message SBPRegistration {
     uint64 InvestId = 1;
     string Name = 2;

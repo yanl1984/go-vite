@@ -13,14 +13,15 @@ import (
 )
 
 var (
-	fundKeyPrefix         = []byte("fd:") //fund:address
-	loanKeyPrefix         = []byte("ln:") //loan:loanId 3+8
-	loanSerialNoKey       = []byte("lnSn:")
-	subscriptionKeyPrefix = []byte("sb:")    //subscription:loanId+address 3+8+20 = 31
-	investKeyPrefix       = []byte("ivt:")   // invest:serialNo 4+8 = 19
-	investSerialNoKey     = []byte("ivtSn:") //invest:
-
-	defiTimestampKey = []byte("tmst:")
+	fundKeyPrefix          = []byte("fd:") //fund:address
+	loanKeyPrefix          = []byte("ln:") //loan:loanId 3+8
+	loanSerialNoKey        = []byte("lnSn:")
+	subscriptionKeyPrefix  = []byte("sb:")    //subscription:loanId+address 3+8+20 = 31
+	investKeyPrefix        = []byte("ivt:")   // invest:serialNo 4+8 = 19
+	investSerialNoKey      = []byte("ivtSn:") //invest:
+	investQuotaInfoPrefix  = []byte("ivQ:")
+	investQuotaIndexPrefix = []byte("ivQtI:")
+	defiTimestampKey       = []byte("tmst:")
 )
 
 const (
@@ -34,15 +35,15 @@ const (
 
 //invest type
 const (
-	StakeForMining = iota + 1
-	StakeForSVIP
-	RegistSBP
-	StakeForQuota
+	InvestForMining = iota + 1
+	InvestForSVIP
+	InvestForSBP
+	InvestForQuota
 )
 
 //invest status
 const (
-	InvestPending = iota +1
+	InvestPending = iota + 1
 	InvestSuccess
 )
 
@@ -77,13 +78,14 @@ type ParamInvest struct {
 	Beneficiary types.Address
 }
 
-type ParamStakeForMining struct {
-	ActionType uint8 // 1: stake 2: cancel stake
-	Amount     *big.Int
+type ParamCancelInvest struct {
+	LoanId   uint64
+	InvestId uint64
 }
 
-type ParamStakeForVIP struct {
-	ActionType uint8 // 1: stake 2: cancel stake
+type ParamRefundInvest struct {
+	InvestHashes []byte
+	Reason uint8
 }
 
 type Fund struct {
@@ -154,6 +156,24 @@ func (iv *Invest) DeSerialize(data []byte) error {
 		return err
 	} else {
 		iv.Invest = invest
+		return nil
+	}
+}
+
+type InvestQuotaInfo struct {
+	defiproto.InvestQuotaInfo
+}
+
+func (ivq *InvestQuotaInfo) Serialize() (data []byte, err error) {
+	return proto.Marshal(&ivq.InvestQuotaInfo)
+}
+
+func (ivq *InvestQuotaInfo) DeSerialize(data []byte) error {
+	info := defiproto.InvestQuotaInfo{}
+	if err := proto.Unmarshal(data, &info); err != nil {
+		return err
+	} else {
+		ivq.InvestQuotaInfo = info
 		return nil
 	}
 }
@@ -283,7 +303,7 @@ func OnAccSubscribeSuccess(db vm_db.VmDb, address []byte, interest, amount *big.
 
 func OnAccInvest(db vm_db.VmDb, address types.Address, baseInvest, loanInvest *big.Int) (*defiproto.Account, error) {
 	return updateFund(db, address, ledger.ViteTokenId.Bytes(), func(acc *defiproto.Account) (*defiproto.Account, error) {
-		if baseInvest.Sign() != 0{
+		if baseInvest.Sign() != 0 {
 			baseAvailable := new(big.Int).SetBytes(acc.BaseAccount.Available)
 			if baseAvailable.Cmp(baseInvest) < 0 {
 				return nil, ExceedFundAvailableErr
@@ -404,6 +424,50 @@ func NewLoanSerialNo(db vm_db.VmDb) (serialNo uint64) {
 
 func NewInvestSerialNo(db vm_db.VmDb) (serialNo uint64) {
 	return newSerialNo(db, investSerialNoKey)
+}
+
+func GetInvestQuotaInfo(db vm_db.VmDb, hash []byte) (info *InvestQuotaInfo, ok bool) {
+	info = &InvestQuotaInfo{}
+	ok = common.DeserializeFromDb(db, GetInvestQuotaInfoKey(hash), info)
+	return
+}
+
+func SaveInvestQuotaInfo(db vm_db.VmDb, hash types.Hash, invest *Invest, amount *big.Int) {
+	info := &InvestQuotaInfo{}
+	info.Address = invest.Address
+	info.Amount = amount.Bytes()
+	info.InvestId = invest.Id
+	common.SerializeToDb(db, GetInvestQuotaInfoKey(hash.Bytes()), info)
+}
+
+func DeleteInvestQuotaInfo(db vm_db.VmDb, hash []byte) {
+	common.SetValueToDb(db, GetInvestQuotaInfoKey(hash), nil)
+}
+
+func GetInvestQuotaInfoKey(hash []byte) []byte {
+	return append(investQuotaInfoPrefix, hash[len(investQuotaInfoPrefix):]...)
+}
+
+func GetInvestQuotaIndex(db vm_db.VmDb, investId uint64) (hash *types.Hash, ok bool) {
+	if data := common.GetValueFromDb(db, GetInvestQuotaIndexKey(investId)); len(data) == types.HashSize {
+		hs, _ := types.BytesToHash(data)
+		return &hs, false
+	} else {
+		return nil, false
+	}
+	return
+}
+
+func SaveInvestQuotaIndex(db vm_db.VmDb, investId uint64, hash types.Hash) {
+	common.SetValueToDb(db, GetInvestQuotaIndexKey(investId), hash.Bytes())
+}
+
+func DeleteInvestQuotaIndex(db vm_db.VmDb, investId uint64) {
+	common.SetValueToDb(db, GetInvestQuotaIndexKey(investId), nil)
+}
+
+func GetInvestQuotaIndexKey(investId uint64) []byte {
+	return append(investQuotaIndexPrefix, common.Uint64ToBytes(investId)...)
 }
 
 func GetDeFiTimestamp(db vm_db.VmDb) int64 {
