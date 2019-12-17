@@ -234,6 +234,11 @@ const (
 	StakeConfirmed
 )
 
+const (
+	RefundFailedInvest = iota + 1
+	RefundCancelledInvest
+)
+
 //Invest status
 const (
 	Normal = iota + 1

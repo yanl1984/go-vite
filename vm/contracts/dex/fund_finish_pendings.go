@@ -6,7 +6,6 @@ import (
 	"github.com/vitelabs/go-vite/interfaces"
 	"github.com/vitelabs/go-vite/ledger"
 	"github.com/vitelabs/go-vite/vm/contracts/common"
-	"github.com/vitelabs/go-vite/vm/contracts/defi"
 	"github.com/vitelabs/go-vite/vm_db"
 	"math/big"
 )
@@ -126,7 +125,7 @@ func DoFinishCancelMiningStake(db vm_db.VmDb, periodId uint64) (blocks []*ledger
 		}
 	}
 	if len(investIdBytes) > 0 {
-		return DoRefundInvest(db, investIdBytes, defi.RefundCancelledInvest, investAmount)
+		return DoRefundInvest(db, investIdBytes, RefundCancelledInvest, investAmount)
 	}
 	return
 }

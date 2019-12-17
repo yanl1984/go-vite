@@ -220,19 +220,26 @@ func newEarthContracts() map[types.Address]*builtinContract {
 
 func newDefiContracts() map[types.Address]*builtinContract {
 	contracts := newEarthContracts()
+	contracts[types.AddressDeFi] = &builtinContract{
+		map[string]BuiltinContractMethod{
+			cabi.MethodNameDeFiDeposit:                     &MethodDeFiDeposit{cabi.MethodNameDeFiDeposit},
+			cabi.MethodNameDeFiWithdraw:                    &MethodDeFiWithdraw{cabi.MethodNameDeFiWithdraw},
+			cabi.MethodNameDeFiNewLoan:                     &MethodDeFiNewLoan{cabi.MethodNameDeFiNewLoan},
+			cabi.MethodNameDeFiCancelLoan:                  &MethodDeFiCancelLoan{cabi.MethodNameDeFiCancelLoan},
+			cabi.MethodNameDeFiSubscribe:                   &MethodDeFiSubscribe{cabi.MethodNameDeFiSubscribe},
+			cabi.MethodNameDeFiInvest:                      &MethodDeFiInvest{cabi.MethodNameDeFiInvest},
+			cabi.MethodNameDeFiCancelInvest:                &MethodDeFiCancelInvest{cabi.MethodNameDeFiCancelInvest},
+			cabi.MethodNameDeFiRefundInvest:                &MethodDeFiRefundInvest{cabi.MethodNameDeFiRefundInvest},
+			cabi.MethodNameDeFiDelegateStakeCallback:       &MethodDeFiDelegateStakeCallback{cabi.MethodNameDeFiDelegateStakeCallback},
+			cabi.MethodNameDeFiCancelDelegateStakeCallback: &MethodDeFiCancelDelegateStakeCallback{cabi.MethodNameDeFiCancelDelegateStakeCallback},
+			cabi.MethodNameDeFiRegisterSBP:                 &MethodDeFiRegisterSBP{cabi.MethodNameDeFiRegisterSBP},
+			cabi.MethodNameDeFiUpdateSBPRegistration:       &MethodDeFiUpdateSBPRegistration{cabi.MethodNameDeFiUpdateSBPRegistration},
+			defaultMethodName:                              &MethodDeFiDefault{defaultMethodName},
+		}, cabi.ABIDeFi,
+	}
 
-
-	contracts[types.AddressDeFi].m[cabi.MethodNameDeFiDeposit] = &MethodDeFiDeposit{cabi.MethodNameDeFiDeposit}
-	contracts[types.AddressDeFi].m[cabi.MethodNameDeFiWithdraw] = &MethodDeFiWithdraw{cabi.MethodNameDeFiWithdraw}
-	contracts[types.AddressDeFi].m[cabi.MethodNameDeFiNewLoan] = &MethodDeFiNewLoan{cabi.MethodNameDeFiNewLoan}
-	contracts[types.AddressDeFi].m[cabi.MethodNameDeFiCancelLoan] = &MethodDeFiCancelLoan{cabi.MethodNameDeFiCancelLoan}
-	contracts[types.AddressDeFi].m[cabi.MethodNameDeFiSubscribe] = &MethodDeFiSubscribe{cabi.MethodNameDeFiSubscribe}
-	contracts[types.AddressDeFi].m[cabi.MethodNameDeFiInvest] = &MethodDeFiInvest{cabi.MethodNameDeFiInvest}
-	contracts[types.AddressDeFi].m[cabi.MethodNameDeFiCancelInvest] = &MethodDeFiCancelInvest{cabi.MethodNameDeFiCancelInvest}
-	contracts[types.AddressDeFi].m[cabi.MethodNameDeFiRefundInvest] = &MethodDeFiRefundInvest{cabi.MethodNameDeFiRefundInvest}
-
-	contracts[types.AddressDexFund].m[cabi.MethodNameDexFundDelegateInvest] = &MethodDelegateInvest{cabi.MethodNameDexFundDelegateInvest}
-	contracts[types.AddressDexFund].m[cabi.MethodNameDexFundCancelDelegateInvest] = &MethodCancelDelegateInvest{cabi.MethodNameDexFundCancelDelegateInvest}
+	contracts[types.AddressDexFund].m[cabi.MethodNameDexFundDelegateInvest] = &MethodDexFundDelegateInvest{cabi.MethodNameDexFundDelegateInvest}
+	contracts[types.AddressDexFund].m[cabi.MethodNameDexFundCancelDelegateInvest] = &MethodDexFundCancelDelegateInvest{cabi.MethodNameDexFundCancelDelegateInvest}
 	return contracts
 }
 

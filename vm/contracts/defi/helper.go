@@ -113,7 +113,7 @@ func DoSubscribe(db vm_db.VmDb, gs util.GlobalStatus, loan *Loan, shares int32) 
 	}
 }
 
-func PrepareInvest(db vm_db.VmDb, address types.Address, param *ParamInvest, leavedAmount, stakeAmountMin *big.Int, availableHeight, stakeHeight, stakeSVIPHeight uint64) (loanInvested, baseInvested *big.Int, durationHeight uint64, err error) {
+func PrepareInvest(db vm_db.VmDb, address types.Address, bizType int32, loanAvailable, stakeAmount *big.Int, availableHeight, stakeHeightMin, stakeSVIPHeight uint64) (baseInvested, loanInvested *big.Int, durationHeight uint64, err error) {
 	var (
 		baseAvailable = new(big.Int)
 		fund          *Fund
@@ -125,40 +125,49 @@ func PrepareInvest(db vm_db.VmDb, address types.Address, param *ParamInvest, lea
 			baseAvailable.SetBytes(acc.BaseAccount.Available)
 		}
 	}
-	totalAmount := new(big.Int).Add(leavedAmount, baseAvailable)
-	switch param.BizType {
+	totalAvailable := new(big.Int).Add(loanAvailable, baseAvailable)
+	switch bizType {
 	case InvestForMining:
-		if totalAmount.Cmp(dex.StakeForMiningMinAmount) < 0 {
-			err = InvestAmountNotValidErr
+		if totalAvailable.Cmp(dex.StakeForMiningMinAmount) < 0 {
+			err = ExceedFundAvailableErr
 			return
-		} else if availableHeight < stakeHeight {
+		} else if availableHeight < stakeHeightMin {
 			err = AvailableHeightNotValidForInvestErr
 			return
 		}
-		durationHeight = stakeHeight
-		loanInvested, baseInvested = getInvestedAmount(leavedAmount, dex.StakeForMiningMinAmount)
+		durationHeight = stakeHeightMin
+		loanInvested, baseInvested = getInvestedAmount(loanAvailable, stakeAmount)
 	case InvestForSVIP:
-		if totalAmount.Cmp(dex.StakeForSuperVIPAmount) < 0 {
-			err = InvestAmountNotValidErr
+		if totalAvailable.Cmp(dex.StakeForSuperVIPAmount) < 0 {
+			err = ExceedFundAvailableErr
 			return
 		} else if availableHeight < stakeSVIPHeight {
 			err = AvailableHeightNotValidForInvestErr
 			return
 		}
 		durationHeight = stakeSVIPHeight
-		loanInvested, baseInvested = getInvestedAmount(leavedAmount, dex.StakeForSuperVIPAmount)
+		loanInvested, baseInvested = getInvestedAmount(loanAvailable, dex.StakeForSuperVIPAmount)
 	case InvestForQuota:
-		if totalAmount.Cmp(stakeAmountMin) < 0 {
-			err = InvestAmountNotValidErr
+		if totalAvailable.Cmp(dex.StakeForMiningMinAmount) < 0 {
+			err = ExceedFundAvailableErr
 			return
-		} else if availableHeight < stakeHeight {
+		} else if availableHeight < stakeHeightMin {
 			err = AvailableHeightNotValidForInvestErr
 			return
 		}
-		durationHeight = stakeHeight
-		loanInvested, baseInvested = getInvestedAmount(leavedAmount, dex.StakeForSuperVIPAmount)
+		durationHeight = stakeHeightMin
+		loanInvested, baseInvested = getInvestedAmount(loanAvailable, stakeAmount)
+	case InvestForSBP:
+		if totalAvailable.Cmp(stakeAmount) < 0 {
+			err = ExceedFundAvailableErr
+			return
+		} else if availableHeight < stakeHeightMin {
+			err = AvailableHeightNotValidForInvestErr
+			return
+		}
+		durationHeight = stakeHeightMin
+		loanInvested, baseInvested = getInvestedAmount(loanAvailable, stakeAmount)
 	}
-	_, err = OnAccInvest(db, address, loanInvested, baseInvested)
 	return
 }
 
@@ -215,13 +224,15 @@ func DoQuotaInvest(db vm_db.VmDb, invest *Invest, amount *big.Int, stakeHeight u
 		},
 	}
 	stakeId = util.ComputeSendBlockHash(block, blocks[0], 0)
+	invest.InvestHash = stakeId.Bytes()
+	SaveInvest(db, invest)
 	SaveInvestQuotaInfo(db, stakeId, invest, amount)
-	SaveInvestQuotaIndex(db, invest.Id, stakeId)
 	return
 }
 
-func DoCancelQuotaInvest(investId types.Hash) (blocks []*ledger.AccountBlock, err error) {
-	if data, err := abi.ABIQuota.PackMethod(abi.MethodNameCancelStakeWithCallback, investId); err != nil {
+func DoCancelQuotaInvest(investId []byte) (blocks []*ledger.AccountBlock, err error) {
+	stakeId, _ := types.BytesToHash(investId)
+	if data, err := abi.ABIQuota.PackMethod(abi.MethodNameCancelStakeWithCallback, stakeId); err != nil {
 		return nil, err
 	} else {
 		return []*ledger.AccountBlock{
@@ -235,6 +246,101 @@ func DoCancelQuotaInvest(investId types.Hash) (blocks []*ledger.AccountBlock, er
 			},
 		}, nil
 	}
+}
+
+func DoRegisterSBP(db vm_db.VmDb, invest *Invest, param *ParamRegisterSBP, amount *big.Int, block *ledger.AccountBlock) (blocks []*ledger.AccountBlock, err error) {
+	var (
+		data           []byte
+		registrationId types.Hash
+	)
+	if data, err = abi.ABIGovernance.PackMethod(abi.MethodNameRegisterV3, param.SbpName, param.BlockProducingAddress, param.RewardWithdrawAddress); err != nil {
+		return nil, err
+	} else {
+		return []*ledger.AccountBlock{
+			{
+				AccountAddress: types.AddressDeFi,
+				ToAddress:      types.AddressGovernance,
+				BlockType:      ledger.BlockTypeSendCall,
+				Amount:         amount,
+				TokenId:        ledger.ViteTokenId,
+				Data:           data,
+			},
+		}, nil
+	}
+	registrationId = util.ComputeSendBlockHash(block, blocks[0], 0)
+	SaveSBPRegistration(db, registrationId, param, invest)
+	return
+}
+
+func DoRevokeSBP(db vm_db.VmDb, traceHash []byte) (blocks []*ledger.AccountBlock, err error) {
+	if info, ok := GetSBPRegistration(db,  traceHash); !ok {
+		panic(SBPRegistrationNotExistsErr)
+	} else {
+		if data, err := abi.ABIGovernance.PackMethod(abi.MethodNameRevokeV3, info.Name); err != nil {
+			return nil, err
+		} else {
+			return []*ledger.AccountBlock{
+				{
+					AccountAddress: types.AddressDeFi,
+					ToAddress:      types.AddressQuota,
+					BlockType:      ledger.BlockTypeSendCall,
+					Amount:         big.NewInt(0),
+					TokenId:        ledger.ViteTokenId,
+					Data:           data,
+				},
+			}, nil
+		}
+	}
+}
+
+func DoUpdateSBP(db vm_db.VmDb, traceHash []byte, param *ParamUpdateSBPRegistration) (blocks []*ledger.AccountBlock, err error) {
+	if info, ok := GetSBPRegistration(db,  traceHash); !ok {
+		panic(SBPRegistrationNotExistsErr)
+	} else {
+		if common.IsOperationValidWithMask(param.OperationCode, UpdateBlockProducintAddress) {
+			if data, err := abi.ABIGovernance.PackMethod(abi.MethodNameUpdateBlockProducintAddressV3, info.Name, param.BlockProducingAddress); err != nil {
+				return nil, err
+			} else {
+				blocks = []*ledger.AccountBlock{
+					{
+						AccountAddress: types.AddressDeFi,
+						ToAddress:      types.AddressGovernance,
+						BlockType:      ledger.BlockTypeSendCall,
+						Amount:         big.NewInt(0),
+						TokenId:        ledger.ViteTokenId,
+						Data:           data,
+					},
+				}
+			}
+		}
+		if common.IsOperationValidWithMask(param.OperationCode, UpdateSBPRewardWithdrawAddress) {
+			if data, err := abi.ABIGovernance.PackMethod(abi.MethodNameUpdateSBPRewardWithdrawAddress, info.Name, param.RewardWithdrawAddress); err != nil {
+				return nil, err
+			} else {
+				blocks = append(blocks, &ledger.AccountBlock{
+						AccountAddress: types.AddressDeFi,
+						ToAddress:      types.AddressGovernance,
+						BlockType:      ledger.BlockTypeSendCall,
+						Amount:         big.NewInt(0),
+						TokenId:        ledger.ViteTokenId,
+						Data:           data,
+					})
+			}
+		}
+		return
+	}
+}
+
+func DoRefundInvest(db vm_db.VmDb, invest *Invest) {
+	OnAccRefundInvest(db, invest.Address, invest.LoanAmount, invest.BaseAmount)
+	OnLoanCancelInvest(db, invest.LoanId, invest.LoanAmount)
+	DeleteInvest(db, invest.Id)
+	DeleteInvestToLoanIndex(db, invest)
+}
+
+func DoRefundQuotaInvest(db vm_db.VmDb, invest *Invest, stakeId types.Hash) {
+	DoRefundInvest(db, invest)
+	DeleteInvestQuotaInfo(db, stakeId.Bytes())
 }
 
 func IsInvestExpired(gs util.GlobalStatus, invest *Invest) bool {
@@ -252,15 +358,15 @@ func getInvestedAmount(leavedLoanAmount *big.Int, needInvestAmount *big.Int) (lo
 	return
 }
 
-func NewInvest(db vm_db.VmDb, gs util.GlobalStatus, address types.Address, loan *Loan, param *ParamInvest, loanInvested, baseInvested *big.Int, durationHeight uint64) *Invest {
+func NewInvest(db vm_db.VmDb, gs util.GlobalStatus, address types.Address, loan *Loan, bizType int32, beneficiary types.Address, loanInvested, baseInvested *big.Int, durationHeight uint64) *Invest {
 	invest := &Invest{}
 	invest.Id = NewInvestSerialNo(db)
 	invest.LoanId = loan.Id
 	invest.Address = address.Bytes()
 	invest.LoanAmount = loanInvested.Bytes()
 	invest.BaseAmount = baseInvested.Bytes()
-	invest.BizType = param.BizType
-	invest.Beneficial = param.Beneficiary.Bytes()
+	invest.BizType = bizType
+	invest.Beneficial = beneficiary.Bytes()
 	invest.CreateHeight = gs.SnapshotBlock().Height
 	invest.ExpireHeight = invest.CreateHeight + durationHeight
 	invest.Status = InvestPending

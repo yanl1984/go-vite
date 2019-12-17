@@ -1816,27 +1816,27 @@ func (md MethodDexFundSwitchConfig) DoReceive(db vm_db.VmDb, block *ledger.Accou
 	return nil, nil
 }
 
-type MethodDelegateInvest struct {
+type MethodDexFundDelegateInvest struct {
 	MethodName string
 }
 
-func (md *MethodDelegateInvest) GetFee(block *ledger.AccountBlock) (*big.Int, error) {
+func (md *MethodDexFundDelegateInvest) GetFee(block *ledger.AccountBlock) (*big.Int, error) {
 	return big.NewInt(0), nil
 }
 
-func (md *MethodDelegateInvest) GetRefundData(sendBlock *ledger.AccountBlock, sbHeight uint64) ([]byte, bool) {
+func (md *MethodDexFundDelegateInvest) GetRefundData(sendBlock *ledger.AccountBlock, sbHeight uint64) ([]byte, bool) {
 	return []byte{}, false
 }
 
-func (md *MethodDelegateInvest) GetSendQuota(data []byte, gasTable *util.QuotaTable) (uint64, error) {
-	return gasTable.GetTokenInfoQuota, nil
+func (md *MethodDexFundDelegateInvest) GetSendQuota(data []byte, gasTable *util.QuotaTable) (uint64, error) {
+	return gasTable.DexFundDelegateInvestQuota, nil
 }
 
-func (md *MethodDelegateInvest) GetReceiveQuota(gasTable *util.QuotaTable) uint64 {
+func (md *MethodDexFundDelegateInvest) GetReceiveQuota(gasTable *util.QuotaTable) uint64 {
 	return 0
 }
 
-func (md *MethodDelegateInvest) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
+func (md *MethodDexFundDelegateInvest) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
 	param := new(dex.ParamDelegateInvest)
 	err := cabi.ABIDexFund.UnpackMethod(param, md.MethodName, block.Data)
 	if err != nil {
@@ -1859,7 +1859,7 @@ func (md *MethodDelegateInvest) DoSend(db vm_db.VmDb, block *ledger.AccountBlock
 	}
 }
 
-func (md *MethodDelegateInvest) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) (blocks []*ledger.AccountBlock, err error) {
+func (md *MethodDexFundDelegateInvest) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) (blocks []*ledger.AccountBlock, err error) {
 	var (
 		param   = new(dex.ParamDelegateInvest)
 		stakeId types.Hash
@@ -1881,27 +1881,27 @@ func (md *MethodDelegateInvest) DoReceive(db vm_db.VmDb, block *ledger.AccountBl
 	}
 }
 
-type MethodCancelDelegateInvest struct {
+type MethodDexFundCancelDelegateInvest struct {
 	MethodName string
 }
 
-func (md *MethodCancelDelegateInvest) GetFee(block *ledger.AccountBlock) (*big.Int, error) {
+func (md *MethodDexFundCancelDelegateInvest) GetFee(block *ledger.AccountBlock) (*big.Int, error) {
 	return big.NewInt(0), nil
 }
 
-func (md *MethodCancelDelegateInvest) GetRefundData(sendBlock *ledger.AccountBlock, sbHeight uint64) ([]byte, bool) {
+func (md *MethodDexFundCancelDelegateInvest) GetRefundData(sendBlock *ledger.AccountBlock, sbHeight uint64) ([]byte, bool) {
 	return []byte{}, false
 }
 
-func (md *MethodCancelDelegateInvest) GetSendQuota(data []byte, gasTable *util.QuotaTable) (uint64, error) {
-	return gasTable.GetTokenInfoQuota, nil
+func (md *MethodDexFundCancelDelegateInvest) GetSendQuota(data []byte, gasTable *util.QuotaTable) (uint64, error) {
+	return gasTable.DexFundCancelDelegateInvestQuota, nil
 }
 
-func (md *MethodCancelDelegateInvest) GetReceiveQuota(gasTable *util.QuotaTable) uint64 {
+func (md *MethodDexFundCancelDelegateInvest) GetReceiveQuota(gasTable *util.QuotaTable) uint64 {
 	return 0
 }
 
-func (md *MethodCancelDelegateInvest) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
+func (md *MethodDexFundCancelDelegateInvest) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
 	if block.AccountAddress != types.AddressDeFi {
 		return dex.InvalidSourceAddressErr
 	}
@@ -1909,12 +1909,12 @@ func (md *MethodCancelDelegateInvest) DoSend(db vm_db.VmDb, block *ledger.Accoun
 	if err := cabi.ABIDexFund.UnpackMethod(investIds, md.MethodName, block.Data); err != nil {
 		return err
 	} else if len(*investIds) == 0 {
-		return defi.InvalidInputParamErr
+		return dex.InvalidInputParamErr
 	}
 	return nil
 }
 
-func (md *MethodCancelDelegateInvest) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) (blocks []*ledger.AccountBlock, err error) {
+func (md *MethodDexFundCancelDelegateInvest) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) (blocks []*ledger.AccountBlock, err error) {
 	var (
 		investIds      = new([]byte)
 		stakeInfo *dex.DelegateStakeInfo
@@ -1923,7 +1923,7 @@ func (md *MethodCancelDelegateInvest) DoReceive(db vm_db.VmDb, block *ledger.Acc
 	for i:= 0; i < len(*investIds)/8; i++ {
 		iv := (*investIds)[i*8 : (i+1)*8]
 		if investInfo, ok := dex.GetInvestStakeInfo(db, common.BytesToUint64(iv)); !ok || investInfo.Status != dex.Normal {
-			return handleDexReceiveErr(fundLogger, md.MethodName, defi.InvestNotExistsErr, sendBlock)
+			return handleDexReceiveErr(fundLogger, md.MethodName, dex.InvestInfoNotExistsErr, sendBlock)
 		} else if stakeInfo, ok = dex.GetDelegateStakeInfo(db, investInfo.StakeId); !ok || stakeInfo.Status != dex.StakeConfirmed {
 			return handleDexReceiveErr(fundLogger, md.MethodName, dex.StakingInfoByIdNotExistsErr, sendBlock)
 		}

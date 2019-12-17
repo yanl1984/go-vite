@@ -6,7 +6,7 @@ package proto;
 message BaseAccount {
     bytes Available = 1;
     bytes Subscribed = 2;
-    bytes Invested = 3;
+    bytes Invested = 3; //
     bytes Locked = 4; //locked for loan interest to pay
 }
 
@@ -73,16 +73,15 @@ message Invest {
     uint64 ExpireHeight = 9;
     // 1 pending, 2 success, 3 failed, 4 expired, 5 fail refunded, 6 expire refunded
     int32 Status = 10;
-    int64 Created = 11;
-    int64 Updated = 12;
+    bytes InvestHash = 11;
+    int64 Created = 12;
+    int64 Updated = 13;
 }
 
 message InvestQuotaInfo {
     bytes Address = 1;
     bytes Amount = 2;
-    int32 Status = 3; // 0 pending, 1 confirmed, 2 cancelling
-    bytes Id = 4; //not set on serialize
-    uint64 InvestId = 5; // investId from sendBlock.Hash
+    uint64 InvestId = 3; // investId from sendBlock.Hash
 }
 
 message SBPRegistration {

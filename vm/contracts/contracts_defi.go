@@ -5,7 +5,7 @@ import (
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/ledger"
 	"github.com/vitelabs/go-vite/log15"
-	cabi "github.com/vitelabs/go-vite/vm/contracts/abi"
+	"github.com/vitelabs/go-vite/vm/contracts/abi"
 	"github.com/vitelabs/go-vite/vm/contracts/common"
 	"github.com/vitelabs/go-vite/vm/contracts/defi"
 	"github.com/vitelabs/go-vite/vm/contracts/dex"
@@ -71,7 +71,7 @@ func (md *MethodDeFiWithdraw) GetReceiveQuota(gasTable *util.QuotaTable) uint64 
 func (md *MethodDeFiWithdraw) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
 	var err error
 	param := new(defi.ParamWithdraw)
-	if err = cabi.ABIDeFi.UnpackMethod(param, md.MethodName, block.Data); err != nil {
+	if err = abi.ABIDeFi.UnpackMethod(param, md.MethodName, block.Data); err != nil {
 		return err
 	}
 	if param.Amount.Sign() <= 0 || block.TokenId != ledger.ViteTokenId {
@@ -85,7 +85,7 @@ func (md *MethodDeFiWithdraw) DoReceive(db vm_db.VmDb, block *ledger.AccountBloc
 		param = new(defi.ParamWithdraw)
 		err   error
 	)
-	cabi.ABIDeFi.UnpackMethod(param, md.MethodName, sendBlock.Data)
+	abi.ABIDeFi.UnpackMethod(param, md.MethodName, sendBlock.Data)
 	if _, err = defi.OnAccWithdraw(db, sendBlock.AccountAddress, param.Token.Bytes(), param.Amount); err != nil {
 		return nil, err
 	} else {
@@ -125,7 +125,7 @@ func (md *MethodDeFiNewLoan) GetReceiveQuota(gasTable *util.QuotaTable) uint64 {
 func (md *MethodDeFiNewLoan) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
 	var err error
 	param := new(defi.ParamNewLoan)
-	if err = cabi.ABIDeFi.UnpackMethod(param, md.MethodName, block.Data); err != nil {
+	if err = abi.ABIDeFi.UnpackMethod(param, md.MethodName, block.Data); err != nil {
 		return err
 	}
 	return defi.CheckLoanParam(param)
@@ -136,7 +136,7 @@ func (md *MethodDeFiNewLoan) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock
 		param = new(defi.ParamNewLoan)
 		err   error
 	)
-	cabi.ABIDeFi.UnpackMethod(param, md.MethodName, sendBlock.Data)
+	abi.ABIDeFi.UnpackMethod(param, md.MethodName, sendBlock.Data)
 	interest := defi.CalculateInterest(param.Shares, param.ShareAmount, param.DayRate, param.ExpireDays)
 	if _, err = defi.OnAccNewLoan(db, sendBlock.AccountAddress, interest); err != nil {
 		return handleDeFiReceiveErr(deFiLogger, md.MethodName, err, sendBlock)
@@ -169,12 +169,12 @@ func (md *MethodDeFiCancelLoan) GetReceiveQuota(gasTable *util.QuotaTable) uint6
 }
 
 func (md *MethodDeFiCancelLoan) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
-	return cabi.ABIDeFi.UnpackMethod(new(uint64), md.MethodName, block.Data)
+	return abi.ABIDeFi.UnpackMethod(new(uint64), md.MethodName, block.Data)
 }
 
 func (md *MethodDeFiCancelLoan) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) ([]*ledger.AccountBlock, error) {
 	loanId := new(uint64)
-	cabi.ABIDeFi.UnpackMethod(loanId, md.MethodName, sendBlock.Data)
+	abi.ABIDeFi.UnpackMethod(loanId, md.MethodName, sendBlock.Data)
 	if loan, ok := defi.GetLoanById(db, *loanId); !ok {
 		return handleDeFiReceiveErr(deFiLogger, md.MethodName, defi.LoanNotExistsErr, sendBlock)
 	} else {
@@ -216,7 +216,7 @@ func (md *MethodDeFiSubscribe) GetReceiveQuota(gasTable *util.QuotaTable) uint64
 func (md *MethodDeFiSubscribe) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
 	var err error
 	param := new(defi.ParamSubscribe)
-	if err = cabi.ABIDeFi.UnpackMethod(param, md.MethodName, block.Data); err != nil {
+	if err = abi.ABIDeFi.UnpackMethod(param, md.MethodName, block.Data); err != nil {
 		return err
 	} else {
 		if param.LoanId == 0 || param.Shares <= 0 {
@@ -234,7 +234,7 @@ func (md *MethodDeFiSubscribe) DoReceive(db vm_db.VmDb, block *ledger.AccountBlo
 		ok    bool
 		err   error
 	)
-	cabi.ABIDeFi.UnpackMethod(param, md.MethodName, sendBlock.Data)
+	abi.ABIDeFi.UnpackMethod(param, md.MethodName, sendBlock.Data)
 	if loan, ok = defi.GetLoanById(db, param.LoanId); !ok || loan.Status != defi.Open {
 		return handleDeFiReceiveErr(deFiLogger, md.MethodName, defi.LoanNotExistsErr, sendBlock)
 	} else if defi.IsOpenLoanSubscribeFail(db, loan) {
@@ -283,7 +283,7 @@ func (md *MethodDeFiInvest) GetReceiveQuota(gasTable *util.QuotaTable) uint64 {
 func (md *MethodDeFiInvest) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
 	var err error
 	param := new(defi.ParamInvest)
-	if err = cabi.ABIDeFi.UnpackMethod(param, md.MethodName, block.Data); err != nil {
+	if err = abi.ABIDeFi.UnpackMethod(param, md.MethodName, block.Data); err != nil {
 		return err
 	} else {
 		if param.LoanId == 0 || param.BizType < defi.InvestForMining || param.BizType > defi.InvestForQuota || param.BizType == defi.InvestForSBP {
@@ -301,16 +301,23 @@ func (md *MethodDeFiInvest) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock,
 		loan                       *defi.Loan
 		ok                         bool
 	)
-	cabi.ABIDeFi.UnpackMethod(param, md.MethodName, sendBlock.Data)
+	abi.ABIDeFi.UnpackMethod(param, md.MethodName, sendBlock.Data)
 	if loan, ok = defi.GetLoanById(db, param.LoanId); !ok || loan.Status != defi.Success {
 		return handleDeFiReceiveErr(deFiLogger, md.MethodName, defi.LoanNotExistsErr, sendBlock)
+	} else if !bytes.Equal(loan.Address, sendBlock.AccountAddress.Bytes()) {
+		return handleDeFiReceiveErr(deFiLogger, md.MethodName, defi.OnlyOwnerAllowErr, sendBlock)
 	}
 	leavedAmount, availableHeight := defi.GetLoanAvailable(vm.GlobalStatus(), loan)
-	if loanInvested, baseInvested, durationHeight, err = defi.PrepareInvest(db, sendBlock.AccountAddress, param, leavedAmount, stakeAmountMin, availableHeight, nodeConfig.params.StakeHeight, nodeConfig.params.DexSuperVipStakeHeight); err != nil {
+	if loanInvested, baseInvested, durationHeight, err = defi.PrepareInvest(db, sendBlock.AccountAddress, param.BizType, leavedAmount, param.Amount, availableHeight, nodeConfig.params.StakeHeight, nodeConfig.params.DexSuperVipStakeHeight); err != nil {
 		return handleDeFiReceiveErr(deFiLogger, md.MethodName, err, sendBlock)
 	}
-	invest := defi.NewInvest(db, vm.GlobalStatus(), sendBlock.AccountAddress, loan, param, loanInvested, baseInvested, durationHeight)
+	if _, err = defi.OnAccInvest(db, sendBlock.AccountAddress, loanInvested, baseInvested); err != nil {
+		return handleDeFiReceiveErr(deFiLogger, md.MethodName, err, sendBlock)
+	}
+	defi.OnLoanInvest(db, loan, loanInvested)
+	invest := defi.NewInvest(db, vm.GlobalStatus(), sendBlock.AccountAddress, loan, param.BizType, param.Beneficiary, loanInvested, baseInvested, durationHeight)
 	defi.SaveInvest(db, invest)
+	defi.SaveInvestToLoanIndex(db, invest)
 	switch param.BizType {
 	case defi.InvestForMining:
 		blocks, err = defi.DoDexInvest(invest, dex.StakeForMining, sendBlock.Amount)
@@ -342,14 +349,14 @@ func (md *MethodDeFiCancelInvest) GetSendQuota(data []byte, gasTable *util.Quota
 }
 
 func (md *MethodDeFiCancelInvest) GetReceiveQuota(gasTable *util.QuotaTable) uint64 {
-	return gasTable.DeFiInvestQuota
+	return gasTable.DeFiCancelInvestQuota
 }
 
 func (md *MethodDeFiCancelInvest) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
-	var param = new(defi.ParamCancelInvest)
-	if err := cabi.ABIDeFi.UnpackMethod(param, md.MethodName, block.Data); err != nil {
+	var investId = new(uint64)
+	if err := abi.ABIDeFi.UnpackMethod(investId, md.MethodName, block.Data); err != nil {
 		return err
-	} else if param.LoanId == 0 || param.InvestId == 0 {
+	} else if *investId == 0 {
 		return defi.InvalidInputParamErr
 	}
 	return nil
@@ -357,29 +364,26 @@ func (md *MethodDeFiCancelInvest) DoSend(db vm_db.VmDb, block *ledger.AccountBlo
 
 func (md *MethodDeFiCancelInvest) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) (blocks []*ledger.AccountBlock, err error) {
 	var (
-		param   = new(defi.ParamCancelInvest)
-		invest  *defi.Invest
-		stakeId *types.Hash
-		ok      bool
+		investId  = new(uint64)
+		invest    *defi.Invest
+		ok        bool
 	)
-	cabi.ABIDeFi.UnpackMethod(param, md.MethodName, sendBlock.Data)
-	if invest, ok = defi.GetInvest(db, param.LoanId, param.InvestId); !ok || invest.Status != defi.InvestSuccess {
+	abi.ABIDeFi.UnpackMethod(investId, md.MethodName, sendBlock.Data)
+	if invest, ok = defi.GetInvest(db, *investId); !ok || invest.Status != defi.InvestSuccess {
 		return handleDeFiReceiveErr(deFiLogger, md.MethodName, defi.InvestNotExistsErr, sendBlock)
-	} else if !defi.IsInvestExpired(vm.GlobalStatus(), invest) {
-		return handleDeFiReceiveErr(deFiLogger, md.MethodName, defi.InvestNotExpiredErr, sendBlock)
 	} else if !bytes.Equal(sendBlock.AccountAddress.Bytes(), invest.Address) {
 		return handleDeFiReceiveErr(deFiLogger, md.MethodName, defi.OnlyOwnerAllowErr, sendBlock)
+	} else if !defi.IsInvestExpired(vm.GlobalStatus(), invest) {
+		return handleDeFiReceiveErr(deFiLogger, md.MethodName, defi.InvestNotExpiredErr, sendBlock)
 	}
+	defi.CancellingInvest(db, invest)
 	switch invest.BizType {
 	case defi.InvestForMining, defi.InvestForSVIP:
 		blocks, err = defi.DoCancelDexInvest(invest.Id)
 	case defi.InvestForQuota:
-		if stakeId, ok = defi.GetInvestQuotaIndex(db, invest.Id); ok {
-			panic(defi.InvalidQuotaInvestErr)
-		} else {
-			blocks, err = defi.DoCancelQuotaInvest(*stakeId)
-		}
+		blocks, err = defi.DoCancelQuotaInvest(invest.InvestHash)
 	case defi.InvestForSBP:
+		blocks, err = defi.DoRevokeSBP(db, invest.InvestHash)
 	}
 	if err != nil {
 		return handleDeFiReceiveErr(deFiLogger, md.MethodName, err, sendBlock)
@@ -387,6 +391,7 @@ func (md *MethodDeFiCancelInvest) DoReceive(db vm_db.VmDb, block *ledger.Account
 	return
 }
 
+//dex invest InvestForMining, InvestForSVIP
 type MethodDeFiRefundInvest struct {
 	MethodName string
 }
@@ -404,12 +409,15 @@ func (md *MethodDeFiRefundInvest) GetSendQuota(data []byte, gasTable *util.Quota
 }
 
 func (md *MethodDeFiRefundInvest) GetReceiveQuota(gasTable *util.QuotaTable) uint64 {
-	return gasTable.DeFiInvestQuota
+	return gasTable.DeFiRefundInvestQuota
 }
 
 func (md *MethodDeFiRefundInvest) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
+	if block.AccountAddress != types.AddressDexFund {
+		return defi.InvalidSourceAddressErr
+	}
 	var param = new(defi.ParamRefundInvest)
-	if err := cabi.ABIDeFi.UnpackMethod(param, md.MethodName, block.Data); err != nil {
+	if err := abi.ABIDeFi.UnpackMethod(param, md.MethodName, block.Data); err != nil {
 		return err
 	} else if len(param.InvestHashes) == 0 {
 		return defi.InvalidInputParamErr
@@ -417,17 +425,301 @@ func (md *MethodDeFiRefundInvest) DoSend(db vm_db.VmDb, block *ledger.AccountBlo
 	return nil
 }
 
+//handle InvestForMining, InvestForSVIP
 func (md *MethodDeFiRefundInvest) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) (blocks []*ledger.AccountBlock, err error) {
 	var (
-		param   = new(defi.ParamRefundInvest)
+		param = new(defi.ParamRefundInvest)
 	)
-	cabi.ABIDeFi.UnpackMethod(param, md.MethodName, sendBlock.Data)
+	abi.ABIDeFi.UnpackMethod(param, md.MethodName, sendBlock.Data)
 	for i := 0; i < len(param.InvestHashes)/8; i++ {
-		iv := (param.InvestHashes)[i*8: (i+1)*8]
+		iv := (param.InvestHashes)[i*8 : (i+1)*8]
 		investId := common.BytesToUint64(iv)
-		defi.GetInvest(db, investId, investId)
+		if invest, ok := defi.GetInvest(db, investId); !ok {
+			panic(defi.InvestNotExistsErr)
+		} else {
+			defi.DoRefundInvest(db, invest)
+		}
 	}
 	return
+}
+
+type MethodDeFiDelegateStakeCallback struct {
+	MethodName string
+}
+
+func (md *MethodDeFiDelegateStakeCallback) GetFee(block *ledger.AccountBlock) (*big.Int, error) {
+	return big.NewInt(0), nil
+}
+
+func (md *MethodDeFiDelegateStakeCallback) GetRefundData(sendBlock *ledger.AccountBlock, sbHeight uint64) ([]byte, bool) {
+	return []byte{}, false
+}
+
+func (md *MethodDeFiDelegateStakeCallback) GetSendQuota(data []byte, gasTable *util.QuotaTable) (uint64, error) {
+	return util.RequestQuotaCost(data, gasTable)
+}
+
+func (md *MethodDeFiDelegateStakeCallback) GetReceiveQuota(gasTable *util.QuotaTable) uint64 {
+	return gasTable.DeFiDelegateStakeCallbackQuota
+}
+
+func (md *MethodDeFiDelegateStakeCallback) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
+	if block.AccountAddress != types.AddressQuota {
+		return defi.InvalidSourceAddressErr
+	}
+	return abi.ABIDeFi.UnpackMethod(new(dex.ParamDelegateStakeCallbackV2), md.MethodName, block.Data)
+}
+
+func (md MethodDeFiDelegateStakeCallback) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) (blocks []*ledger.AccountBlock, err error) {
+	var param = new(dex.ParamDelegateStakeCallbackV2)
+	abi.ABIDeFi.UnpackMethod(param, md.MethodName, sendBlock.Data)
+	var (
+		info   *defi.InvestQuotaInfo
+		invest *defi.Invest
+		ok     bool
+	)
+	if info, ok = defi.GetInvestQuotaInfo(db, param.Id.Bytes()); !ok {
+		return handleDeFiReceiveErr(deFiLogger, md.MethodName, defi.InvalidQuotaInvestErr, sendBlock)
+	} else if invest, ok = defi.GetInvest(db, info.InvestId); !ok {
+		return handleDeFiReceiveErr(deFiLogger, md.MethodName, defi.InvestNotExistsErr, sendBlock)
+	}
+	if param.Success {
+		defi.ConfirmInvest(db, invest)
+	} else {
+		defi.DoRefundQuotaInvest(db, invest, param.Id)
+	}
+	return
+}
+
+type MethodDeFiCancelDelegateStakeCallback struct {
+	MethodName string
+}
+
+func (md *MethodDeFiCancelDelegateStakeCallback) GetFee(block *ledger.AccountBlock) (*big.Int, error) {
+	return big.NewInt(0), nil
+}
+
+func (md *MethodDeFiCancelDelegateStakeCallback) GetRefundData(sendBlock *ledger.AccountBlock, sbHeight uint64) ([]byte, bool) {
+	return []byte{}, false
+}
+
+func (md *MethodDeFiCancelDelegateStakeCallback) GetSendQuota(data []byte, gasTable *util.QuotaTable) (uint64, error) {
+	return util.RequestQuotaCost(data, gasTable)
+}
+
+func (md *MethodDeFiCancelDelegateStakeCallback) GetReceiveQuota(gasTable *util.QuotaTable) uint64 {
+	return gasTable.DeFiCancelDelegateStakeCallbackQuota
+}
+
+func (md *MethodDeFiCancelDelegateStakeCallback) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
+	if block.AccountAddress != types.AddressQuota {
+		return defi.InvalidSourceAddressErr
+	}
+	return abi.ABIDeFi.UnpackMethod(new(dex.ParamDelegateStakeCallbackV2), md.MethodName, block.Data)
+}
+
+func (md MethodDeFiCancelDelegateStakeCallback) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) (blocks []*ledger.AccountBlock, err error) {
+	var param = new(dex.ParamDelegateStakeCallbackV2)
+	abi.ABIDeFi.UnpackMethod(param, md.MethodName, sendBlock.Data)
+	var (
+		info   *defi.InvestQuotaInfo
+		invest *defi.Invest
+		ok     bool
+	)
+	if info, ok = defi.GetInvestQuotaInfo(db, param.Id.Bytes()); !ok {
+		return handleDeFiReceiveErr(deFiLogger, md.MethodName, defi.InvalidQuotaInvestErr, sendBlock)
+	} else if invest, ok = defi.GetInvest(db, info.InvestId); !ok {
+		return handleDeFiReceiveErr(deFiLogger, md.MethodName, defi.InvestNotExistsErr, sendBlock)
+	}
+	if param.Success {
+		defi.DoRefundQuotaInvest(db, invest, param.Id)
+	}
+	return nil, nil
+}
+
+type MethodDeFiRegisterSBP struct {
+	MethodName string
+}
+
+func (md *MethodDeFiRegisterSBP) GetFee(block *ledger.AccountBlock) (*big.Int, error) {
+	return big.NewInt(0), nil
+}
+
+func (md *MethodDeFiRegisterSBP) GetRefundData(sendBlock *ledger.AccountBlock, sbHeight uint64) ([]byte, bool) {
+	return []byte{}, false
+}
+
+func (md *MethodDeFiRegisterSBP) GetSendQuota(data []byte, gasTable *util.QuotaTable) (uint64, error) {
+	return util.RequestQuotaCost(data, gasTable)
+}
+
+func (md *MethodDeFiRegisterSBP) GetReceiveQuota(gasTable *util.QuotaTable) uint64 {
+	return gasTable.DeFiRegisterSBPQuota
+}
+
+func (md *MethodDeFiRegisterSBP) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
+	return abi.ABIDeFi.UnpackMethod(new(defi.ParamRegisterSBP), md.MethodName, block.Data)
+}
+
+func (md MethodDeFiRegisterSBP) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) (blocks []*ledger.AccountBlock, err error) {
+	var param = new(defi.ParamRegisterSBP)
+	abi.ABIDeFi.UnpackMethod(param, md.MethodName, sendBlock.Data)
+	var (
+		loan                       *defi.Loan
+		invest                     *defi.Invest
+		loanInvested, baseInvested *big.Int
+		durationHeight             uint64
+		ok                         bool
+	)
+	if loan, ok = defi.GetLoanById(db, param.LoanId); !ok || loan.Status != defi.Success {
+		return handleDeFiReceiveErr(deFiLogger, md.MethodName, defi.LoanNotExistsErr, sendBlock)
+	} else if !bytes.Equal(loan.Address, sendBlock.AccountAddress.Bytes()) {
+		return handleDeFiReceiveErr(deFiLogger, md.MethodName, defi.OnlyOwnerAllowErr, sendBlock)
+	}
+	groupInfo, err := abi.GetConsensusGroup(db, types.SNAPSHOT_GID)
+	stakeParam, _ := abi.GetRegisterStakeParamOfConsensusGroup(groupInfo.RegisterConditionParam)
+	available, availableHeight := defi.GetLoanAvailable(vm.GlobalStatus(), loan)
+	if loanInvested, baseInvested, durationHeight, err = defi.PrepareInvest(db, sendBlock.AccountAddress, defi.InvestForSBP, available, SbpStakeAmountMainnet, availableHeight, stakeParam.StakeHeight, nodeConfig.params.DexSuperVipStakeHeight); err != nil {
+		return handleDeFiReceiveErr(deFiLogger, md.MethodName, err, sendBlock)
+	}
+	if _, err = defi.OnAccInvest(db, sendBlock.AccountAddress, loanInvested, baseInvested); err != nil {
+		return handleDeFiReceiveErr(deFiLogger, md.MethodName, err, sendBlock)
+	}
+	defi.OnLoanInvest(db, loan, loanInvested)
+	invest = defi.NewInvest(db, vm.GlobalStatus(), sendBlock.AccountAddress, loan, defi.InvestForSBP, types.ZERO_ADDRESS, loanInvested, baseInvested, durationHeight)
+	defi.SaveInvest(db, invest)
+	defi.SaveInvestToLoanIndex(db, invest)
+	return defi.DoRegisterSBP(db, invest, param, SbpStakeAmountMainnet, block)
+}
+
+type MethodDeFiUpdateSBPRegistration struct {
+	MethodName string
+}
+
+func (md *MethodDeFiUpdateSBPRegistration) GetFee(block *ledger.AccountBlock) (*big.Int, error) {
+	return big.NewInt(0), nil
+}
+
+func (md *MethodDeFiUpdateSBPRegistration) GetRefundData(sendBlock *ledger.AccountBlock, sbHeight uint64) ([]byte, bool) {
+	return []byte{}, false
+}
+
+func (md *MethodDeFiUpdateSBPRegistration) GetSendQuota(data []byte, gasTable *util.QuotaTable) (uint64, error) {
+	return util.RequestQuotaCost(data, gasTable)
+}
+
+func (md *MethodDeFiUpdateSBPRegistration) GetReceiveQuota(gasTable *util.QuotaTable) uint64 {
+	return gasTable.DeFiUpdateSBPRegistrationQuota
+}
+
+func (md *MethodDeFiUpdateSBPRegistration) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
+	return abi.ABIDeFi.UnpackMethod(new(defi.ParamUpdateSBPRegistration), md.MethodName, block.Data)
+}
+
+func (md MethodDeFiUpdateSBPRegistration) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) (blocks []*ledger.AccountBlock, err error) {
+	var param = new(defi.ParamUpdateSBPRegistration)
+	abi.ABIDeFi.UnpackMethod(param, md.MethodName, sendBlock.Data)
+	var (
+		invest *defi.Invest
+		ok     bool
+	)
+	if invest, ok = defi.GetInvest(db, param.InvestId); !ok || invest.Status != defi.InvestSuccess {
+		return handleDeFiReceiveErr(deFiLogger, md.MethodName, defi.InvestNotExistsErr, sendBlock)
+	} else if !bytes.Equal(sendBlock.AccountAddress.Bytes(), invest.Address) {
+		return handleDeFiReceiveErr(deFiLogger, md.MethodName, defi.OnlyOwnerAllowErr, sendBlock)
+	}
+	defi.DoUpdateSBP(db, invest.InvestHash, param)
+	return nil, nil
+}
+
+type MethodDeFiDefault struct {
+	MethodName string
+}
+
+func (md *MethodDeFiDefault) GetFee(block *ledger.AccountBlock) (*big.Int, error) {
+	return big.NewInt(0), nil
+}
+
+func (md *MethodDeFiDefault) GetRefundData(sendBlock *ledger.AccountBlock, sbHeight uint64) ([]byte, bool) {
+	return []byte{}, false
+}
+
+func (md *MethodDeFiDefault) GetSendQuota(data []byte, gasTable *util.QuotaTable) (uint64, error) {
+	return util.RequestQuotaCost(data, gasTable)
+}
+
+func (md *MethodDeFiDefault) GetReceiveQuota(gasTable *util.QuotaTable) uint64 {
+	return gasTable.DeFiDefaultQuota
+}
+
+func (md *MethodDeFiDefault) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
+	if block.AccountAddress != types.AddressDexFund &&  block.AccountAddress != types.AddressQuota &&block.AccountAddress != types.AddressGovernance {
+		return defi.InvalidSourceAddressErr
+	}
+	return nil
+}
+
+func (md MethodDeFiDefault) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) (blocks []*ledger.AccountBlock, err error) {
+	var (
+		info   *defi.InvestQuotaInfo
+		invest *defi.Invest
+		ok     bool
+	)
+	originBlock := util.GetOriginalSendHash(db, sendBlock.Hash)
+	switch block.AccountAddress {
+	case types.AddressDexFund:
+		originBlock
+	case types.AddressQuota:
+	case types.AddressGovernance:
+
+	}
+	return nil, nil
+}
+
+type MethodDeFiTriggerJob struct {
+	MethodName string
+}
+
+func (md *MethodDeFiTriggerJob) GetFee(block *ledger.AccountBlock) (*big.Int, error) {
+	return big.NewInt(0), nil
+}
+
+func (md *MethodDeFiTriggerJob) GetRefundData(sendBlock *ledger.AccountBlock, sbHeight uint64) ([]byte, bool) {
+	return []byte{}, false
+}
+
+func (md *MethodDeFiTriggerJob) GetSendQuota(data []byte, gasTable *util.QuotaTable) (uint64, error) {
+	return util.RequestQuotaCost(data, gasTable)
+}
+
+func (md *MethodDeFiTriggerJob) GetReceiveQuota(gasTable *util.QuotaTable) uint64 {
+	return gasTable.DeFiDefaultQuota
+}
+
+func (md *MethodDeFiTriggerJob) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
+	if block.AccountAddress != types.AddressQuota {
+		return defi.InvalidSourceAddressErr
+	}
+	return abi.ABIDeFi.UnpackMethod(new(dex.ParamDelegateStakeCallbackV2), md.MethodName, block.Data)
+}
+
+func (md MethodDeFiTriggerJob) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) (blocks []*ledger.AccountBlock, err error) {
+	var param = new(dex.ParamDelegateStakeCallbackV2)
+	abi.ABIDeFi.UnpackMethod(param, md.MethodName, sendBlock.Data)
+	var (
+		info   *defi.InvestQuotaInfo
+		invest *defi.Invest
+		ok     bool
+	)
+	if info, ok = defi.GetInvestQuotaInfo(db, param.Id.Bytes()); !ok {
+		return handleDeFiReceiveErr(deFiLogger, md.MethodName, defi.InvalidQuotaInvestErr, sendBlock)
+	} else if invest, ok = defi.GetInvest(db, info.InvestId); !ok {
+		return handleDeFiReceiveErr(deFiLogger, md.MethodName, defi.InvestNotExistsErr, sendBlock)
+	}
+	if param.Success {
+		defi.DoRefundQuotaInvest(db, invest, param.Id)
+	}
+	return nil, nil
 }
 
 func handleDeFiReceiveErr(logger log15.Logger, method string, err error, sendBlock *ledger.AccountBlock) ([]*ledger.AccountBlock, error) {
