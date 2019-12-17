@@ -15,6 +15,7 @@ var (
 	InvalidSourceAddressErr             = errors.New("invalid source address")
 	InvestNotExistsErr                  = errors.New("invest not exists")
 	InvestNotExpiredErr                 = errors.New("invest not expired")
+	InvalidInvestStatusErr                 = errors.New("invalid invest status")
 	InvalidQuotaInvestErr               = errors.New("invalid quota invest")
 	SBPRegistrationNotExistsErr         = errors.New("sbp registration not exists")
 

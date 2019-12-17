@@ -486,7 +486,7 @@ func (md MethodDeFiDelegateStakeCallback) DoReceive(db vm_db.VmDb, block *ledger
 	if param.Success {
 		defi.ConfirmInvest(db, invest)
 	} else {
-		defi.DoRefundQuotaInvest(db, invest, param.Id)
+		defi.DoRefundQuotaInvest(db, invest)
 	}
 	return
 }
@@ -532,7 +532,7 @@ func (md MethodDeFiCancelDelegateStakeCallback) DoReceive(db vm_db.VmDb, block *
 		return handleDeFiReceiveErr(deFiLogger, md.MethodName, defi.InvestNotExistsErr, sendBlock)
 	}
 	if param.Success {
-		defi.DoRefundQuotaInvest(db, invest, param.Id)
+		defi.DoRefundQuotaInvest(db, invest)
 	}
 	return nil, nil
 }
@@ -587,7 +587,6 @@ func (md MethodDeFiRegisterSBP) DoReceive(db vm_db.VmDb, block *ledger.AccountBl
 	}
 	defi.OnLoanInvest(db, loan, loanInvested)
 	invest = defi.NewInvest(db, vm.GlobalStatus(), sendBlock.AccountAddress, loan, defi.InvestForSBP, types.ZERO_ADDRESS, loanInvested, baseInvested, durationHeight)
-	defi.SaveInvest(db, invest)
 	defi.SaveInvestToLoanIndex(db, invest)
 	return defi.DoRegisterSBP(db, invest, param, SbpStakeAmountMainnet, block)
 }
@@ -653,27 +652,30 @@ func (md *MethodDeFiDefault) GetReceiveQuota(gasTable *util.QuotaTable) uint64 {
 }
 
 func (md *MethodDeFiDefault) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
-	if block.AccountAddress != types.AddressDexFund &&  block.AccountAddress != types.AddressQuota &&block.AccountAddress != types.AddressGovernance {
+	if block.AccountAddress != types.AddressDexFund && block.AccountAddress != types.AddressGovernance {
 		return defi.InvalidSourceAddressErr
 	}
 	return nil
 }
 
 func (md MethodDeFiDefault) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) (blocks []*ledger.AccountBlock, err error) {
-	var (
-		info   *defi.InvestQuotaInfo
-		invest *defi.Invest
-		ok     bool
-	)
-	originBlock := util.GetOriginalSendHash(db, sendBlock.Hash)
-	switch block.AccountAddress {
-	case types.AddressDexFund:
-		originBlock
-	case types.AddressQuota:
-	case types.AddressGovernance:
-
+	if originSendBlock := util.GetOriginalSendBlock(db, sendBlock.Hash); originSendBlock != nil && originSendBlock.AccountAddress == types.AddressDeFi && originSendBlock.Amount.Sign() > 0 {
+		switch originSendBlock.ToAddress {
+		//DelegateInvest
+		case types.AddressDexFund:
+			blocks, err = defi.HandleDexRefundForException(db, originSendBlock)
+			//RegisterSBP, RevokeSBP
+		case types.AddressGovernance:
+			blocks, err = defi.HandleGovernanceFeedback(db, originSendBlock)
+		}
+	} else {
+		err = defi.InvalidInputParamErr
 	}
-	return nil, nil
+	if err != nil {
+		return handleDeFiReceiveErr(deFiLogger, md.MethodName, err, sendBlock)
+	} else {
+		return
+	}
 }
 
 type MethodDeFiTriggerJob struct {
@@ -717,7 +719,7 @@ func (md MethodDeFiTriggerJob) DoReceive(db vm_db.VmDb, block *ledger.AccountBlo
 		return handleDeFiReceiveErr(deFiLogger, md.MethodName, defi.InvestNotExistsErr, sendBlock)
 	}
 	if param.Success {
-		defi.DoRefundQuotaInvest(db, invest, param.Id)
+		defi.DoRefundQuotaInvest(db, invest)
 	}
 	return nil, nil
 }

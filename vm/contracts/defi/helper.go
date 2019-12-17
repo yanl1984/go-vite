@@ -2,6 +2,7 @@ package defi
 
 import (
 	"github.com/vitelabs/go-vite/common/types"
+	"github.com/vitelabs/go-vite/interfaces"
 	"github.com/vitelabs/go-vite/ledger"
 	"github.com/vitelabs/go-vite/vm/contracts/abi"
 	"github.com/vitelabs/go-vite/vm/contracts/common"
@@ -268,12 +269,14 @@ func DoRegisterSBP(db vm_db.VmDb, invest *Invest, param *ParamRegisterSBP, amoun
 		}, nil
 	}
 	registrationId = util.ComputeSendBlockHash(block, blocks[0], 0)
+	invest.InvestHash = registrationId.Bytes()
+	SaveInvest(db, invest)
 	SaveSBPRegistration(db, registrationId, param, invest)
 	return
 }
 
 func DoRevokeSBP(db vm_db.VmDb, traceHash []byte) (blocks []*ledger.AccountBlock, err error) {
-	if info, ok := GetSBPRegistration(db,  traceHash); !ok {
+	if info, ok := GetSBPRegistration(db, traceHash); !ok {
 		panic(SBPRegistrationNotExistsErr)
 	} else {
 		if data, err := abi.ABIGovernance.PackMethod(abi.MethodNameRevokeV3, info.Name); err != nil {
@@ -294,7 +297,7 @@ func DoRevokeSBP(db vm_db.VmDb, traceHash []byte) (blocks []*ledger.AccountBlock
 }
 
 func DoUpdateSBP(db vm_db.VmDb, traceHash []byte, param *ParamUpdateSBPRegistration) (blocks []*ledger.AccountBlock, err error) {
-	if info, ok := GetSBPRegistration(db,  traceHash); !ok {
+	if info, ok := GetSBPRegistration(db, traceHash); !ok {
 		panic(SBPRegistrationNotExistsErr)
 	} else {
 		if common.IsOperationValidWithMask(param.OperationCode, UpdateBlockProducintAddress) {
@@ -318,13 +321,13 @@ func DoUpdateSBP(db vm_db.VmDb, traceHash []byte, param *ParamUpdateSBPRegistrat
 				return nil, err
 			} else {
 				blocks = append(blocks, &ledger.AccountBlock{
-						AccountAddress: types.AddressDeFi,
-						ToAddress:      types.AddressGovernance,
-						BlockType:      ledger.BlockTypeSendCall,
-						Amount:         big.NewInt(0),
-						TokenId:        ledger.ViteTokenId,
-						Data:           data,
-					})
+					AccountAddress: types.AddressDeFi,
+					ToAddress:      types.AddressGovernance,
+					BlockType:      ledger.BlockTypeSendCall,
+					Amount:         big.NewInt(0),
+					TokenId:        ledger.ViteTokenId,
+					Data:           data,
+				})
 			}
 		}
 		return
@@ -338,9 +341,76 @@ func DoRefundInvest(db vm_db.VmDb, invest *Invest) {
 	DeleteInvestToLoanIndex(db, invest)
 }
 
-func DoRefundQuotaInvest(db vm_db.VmDb, invest *Invest, stakeId types.Hash) {
+func DoRefundQuotaInvest(db vm_db.VmDb, invest *Invest) {
 	DoRefundInvest(db, invest)
-	DeleteInvestQuotaInfo(db, stakeId.Bytes())
+	DeleteInvestQuotaInfo(db, invest.InvestHash)
+}
+
+func DoRefundSBPInvest(db vm_db.VmDb, invest *Invest) {
+	DoRefundInvest(db, invest)
+	DeleteSBPRegistration(db, invest.InvestHash)
+}
+
+func HandleDexRefundForException(db vm_db.VmDb, block *ledger.AccountBlock) (blocks []*ledger.AccountBlock, err error) {
+	param := new(dex.ParamDelegateInvest)
+	if err = abi.ABIDexFund.UnpackMethod(param, abi.MethodNameDexFundDelegateInvest, block.Data); err != nil {
+		return
+	}
+	if invest, ok := GetInvest(db, param.InvestId); ok && invest.Status == InvestPending {
+		DoRefundInvest(db, invest)
+	} else {
+		err = InvestNotExistsErr
+	}
+	return
+}
+
+func HandleGovernanceFeedback(db vm_db.VmDb, block *ledger.AccountBlock) (blocks []*ledger.AccountBlock, err error) {
+	var (
+		isRevoke bool
+		param    = new(abi.ParamRegister)
+		sbpName  = new(string)
+	)
+	if err = abi.ABIGovernance.UnpackMethod(param, abi.MethodNameRegisterV3, block.Data); err == nil {
+		*sbpName = param.SbpName
+	} else if err = abi.ABIGovernance.UnpackMethod(sbpName, abi.MethodNameRevokeV3, block.Data); err == nil {
+		isRevoke = true
+	} else {
+		err = InvalidInputParamErr
+		return
+	}
+	var iterator interfaces.StorageIterator
+	iterator, err = db.NewStorageIterator(sbpRegistrationKeyPrefix)
+	if err != nil {
+		panic(err)
+	}
+	defer iterator.Release()
+	for {
+		var regValue []byte
+		if !iterator.Next() {
+			if iterator.Error() != nil {
+				panic(iterator.Error())
+			}
+			break
+		}
+		regValue = iterator.Value()
+		sbpRegistration := &SBPRegistration{}
+		sbpRegistration.DeSerialize(regValue)
+		if sbpRegistration.Name == param.SbpName {
+			if invest, ok := GetInvest(db, sbpRegistration.InvestId); !ok {
+				err = InvestNotExistsErr
+				return
+			} else {
+				if isRevoke && invest.Status != InvestCancelling || !isRevoke && invest.Status != InvestPending {
+					err = InvalidInvestStatusErr
+				} else {
+					DoRefundSBPInvest(db, invest)
+				}
+			}
+			return
+		}
+	}
+	err = SBPRegistrationNotExistsErr
+	return
 }
 
 func IsInvestExpired(gs util.GlobalStatus, invest *Invest) bool {
