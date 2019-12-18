@@ -5,9 +5,10 @@ package proto;
 //storage
 message BaseAccount {
     bytes Available = 1;
-    bytes Subscribed = 2;
-    bytes Invested = 3; //
-    bytes Locked = 4; //locked for loan interest to pay
+    bytes Subscribing = 2;
+    bytes Subscribed = 3;
+    bytes Invested = 4; //
+    bytes Locked = 5; //locked for loan interest to pay
 }
 
 message LoanAccount {
@@ -70,6 +71,7 @@ message Invest {
     int32 BizType = 6;
     bytes Beneficial = 7;
     uint64 CreateHeight = 8;
+    //only used for can be cancel, not for auto cancel
     uint64 ExpireHeight = 9;
     // 1 pending, 2 success, 3 failed, 4 expired, 5 fail refunded, 6 expire refunded
     int32 Status = 10;
@@ -89,6 +91,11 @@ message SBPRegistration {
     string Name = 2;
     bytes ProducingAddress = 3;
     bytes RewardWithdrawAddress = 4;
+}
+
+message TimeWithHeight {
+    int64 Timestamp = 1;
+    uint64 Height = 2;
 }
 
 //event

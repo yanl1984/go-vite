@@ -25,95 +25,6 @@ var (
 	minShareAmount = new(big.Int).Mul(big.NewInt(10), commonTokenPow)
 )
 
-func CheckLoanParam(param *ParamNewLoan) error {
-	if param.Token != ledger.ViteTokenId || param.DayRate <= MinDayRate || param.DayRate >= MaxDayRate ||
-		param.ShareAmount.Cmp(minShareAmount) < 0 || param.Shares <= 0 ||
-		param.SubscribeDays < MinSubDays || param.SubscribeDays > MaxSubDays || param.ExpireDays <= 0 {
-		return InvalidInputParamErr
-	} else {
-		return nil
-	}
-}
-
-func NewLoan(address types.Address, db vm_db.VmDb, param *ParamNewLoan, interest *big.Int) *Loan {
-	loan := &Loan{}
-	loan.Id = NewLoanSerialNo(db)
-	loan.Address = address.Bytes()
-	loan.Token = param.Token.Bytes()
-	loan.ShareAmount = param.ShareAmount.Bytes()
-	loan.Shares = param.Shares
-	loan.Interest = interest.Bytes()
-	loan.DayRate = param.DayRate
-	loan.SubscribeDays = param.SubscribeDays
-	loan.ExpireDays = param.ExpireDays
-	loan.Status = Open
-	loan.Created = GetDeFiTimestamp(db)
-	return loan
-}
-
-func NewSubscription(address types.Address, db vm_db.VmDb, param *ParamSubscribe, loan *Loan) *Subscription {
-	sub := &Subscription{}
-	sub.LoanId = param.LoanId
-	sub.Address = address.Bytes()
-	sub.Token = loan.Token
-	sub.Shares = param.Shares
-	sub.ShareAmount = loan.ShareAmount
-	sub.Status = Open
-	sub.Created = GetDeFiTimestamp(db)
-	return sub
-}
-
-func DoSubscribe(db vm_db.VmDb, gs util.GlobalStatus, loan *Loan, shares int32) {
-	loan.SubscribedShares = loan.SubscribedShares + shares
-	loan.Updated = GetDeFiTimestamp(db)
-	if loan.Shares == loan.SubscribedShares {
-		loan.Status = Success
-		loan.ExpireHeight = GetExpireHeight(gs, loan.ExpireDays)
-		loan.StartTime = loan.Updated
-		OnAccLoanSuccess(db, loan.Address, loan)
-	}
-	SaveLoan(db, loan)
-	AddLoanUpdateEvent(db, loan)
-	if loan.Status == Success {
-		subscriptionsPrefix := append(subscriptionKeyPrefix, common.Uint64ToBytes(loan.Id)...)
-		iterator, err := db.NewStorageIterator(subscriptionsPrefix)
-		if err != nil {
-			panic(err)
-		}
-		defer iterator.Release()
-		leaveLoanInterest := new(big.Int).SetBytes(loan.Interest)
-		for {
-			if !iterator.Next() {
-				if iterator.Error() != nil {
-					panic(iterator.Error())
-				}
-				break
-			}
-			subVal := iterator.Value()
-			if len(subVal) == 0 {
-				continue
-			}
-			sub := &Subscription{}
-			if err = sub.DeSerialize(subVal); err != nil {
-				panic(err)
-			}
-			sub.Status = Success
-			sub.Updated = loan.Updated
-			interest := CalculateInterest(sub.Shares, new(big.Int).SetBytes(sub.ShareAmount), loan.DayRate, loan.ExpireDays)
-			if leaveLoanInterest.Cmp(interest) < 0 {
-				interest = leaveLoanInterest
-				leaveLoanInterest = big.NewInt(0)
-			} else {
-				leaveLoanInterest.Sub(leaveLoanInterest, interest)
-			}
-			sub.Interest = interest.Bytes()
-			OnAccSubscribeSuccess(db, sub.Address, interest, CalculateAmount(sub.Shares, sub.ShareAmount))
-			AddSubscriptionUpdateEvent(db, sub)
-			SaveSubscription(db, sub)
-		}
-	}
-}
-
 func PrepareInvest(db vm_db.VmDb, address types.Address, bizType int32, loanAvailable, stakeAmount *big.Int, availableHeight, stakeHeightMin, stakeSVIPHeight uint64) (baseInvested, loanInvested *big.Int, durationHeight uint64, err error) {
 	var (
 		baseAvailable = new(big.Int)
@@ -170,6 +81,22 @@ func PrepareInvest(db vm_db.VmDb, address types.Address, bizType int32, loanAvai
 		loanInvested, baseInvested = getInvestedAmount(loanAvailable, stakeAmount)
 	}
 	return
+}
+
+func NewInvest(db vm_db.VmDb, gs util.GlobalStatus, address types.Address, loan *Loan, bizType int32, beneficiary types.Address, loanInvested, baseInvested *big.Int, durationHeight uint64) *Invest {
+	invest := &Invest{}
+	invest.Id = NewInvestSerialNo(db)
+	invest.LoanId = loan.Id
+	invest.Address = address.Bytes()
+	invest.LoanAmount = loanInvested.Bytes()
+	invest.BaseAmount = baseInvested.Bytes()
+	invest.BizType = bizType
+	invest.Beneficial = beneficiary.Bytes()
+	invest.CreateHeight = gs.SnapshotBlock().Height
+	invest.ExpireHeight = invest.CreateHeight + durationHeight
+	invest.Status = InvestPending
+	invest.Created = GetDeFiTimestamp(db)
+	return invest
 }
 
 func DoDexInvest(invest *Invest, bizType uint8, amount *big.Int) ([]*ledger.AccountBlock, error) {
@@ -337,21 +264,24 @@ func DoUpdateSBP(db vm_db.VmDb, traceHash []byte, param *ParamUpdateSBPRegistrat
 func DoRefundInvest(db vm_db.VmDb, invest *Invest) {
 	OnAccRefundInvest(db, invest.Address, invest.LoanAmount, invest.BaseAmount)
 	OnLoanCancelInvest(db, invest.LoanId, invest.LoanAmount)
+	invest.Status = InvestCancelled
 	DeleteInvest(db, invest.Id)
 	DeleteInvestToLoanIndex(db, invest)
 }
 
 func DoRefundQuotaInvest(db vm_db.VmDb, invest *Invest) {
 	DoRefundInvest(db, invest)
+	invest.Status = InvestCancelled
 	DeleteInvestQuotaInfo(db, invest.InvestHash)
 }
 
 func DoRefundSBPInvest(db vm_db.VmDb, invest *Invest) {
 	DoRefundInvest(db, invest)
+	invest.Status = InvestCancelled
 	DeleteSBPRegistration(db, invest.InvestHash)
 }
 
-func HandleDexRefundForException(db vm_db.VmDb, block *ledger.AccountBlock) (blocks []*ledger.AccountBlock, err error) {
+func HandleDexRefundOnFail(db vm_db.VmDb, block *ledger.AccountBlock) (blocks []*ledger.AccountBlock, err error) {
 	param := new(dex.ParamDelegateInvest)
 	if err = abi.ABIDexFund.UnpackMethod(param, abi.MethodNameDexFundDelegateInvest, block.Data); err != nil {
 		return
@@ -426,22 +356,6 @@ func getInvestedAmount(leavedLoanAmount *big.Int, needInvestAmount *big.Int) (lo
 		baseInvested = new(big.Int)
 	}
 	return
-}
-
-func NewInvest(db vm_db.VmDb, gs util.GlobalStatus, address types.Address, loan *Loan, bizType int32, beneficiary types.Address, loanInvested, baseInvested *big.Int, durationHeight uint64) *Invest {
-	invest := &Invest{}
-	invest.Id = NewInvestSerialNo(db)
-	invest.LoanId = loan.Id
-	invest.Address = address.Bytes()
-	invest.LoanAmount = loanInvested.Bytes()
-	invest.BaseAmount = baseInvested.Bytes()
-	invest.BizType = bizType
-	invest.Beneficial = beneficiary.Bytes()
-	invest.CreateHeight = gs.SnapshotBlock().Height
-	invest.ExpireHeight = invest.CreateHeight + durationHeight
-	invest.Status = InvestPending
-	invest.Created = GetDeFiTimestamp(db)
-	return invest
 }
 
 func CalculateInterest(shares int32, shareAmount *big.Int, dayRate, days int32) *big.Int {

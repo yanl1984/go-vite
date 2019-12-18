@@ -17,8 +17,13 @@ const (
         {"type":"function","name":"RegisterSBP", "inputs":[{"name":"loadId","type":"uint64"},{"name":"sbpName","type":"string"},{"name":"blockProducingAddress","type":"address"},{"name":"rewardWithdrawAddress","type":"address"}]},
 		{"type":"function","name":"UpdateSBPRegistration", "inputs":[{"name":"investId","type":"uint64"},{"name":"operationCode","type":"uint8"},{"name":"blockProducingAddress","type":"address"},{"name":"rewardWithdrawAddress","type":"address"}]},
         {"type":"function","name":"CancelInvest", "inputs":[{"name":"investId","type":"uint64"}]},
-		{"type":"function","name":"RefundInvest", "inputs":[{"name":"investHashes","type":"bytes"},{"name":"reason","type":"uint8"}]}
-    ]`
+		{"type":"function","name":"RefundInvest", "inputs":[{"name":"investHashes","type":"bytes"},{"name":"reason","type":"uint8"}]},
+		{"type":"function","name":"StakeForQuotaWithCallbackCallback", "inputs":[{"name":"id","type":"bytes32"},{"name":"success","type":"bool"}]},
+		{"type":"function","name":"CancelQuotaStakingWithCallbackCallback", "inputs":[{"name":"id","type":"bytes32"},{"name":"success","type":"bool"}]},
+		{"type":"function","name":"TriggerJob", "inputs":[{"name":"id","type":"bytes32"},{"name":"success","type":"bool"}]},
+		{"type":"function","name":"NotifyTime", "inputs":[{"name":"timestamp","type":"int64"}]}
+
+]`
 
 	MethodNameDeFiDeposit                     = "Deposit"
 	MethodNameDeFiWithdraw                    = "Withdraw"
@@ -32,6 +37,8 @@ const (
 	MethodNameDeFiRefundInvest                = "RefundInvest"
 	MethodNameDeFiDelegateStakeCallback       = "StakeForQuotaWithCallbackCallback"
 	MethodNameDeFiCancelDelegateStakeCallback = "CancelQuotaStakingWithCallbackCallback"
+	MethodNameDeFiTriggerJob                  = "TriggerJob"
+	MethodNameDeFiNotifyTime                  = "NotifyTime"
 )
 
 var (

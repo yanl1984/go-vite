@@ -58,7 +58,7 @@ var (
 	dexAgentContracts = newDexAgentContracts()
 	leafContracts     = newLeafContracts()
 	earthContracts    = newEarthContracts()
-	deFiContracts     = newDefiContracts()
+	deFiContracts     = newDeFiContracts()
 )
 
 func newSimpleContracts() map[types.Address]*builtinContract {
@@ -218,8 +218,9 @@ func newEarthContracts() map[types.Address]*builtinContract {
 	return contracts
 }
 
-func newDefiContracts() map[types.Address]*builtinContract {
+func newDeFiContracts() map[types.Address]*builtinContract {
 	contracts := newEarthContracts()
+
 	contracts[types.AddressDeFi] = &builtinContract{
 		map[string]BuiltinContractMethod{
 			cabi.MethodNameDeFiDeposit:                     &MethodDeFiDeposit{cabi.MethodNameDeFiDeposit},
@@ -235,6 +236,8 @@ func newDefiContracts() map[types.Address]*builtinContract {
 			cabi.MethodNameDeFiRegisterSBP:                 &MethodDeFiRegisterSBP{cabi.MethodNameDeFiRegisterSBP},
 			cabi.MethodNameDeFiUpdateSBPRegistration:       &MethodDeFiUpdateSBPRegistration{cabi.MethodNameDeFiUpdateSBPRegistration},
 			defaultMethodName:                              &MethodDeFiDefault{defaultMethodName},
+			cabi.MethodNameDeFiTriggerJob:                  &MethodDeFiTriggerJob{cabi.MethodNameDeFiTriggerJob},
+			cabi.MethodNameDeFiNotifyTime:                  &MethodDeFiNotifyTime{cabi.MethodNameDeFiNotifyTime},
 		}, cabi.ABIDeFi,
 	}
 

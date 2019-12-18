@@ -19,5 +19,6 @@ var (
 	InvalidQuotaInvestErr               = errors.New("invalid quota invest")
 	SBPRegistrationNotExistsErr         = errors.New("sbp registration not exists")
 
+	InnerError = errors.New("inner error")
 	ExceedFundAvailableErr              = errors.New("exceed fund available")
 )

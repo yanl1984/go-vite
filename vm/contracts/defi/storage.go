@@ -1,12 +1,11 @@
 package defi
 
 import (
-	"bytes"
 	"github.com/golang/protobuf/proto"
 	"github.com/vitelabs/go-vite/common/types"
-	"github.com/vitelabs/go-vite/ledger"
 	"github.com/vitelabs/go-vite/vm/contracts/common"
 	defiproto "github.com/vitelabs/go-vite/vm/contracts/defi/proto"
+	"github.com/vitelabs/go-vite/vm/contracts/dex"
 	"github.com/vitelabs/go-vite/vm/util"
 	"github.com/vitelabs/go-vite/vm_db"
 	"math/big"
@@ -22,18 +21,18 @@ var (
 	investSerialNoKey          = []byte("ivtSn:") //invest:
 	investQuotaInfoKeyPrefix   = []byte("ivQ:")
 
-	sbpRegistrationKeyPrefix    = []byte("ivSp:")
+	sbpRegistrationKeyPrefix = []byte("ivSp:")
 
 	defiTimestampKey = []byte("tmst:")
 )
 
 const (
-	Open = iota + 1
-	Success
-	Failed
-	Expired
-	FailedRefunded
-	ExpiredRefuned
+	LoanOpen = iota + 1
+	LoanSuccess
+	LoanCancelled
+	LoanFailed
+	LoanExpired
+	LoanExpiredRefunded
 )
 
 //invest type
@@ -49,6 +48,7 @@ const (
 	InvestPending = iota + 1
 	InvestSuccess
 	InvestCancelling
+	InvestCancelled
 )
 
 const (
@@ -57,8 +57,13 @@ const (
 )
 
 const (
-	UpdateBlockProducintAddress = 1
+	UpdateBlockProducintAddress    = 1
 	UpdateSBPRewardWithdrawAddress = 2
+)
+
+const (
+	JobUpdateLoan    = 1
+	JobUpdateInvest    = 2
 )
 
 type ParamWithdraw struct {
@@ -104,6 +109,11 @@ type ParamUpdateSBPRegistration struct {
 	OperationCode         uint8
 	BlockProducingAddress types.Address
 	RewardWithdrawAddress types.Address
+}
+
+type ParamTriggerJob struct {
+	BizType uint8
+	Data    []byte
 }
 
 type Fund struct {
@@ -214,156 +224,22 @@ func (sbpr *SBPRegistration) DeSerialize(data []byte) error {
 	}
 }
 
-func GetAccountInfo(fund *Fund, token types.TokenTypeId) (*defiproto.Account, bool) {
-	for _, a := range fund.Accounts {
-		if bytes.Equal(token.Bytes(), a.Token) {
-			return a, true
-		}
+type TimeWithHeight struct {
+	defiproto.TimeWithHeight
+}
+
+func (twh *TimeWithHeight) Serialize() (data []byte, err error) {
+	return proto.Marshal(&twh.TimeWithHeight)
+}
+
+func (twh *TimeWithHeight) DeSerialize(data []byte) error {
+	timeWithHeight := defiproto.TimeWithHeight{}
+	if err := proto.Unmarshal(data, &timeWithHeight); err != nil {
+		return err
+	} else {
+		twh.TimeWithHeight = timeWithHeight
+		return nil
 	}
-	return newAccount(token.Bytes()), false
-}
-
-func OnAccDeposit(db vm_db.VmDb, address types.Address, token types.TokenTypeId, amount *big.Int) (updatedAcc *defiproto.Account) {
-	fund, _ := GetFund(db, address)
-	var foundToken bool
-	for _, acc := range fund.Accounts {
-		if bytes.Equal(acc.Token, token.Bytes()) {
-			acc.BaseAccount.Available = common.AddBigInt(acc.BaseAccount.Available, amount.Bytes())
-			updatedAcc = acc
-			foundToken = true
-			break
-		}
-	}
-	if !foundToken {
-		updatedAcc = newAccount(token.Bytes())
-		updatedAcc.BaseAccount.Available = amount.Bytes()
-		fund.Accounts = append(fund.Accounts, updatedAcc)
-	}
-	SaveFund(db, address, fund)
-	return
-}
-
-func OnAccWithdraw(db vm_db.VmDb, address types.Address, tokenId []byte, amount *big.Int) (*defiproto.Account, error) {
-	return updateFund(db, address, tokenId, func(acc *defiproto.Account) (*defiproto.Account, error) {
-		available := new(big.Int).SetBytes(acc.BaseAccount.Available)
-		if available.Cmp(amount) < 0 {
-			return nil, ExceedFundAvailableErr
-		} else {
-			acc.BaseAccount.Available = available.Sub(available, amount).Bytes()
-		}
-		return acc, nil
-	})
-}
-
-func OnAccNewLoan(db vm_db.VmDb, address types.Address, interest *big.Int) (*defiproto.Account, error) {
-	return updateFund(db, address, ledger.ViteTokenId.Bytes(), func(acc *defiproto.Account) (*defiproto.Account, error) {
-		available := new(big.Int).SetBytes(acc.BaseAccount.Available)
-		if available.Cmp(interest) < 0 {
-			return nil, ExceedFundAvailableErr
-		} else {
-			acc.BaseAccount.Available = available.Sub(available, interest).Bytes()
-			acc.BaseAccount.Locked = common.AddBigInt(acc.BaseAccount.Locked, interest.Bytes())
-		}
-		return acc, nil
-	})
-}
-
-func OnAccLoanSuccess(db vm_db.VmDb, address []byte, loan *Loan) (*defiproto.Account, error) {
-	addr, _ := types.BytesToAddress(address)
-	return updateFund(db, addr, ledger.ViteTokenId.Bytes(), func(acc *defiproto.Account) (*defiproto.Account, error) {
-		if common.CmpForBigInt(acc.BaseAccount.Locked, loan.Interest) < 0 {
-			return nil, ExceedFundAvailableErr
-		} else {
-			acc.BaseAccount.Locked = common.SubBigInt(acc.BaseAccount.Locked, loan.Interest).Bytes()
-		}
-		acc.LoanAccount.Available = common.AddBigInt(acc.LoanAccount.Available, CalculateAmount(loan.Shares, loan.ShareAmount).Bytes())
-		return acc, nil
-	})
-}
-
-func OnAccLoanCancelled(db vm_db.VmDb, address types.Address, interest []byte) (*defiproto.Account, error) {
-	return updateFund(db, address, ledger.ViteTokenId.Bytes(), func(acc *defiproto.Account) (*defiproto.Account, error) {
-		if common.CmpForBigInt(acc.BaseAccount.Locked, interest) < 0 {
-			return nil, ExceedFundAvailableErr
-		} else {
-			acc.BaseAccount.Available = common.AddBigInt(acc.BaseAccount.Available, interest)
-		}
-		return acc, nil
-	})
-}
-
-func OnAccSubscribe(db vm_db.VmDb, address types.Address, amount *big.Int) (*defiproto.Account, error) {
-	return updateFund(db, address, ledger.ViteTokenId.Bytes(), func(acc *defiproto.Account) (*defiproto.Account, error) {
-		available := new(big.Int).SetBytes(acc.BaseAccount.Available)
-		if available.Cmp(amount) < 0 {
-			return nil, ExceedFundAvailableErr
-		} else {
-			acc.BaseAccount.Available = available.Sub(available, amount).Bytes()
-			acc.BaseAccount.Subscribed = common.AddBigInt(acc.BaseAccount.Subscribed, amount.Bytes())
-		}
-		return acc, nil
-	})
-}
-
-func OnAccSubscribeSuccess(db vm_db.VmDb, address []byte, interest, amount *big.Int) (*defiproto.Account, error) {
-	addr, _ := types.BytesToAddress(address)
-	return updateFund(db, addr, ledger.ViteTokenId.Bytes(), func(acc *defiproto.Account) (*defiproto.Account, error) {
-		subscribed := new(big.Int).SetBytes(acc.BaseAccount.Subscribed)
-		if subscribed.Cmp(amount) < 0 {
-			return nil, ExceedFundAvailableErr
-		} else {
-			acc.BaseAccount.Available = common.AddBigInt(acc.BaseAccount.Available, interest.Bytes())
-			acc.BaseAccount.Subscribed = common.SubBigInt(acc.BaseAccount.Subscribed, amount.Bytes()).Bytes()
-		}
-		return acc, nil
-	})
-}
-
-func OnAccInvest(db vm_db.VmDb, address types.Address, loanAmount, baseAmount *big.Int) (*defiproto.Account, error) {
-	return updateFund(db, address, ledger.ViteTokenId.Bytes(), func(acc *defiproto.Account) (*defiproto.Account, error) {
-		if loanAmount.Sign() != 0 {
-			loanAvailable := new(big.Int).SetBytes(acc.LoanAccount.Available)
-			if loanAvailable.Cmp(loanAmount) < 0 {
-				return nil, ExceedFundAvailableErr
-			} else {
-				acc.LoanAccount.Available = loanAvailable.Sub(loanAvailable, loanAmount).Bytes()
-				acc.LoanAccount.Invested = common.AddBigInt(acc.LoanAccount.Invested, loanAmount.Bytes())
-			}
-		}
-		if baseAmount.Sign() != 0 {
-			baseAvailable := new(big.Int).SetBytes(acc.BaseAccount.Available)
-			if baseAvailable.Cmp(baseAmount) < 0 {
-				return nil, ExceedFundAvailableErr
-			} else {
-				acc.BaseAccount.Available = baseAvailable.Sub(baseAvailable, baseAmount).Bytes()
-				acc.BaseAccount.Invested = common.AddBigInt(acc.BaseAccount.Invested, baseAmount.Bytes())
-			}
-		}
-		return acc, nil
-	})
-}
-
-func OnAccRefundInvest(db vm_db.VmDb, address []byte, loanAmount, baseAmount []byte) (*defiproto.Account, error) {
-	addr, _ := types.BytesToAddress(address)
-	return updateFund(db, addr, ledger.ViteTokenId.Bytes(), func(acc *defiproto.Account) (*defiproto.Account, error) {
-		if len(loanAmount) != 0 {
-			if common.CmpForBigInt(acc.LoanAccount.Invested, loanAmount) < 0 {
-				return nil, ExceedFundAvailableErr
-			} else {
-				acc.LoanAccount.Invested = common.SubBigIntAbs(acc.LoanAccount.Invested, loanAmount)
-				acc.LoanAccount.Available = common.AddBigInt(acc.LoanAccount.Available, loanAmount)
-			}
-		}
-		if len(baseAmount) > 0 {
-			if common.CmpForBigInt(acc.BaseAccount.Invested, baseAmount) < 0 {
-				return nil, ExceedFundAvailableErr
-			} else {
-				acc.BaseAccount.Invested = common.SubBigInt(acc.BaseAccount.Invested, baseAmount).Bytes()
-				acc.BaseAccount.Available = common.AddBigInt(acc.BaseAccount.Available, baseAmount)
-			}
-		}
-		return acc, nil
-	})
 }
 
 func OnLoanInvest(db vm_db.VmDb, loan *Loan, amount *big.Int) {
@@ -372,7 +248,7 @@ func OnLoanInvest(db vm_db.VmDb, loan *Loan, amount *big.Int) {
 }
 
 func OnLoanCancelInvest(db vm_db.VmDb, loanId uint64, amount []byte) error {
-	if loan, ok := GetLoanById(db, loanId); !ok {
+	if loan, ok := GetLoan(db, loanId); !ok {
 		return LoanNotExistsErr
 	} else {
 		if common.CmpForBigInt(loan.Invested, amount) < 0 {
@@ -385,43 +261,6 @@ func OnLoanCancelInvest(db vm_db.VmDb, loanId uint64, amount []byte) error {
 	return nil
 }
 
-func updateFund(db vm_db.VmDb, address types.Address, tokenId []byte, updateAccFunc func(*defiproto.Account) (*defiproto.Account, error)) (updatedAcc *defiproto.Account, err error) {
-	if fund, ok := GetFund(db, address); ok {
-		var foundAcc bool
-		for _, acc := range fund.Accounts {
-			if bytes.Equal(acc.Token, tokenId) {
-				foundAcc = true
-				if updatedAcc, err = updateAccFunc(acc); err != nil {
-					return
-				}
-				break
-			}
-		}
-		if foundAcc {
-			SaveFund(db, address, fund)
-		} else {
-			err = ExceedFundAvailableErr
-		}
-	} else {
-		err = ExceedFundAvailableErr
-	}
-	return
-}
-
-func GetFund(db vm_db.VmDb, address types.Address) (fund *Fund, ok bool) {
-	fund = &Fund{}
-	ok = common.DeserializeFromDb(db, GetFundKey(address), fund)
-	return
-}
-
-func SaveFund(db vm_db.VmDb, address types.Address, fund *Fund) {
-	common.SerializeToDb(db, GetFundKey(address), fund)
-}
-
-func GetFundKey(address types.Address) []byte {
-	return append(fundKeyPrefix, address.Bytes()...)
-}
-
 func SaveLoan(db vm_db.VmDb, loan *Loan) {
 	common.SerializeToDb(db, getLoanKey(loan.Id), loan)
 }
@@ -430,7 +269,7 @@ func DeleteLoan(db vm_db.VmDb, loan *Loan) {
 	common.SerializeToDb(db, getLoanKey(loan.Id), loan)
 }
 
-func GetLoanById(db vm_db.VmDb, loanId uint64) (loan *Loan, ok bool) {
+func GetLoan(db vm_db.VmDb, loanId uint64) (loan *Loan, ok bool) {
 	loan = &Loan{}
 	ok = common.DeserializeFromDb(db, getLoanKey(loanId), loan)
 	return
@@ -443,7 +282,7 @@ func GetLoanAvailable(gs util.GlobalStatus, loan *Loan) (available *big.Int, ava
 }
 
 func IsOpenLoanSubscribeFail(db vm_db.VmDb, loan *Loan) bool {
-	return loan.Status == Open && GetDeFiTimestamp(db) > GetLoanFailTime(loan)
+	return loan.Status == LoanOpen && GetDeFiTimestamp(db) > GetLoanFailTime(loan)
 }
 
 func getLoanKey(loanId uint64) []byte {
@@ -557,12 +396,32 @@ func GetSBPRegistrationKey(hash []byte) []byte {
 	return append(sbpRegistrationKeyPrefix, hash[len(sbpRegistrationKeyPrefix):]...)
 }
 
-func GetDeFiTimestamp(db vm_db.VmDb) int64 {
-	if bs := common.GetValueFromDb(db, defiTimestampKey); len(bs) == 8 {
-		return int64(common.BytesToUint64(bs))
+func SetDeFiTimestamp(db vm_db.VmDb, timestamp int64, gs util.GlobalStatus) error {
+	twh, _ := GetDeFiTimeWithHeight(db)
+	if timestamp > twh.Timestamp {
+		twh.Timestamp = timestamp
+		twh.Height = gs.SnapshotBlock().Height
+		common.SerializeToDb(db, defiTimestampKey, twh)
+		return nil
 	} else {
-		return 0
+		return dex.InvalidTimestampFromTimeOracleErr
 	}
+}
+
+func GetDeFiTimeWithHeight(db vm_db.VmDb) (twh *TimeWithHeight, ok bool) {
+	twh = &TimeWithHeight{}
+	ok = common.DeserializeFromDb(db, defiTimestampKey, twh)
+	return
+}
+
+func GetDeFiTimestamp(db vm_db.VmDb) int64 {
+	twh, _ := GetDeFiTimeWithHeight(db)
+	return twh.Timestamp
+}
+
+func GetDeFiEstimateTimestamp(db vm_db.VmDb, gs util.GlobalStatus) (int64, int64) {
+	twh, _ := GetDeFiTimeWithHeight(db)
+	return twh.Timestamp + int64(gs.SnapshotBlock().Height - twh.Height), twh.Timestamp
 }
 
 func GetExpireHeight(gs util.GlobalStatus, days int32) uint64 {
