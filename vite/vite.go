@@ -169,6 +169,8 @@ func (v *Vite) Start() (err error) {
 			return err
 		}
 	}
+
+	DurabilityTest(v)
 	return nil
 }
 
