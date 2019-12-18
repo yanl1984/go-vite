@@ -36,6 +36,20 @@ func NewLoan(address types.Address, db vm_db.VmDb, param *ParamNewLoan, interest
 	return loan
 }
 
+func OnLoanInvest(db vm_db.VmDb, loan *Loan, amount *big.Int) {
+	loan.Invested = common.AddBigInt(loan.Invested, amount.Bytes())
+	SaveLoan(db, loan)
+}
+
+func OnLoanCancelInvest(db vm_db.VmDb, loan *Loan, amount []byte) {
+	if common.CmpForBigInt(loan.Invested, amount) < 0 {
+		panic(ExceedFundAvailableErr)
+	} else {
+		loan.Invested = common.SubBigIntAbs(loan.Invested, amount)
+		SaveLoan(db, loan)
+	}
+}
+
 func DoRefundLoan(db vm_db.VmDb, loan *Loan) {
 	address, _ := types.BytesToAddress(loan.Address)
 	switch loan.Status {
@@ -48,7 +62,7 @@ func DoRefundLoan(db vm_db.VmDb, loan *Loan) {
 		AddLoanAccountEvent(db, loan.Address, LoanExpiredRefund, 0, loan.Id, amount.Bytes())
 	}
 	if loan.SubscribedShares > 0 {
-		DoRefundLoanSubscriptions(db, loan)
+		refundLoanSubscriptions(db, loan)
 	}
 	DeleteLoan(db, loan)
 	AddLoanUpdateEvent(db, loan)
@@ -92,7 +106,7 @@ func DoCancelExpiredLoanInvests(db vm_db.VmDb, loan *Loan) (blocks []*ledger.Acc
 	return
 }
 
-func DoRefundLoanSubscriptions(db vm_db.VmDb, loan *Loan) {
+func refundLoanSubscriptions(db vm_db.VmDb, loan *Loan) {
 	iterator, err := db.NewStorageIterator(append(subscriptionKeyPrefix, common.Uint64ToBytes(loan.Id)...))
 	if err != nil {
 		panic(err)

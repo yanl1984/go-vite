@@ -321,6 +321,7 @@ func (md *MethodDeFiInvest) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock,
 		return handleDeFiReceiveErr(deFiLogger, md.MethodName, err, sendBlock)
 	}
 	defi.OnLoanInvest(db, loan, loanInvested)
+	defi.AddLoanUpdateEvent(db, loan)
 	invest := defi.NewInvest(db, vm.GlobalStatus(), sendBlock.AccountAddress, loan, param.BizType, param.Beneficiary, loanInvested, baseInvested, durationHeight)
 	defi.SaveInvest(db, invest)
 	defi.SaveInvestToLoanIndex(db, invest)
@@ -597,6 +598,7 @@ func (md MethodDeFiRegisterSBP) DoReceive(db vm_db.VmDb, block *ledger.AccountBl
 		return handleDeFiReceiveErr(deFiLogger, md.MethodName, err, sendBlock)
 	}
 	defi.OnLoanInvest(db, loan, loanInvested)
+	defi.AddLoanUpdateEvent(db, loan)
 	invest = defi.NewInvest(db, vm.GlobalStatus(), sendBlock.AccountAddress, loan, defi.InvestForSBP, types.ZERO_ADDRESS, loanInvested, baseInvested, durationHeight)
 	defi.SaveInvestToLoanIndex(db, invest)
 	defi.AddNewInvestEvent(db, invest)

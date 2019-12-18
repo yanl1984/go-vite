@@ -263,7 +263,12 @@ func DoUpdateSBP(db vm_db.VmDb, traceHash []byte, param *ParamUpdateSBPRegistrat
 
 func DoRefundInvest(db vm_db.VmDb, invest *Invest) {
 	OnAccRefundInvest(db, invest.Address, invest.LoanAmount, invest.BaseAmount)
-	OnLoanCancelInvest(db, invest.LoanId, invest.LoanAmount)
+	if loan, ok := GetLoan(db, invest.LoanId); !ok {
+		panic(LoanNotExistsErr)
+	} else {
+		OnLoanCancelInvest(db, loan, invest.LoanAmount)
+		AddLoanUpdateEvent(db, loan)
+	}
 	invest.Status = InvestRefunded
 	DeleteInvest(db, invest.Id)
 	DeleteInvestToLoanIndex(db, invest)

@@ -68,7 +68,7 @@ const (
 
 //baseAccount update bizType
 const (
-	BaseDeposit   = iota + 1
+	BaseDeposit = iota + 1
 	BaseWithdraw
 	BaseSubscribeLock
 	BaseSubscribeSuccessReduce
@@ -264,25 +264,6 @@ func (twh *TimeWithHeight) DeSerialize(data []byte) error {
 		twh.TimeWithHeight = timeWithHeight
 		return nil
 	}
-}
-
-func OnLoanInvest(db vm_db.VmDb, loan *Loan, amount *big.Int) {
-	loan.Invested = common.AddBigInt(loan.Invested, amount.Bytes())
-	SaveLoan(db, loan)
-}
-
-func OnLoanCancelInvest(db vm_db.VmDb, loanId uint64, amount []byte) error {
-	if loan, ok := GetLoan(db, loanId); !ok {
-		return LoanNotExistsErr
-	} else {
-		if common.CmpForBigInt(loan.Invested, amount) < 0 {
-			return ExceedFundAvailableErr
-		} else {
-			loan.Invested = common.SubBigIntAbs(loan.Invested, amount)
-			SaveLoan(db, loan)
-		}
-	}
-	return nil
 }
 
 func SaveLoan(db vm_db.VmDb, loan *Loan) {

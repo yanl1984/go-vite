@@ -10,6 +10,18 @@ import (
 	"math/big"
 )
 
+func GetAccounts(fund *Fund, token *types.TokenTypeId) ([]*defiproto.Account, bool) {
+	if fund == nil || len(fund.Accounts) == 0 {
+		return nil, false
+	}
+	if token != nil {
+		acc, ok := GetAccountInfo(fund, *token)
+		return []*defiproto.Account{acc}, ok
+	} else {
+		return fund.Accounts, true
+	}
+}
+
 func GetAccountInfo(fund *Fund, token types.TokenTypeId) (*defiproto.Account, bool) {
 	for _, a := range fund.Accounts {
 		if bytes.Equal(token.Bytes(), a.Token) {
