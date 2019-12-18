@@ -41,13 +41,17 @@ func DoRefundLoan(db vm_db.VmDb, loan *Loan) {
 	switch loan.Status {
 	case LoanFailed:
 		OnAccLoanFailed(db, address, loan.Interest)
+		AddBaseAccountEvent(db, loan.Address, BaseLoanInterestRelease, 0, loan.Id, loan.Interest)
 	case LoanExpired:
-		OnAccLoanExpired(db, address, CalculateAmount(loan.Shares, loan.ShareAmount))
+		amount := CalculateAmount(loan.Shares, loan.ShareAmount)
+		OnAccLoanExpired(db, address, amount)
+		AddLoanAccountEvent(db, loan.Address, LoanExpiredRefund, 0, loan.Id, amount.Bytes())
 	}
 	if loan.SubscribedShares > 0 {
 		DoRefundLoanSubscriptions(db, loan)
 	}
 	DeleteLoan(db, loan)
+	AddLoanUpdateEvent(db, loan)
 }
 
 func DoCancelExpiredLoanInvests(db vm_db.VmDb, loan *Loan) (blocks []*ledger.AccountBlock, err error) {
@@ -106,10 +110,13 @@ func DoRefundLoanSubscriptions(db vm_db.VmDb, loan *Loan) {
 		if err = sub.DeSerialize(data); err != nil {
 			panic(err)
 		}
+		amount := CalculateAmount(sub.Shares, sub.ShareAmount)
 		if loan.Status == LoanExpiredRefunded {
-			OnAccRefundSuccessSubscription(db, sub.Address, CalculateAmount(sub.Shares, sub.ShareAmount))
+			OnAccRefundSuccessSubscription(db, sub.Address, amount)
+			AddBaseAccountEvent(db, sub.Address, BaseSubscribeExpiredRefund, 0, loan.Id, amount.Bytes())
 		} else if loan.Status == LoanFailed {
-			OnAccRefundFailedSubscription(db, sub.Address, CalculateAmount(sub.Shares, sub.ShareAmount))
+			OnAccRefundFailedSubscription(db, sub.Address, amount)
+			AddBaseAccountEvent(db, sub.Address, BaseSubscribeFailedRelease, 0, loan.Id, amount.Bytes())
 		}
 	}
 }
@@ -134,6 +141,8 @@ func DoSubscribe(db vm_db.VmDb, gs util.GlobalStatus, loan *Loan, shares int32) 
 		loan.ExpireHeight = GetExpireHeight(gs, loan.ExpireDays)
 		loan.StartTime = loan.Updated
 		OnAccLoanSuccess(db, loan.Address, loan)
+		AddBaseAccountEvent(db, loan.Address, BaseLoanInterestReduce, 0, loan.Id, loan.Interest)
+		AddBaseAccountEvent(db, loan.Address, LoanNewSuccessLoan, 0, loan.Id, CalculateAmount(loan.Shares, loan.ShareAmount).Bytes())
 	}
 	SaveLoan(db, loan)
 	AddLoanUpdateEvent(db, loan)
@@ -170,9 +179,12 @@ func DoSubscribe(db vm_db.VmDb, gs util.GlobalStatus, loan *Loan, shares int32) 
 				leaveLoanInterest.Sub(leaveLoanInterest, interest)
 			}
 			sub.Interest = interest.Bytes()
-			OnAccSubscribeSuccess(db, sub.Address, interest, CalculateAmount(sub.Shares, sub.ShareAmount))
-			AddSubscriptionUpdateEvent(db, sub)
+			amount := CalculateAmount(sub.Shares, sub.ShareAmount)
 			SaveSubscription(db, sub)
+			AddSubscriptionUpdateEvent(db, sub)
+			OnAccSubscribeSuccess(db, sub.Address, interest, amount)
+			AddBaseAccountEvent(db, sub.Address, BaseSubscribeSuccessReduce, 0, loan.Id, amount.Bytes())
+			AddBaseAccountEvent(db, sub.Address, BaseSubscribeInterestIncome, 0, loan.Id, sub.Interest)
 		}
 	}
 }

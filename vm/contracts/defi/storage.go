@@ -48,7 +48,7 @@ const (
 	InvestPending = iota + 1
 	InvestSuccess
 	InvestCancelling
-	InvestCancelled
+	InvestRefunded
 )
 
 const (
@@ -62,8 +62,32 @@ const (
 )
 
 const (
-	JobUpdateLoan    = 1
-	JobUpdateInvest    = 2
+	JobUpdateLoan   = 1
+	JobUpdateInvest = 2
+)
+
+//baseAccount update bizType
+const (
+	BaseDeposit   = iota + 1
+	BaseWithdraw
+	BaseSubscribeLock
+	BaseSubscribeSuccessReduce
+	BaseSubscribeFailedRelease
+	BaseSubscribeExpiredRefund
+	BaseLoanInterestLocked
+	BaseLoanInterestReduce
+	BaseLoanInterestRelease
+	BaseSubscribeInterestIncome
+	BaseInvestReduce
+	BaseInvestRefund
+)
+
+//loanAccount update bizType
+const (
+	LoanNewSuccessLoan = iota + 1
+	LoanExpiredRefund
+	LoanInvestReduce
+	LoanInvestRefund
 )
 
 type ParamWithdraw struct {
@@ -315,12 +339,16 @@ func GetInvest(db vm_db.VmDb, investId uint64) (invest *Invest, ok bool) {
 
 func ConfirmInvest(db vm_db.VmDb, invest *Invest) {
 	invest.Status = InvestSuccess
+	invest.Updated = GetDeFiTimestamp(db)
 	common.SerializeToDb(db, getInvestKey(invest.Id), invest)
+	AddInvestUpdateEvent(db, invest)
 }
 
 func CancellingInvest(db vm_db.VmDb, invest *Invest) {
 	invest.Status = InvestCancelling
+	invest.Updated = GetDeFiTimestamp(db)
 	common.SerializeToDb(db, getInvestKey(invest.Id), invest)
+	AddInvestUpdateEvent(db, invest)
 }
 
 func DeleteInvest(db vm_db.VmDb, investId uint64) {
@@ -421,7 +449,7 @@ func GetDeFiTimestamp(db vm_db.VmDb) int64 {
 
 func GetDeFiEstimateTimestamp(db vm_db.VmDb, gs util.GlobalStatus) (int64, int64) {
 	twh, _ := GetDeFiTimeWithHeight(db)
-	return twh.Timestamp + int64(gs.SnapshotBlock().Height - twh.Height), twh.Timestamp
+	return twh.Timestamp + int64(gs.SnapshotBlock().Height-twh.Height), twh.Timestamp
 }
 
 func GetExpireHeight(gs util.GlobalStatus, days int32) uint64 {

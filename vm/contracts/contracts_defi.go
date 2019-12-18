@@ -45,6 +45,7 @@ func (md *MethodDeFiDeposit) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) e
 
 func (md *MethodDeFiDeposit) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) ([]*ledger.AccountBlock, error) {
 	defi.OnAccDeposit(db, sendBlock.AccountAddress, sendBlock.TokenId, sendBlock.Amount)
+	defi.AddBaseAccountEvent(db, sendBlock.AccountAddress.Bytes(), defi.BaseDeposit, 0, 0, sendBlock.Amount.Bytes())
 	return nil, nil
 }
 
@@ -89,6 +90,7 @@ func (md *MethodDeFiWithdraw) DoReceive(db vm_db.VmDb, block *ledger.AccountBloc
 	if _, err = defi.OnAccWithdraw(db, sendBlock.AccountAddress, param.Token.Bytes(), param.Amount); err != nil {
 		return nil, err
 	} else {
+		defi.AddBaseAccountEvent(db, sendBlock.AccountAddress.Bytes(), defi.BaseWithdraw, 0, 0, param.Amount.Bytes())
 		return []*ledger.AccountBlock{
 			{
 				AccountAddress: types.AddressDeFi,
@@ -144,6 +146,7 @@ func (md *MethodDeFiNewLoan) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock
 		loan := defi.NewLoan(sendBlock.AccountAddress, db, param, interest)
 		defi.SaveLoan(db, loan)
 		defi.AddNewLoanEvent(db, loan)
+		defi.AddBaseAccountEvent(db, sendBlock.AccountAddress.Bytes(), defi.BaseLoanInterestLocked, 0, loan.Id, loan.Interest)
 	}
 	return nil, nil
 }
@@ -188,6 +191,7 @@ func (md *MethodDeFiCancelLoan) DoReceive(db vm_db.VmDb, block *ledger.AccountBl
 			loan.Updated = defi.GetDeFiTimestamp(db)
 			defi.DeleteLoan(db, loan)
 			defi.AddLoanUpdateEvent(db, loan)
+			defi.AddBaseAccountEvent(db, sendBlock.AccountAddress.Bytes(), defi.BaseLoanInterestRelease, 0, loan.Id, loan.Interest)
 		}
 	}
 	return nil, nil
@@ -228,11 +232,11 @@ func (md *MethodDeFiSubscribe) DoSend(db vm_db.VmDb, block *ledger.AccountBlock)
 
 func (md *MethodDeFiSubscribe) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) ([]*ledger.AccountBlock, error) {
 	var (
-		param = new(defi.ParamSubscribe)
-		loan  *defi.Loan
-		sub   *defi.Subscription
-		ok    bool
-		err   error
+		param       = new(defi.ParamSubscribe)
+		loan        *defi.Loan
+		sub         *defi.Subscription
+		ok, subAgain bool
+		err         error
 	)
 	abi.ABIDeFi.UnpackMethod(param, md.MethodName, sendBlock.Data)
 	if loan, ok = defi.GetLoan(db, param.LoanId); !ok || loan.Status != defi.LoanOpen {
@@ -248,14 +252,16 @@ func (md *MethodDeFiSubscribe) DoReceive(db vm_db.VmDb, block *ledger.AccountBlo
 	if _, err = defi.OnAccSubscribe(db, sendBlock.AccountAddress, amount); err != nil {
 		return handleDeFiReceiveErr(deFiLogger, md.MethodName, err, sendBlock)
 	}
-	if sub, ok = defi.GetSubscription(db, param.LoanId, sendBlock.AccountAddress.Bytes()); !ok {
+	if sub, subAgain = defi.GetSubscription(db, param.LoanId, sendBlock.AccountAddress.Bytes()); !subAgain {
 		sub = defi.NewSubscription(sendBlock.AccountAddress, db, param, loan)
+		defi.AddNewSubscriptionEvent(db, sub)
 	} else {
 		sub.Shares = sub.Shares + param.Shares
 		sub.Updated = defi.GetDeFiTimestamp(db)
+		defi.AddSubscriptionUpdateEvent(db, sub)
 	}
 	defi.SaveSubscription(db, sub)
-	defi.AddNewSubscriptionEvent(db, sub)
+	defi.AddBaseAccountEvent(db, sendBlock.AccountAddress.Bytes(), defi.BaseSubscribeLock, 0, loan.Id, amount.Bytes())
 	defi.DoSubscribe(db, vm.GlobalStatus(), loan, param.Shares)
 	return nil, nil
 }
@@ -318,6 +324,7 @@ func (md *MethodDeFiInvest) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock,
 	invest := defi.NewInvest(db, vm.GlobalStatus(), sendBlock.AccountAddress, loan, param.BizType, param.Beneficiary, loanInvested, baseInvested, durationHeight)
 	defi.SaveInvest(db, invest)
 	defi.SaveInvestToLoanIndex(db, invest)
+	defi.AddNewInvestEvent(db, invest)
 	switch param.BizType {
 	case defi.InvestForMining:
 		blocks, err = defi.DoDexInvest(invest, dex.StakeForMining, sendBlock.Amount)
@@ -328,6 +335,10 @@ func (md *MethodDeFiInvest) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock,
 	}
 	if err != nil {
 		handleDeFiReceiveErr(deFiLogger, md.MethodName, err, sendBlock)
+	}
+	defi.AddLoanAccountEvent(db, loan.Address, defi.LoanInvestReduce, param.BizType, loan.Id, invest.LoanAmount)
+	if len(invest.BaseAmount) > 0 {
+		defi.AddBaseAccountEvent(db, loan.Address, defi.BaseInvestReduce, param.BizType, loan.Id, invest.BaseAmount)
 	}
 	return
 }
@@ -588,6 +599,11 @@ func (md MethodDeFiRegisterSBP) DoReceive(db vm_db.VmDb, block *ledger.AccountBl
 	defi.OnLoanInvest(db, loan, loanInvested)
 	invest = defi.NewInvest(db, vm.GlobalStatus(), sendBlock.AccountAddress, loan, defi.InvestForSBP, types.ZERO_ADDRESS, loanInvested, baseInvested, durationHeight)
 	defi.SaveInvestToLoanIndex(db, invest)
+	defi.AddNewInvestEvent(db, invest)
+	defi.AddLoanAccountEvent(db, loan.Address, defi.LoanInvestReduce, defi.InvestForSBP, loan.Id, invest.LoanAmount)
+	if len(invest.BaseAmount) > 0 {
+		defi.AddBaseAccountEvent(db, loan.Address, defi.BaseInvestReduce, defi.InvestForSBP, loan.Id, invest.BaseAmount)
+	}
 	return defi.DoRegisterSBP(db, invest, param, SbpStakeAmountMainnet, block)
 }
 

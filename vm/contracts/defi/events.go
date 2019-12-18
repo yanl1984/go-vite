@@ -12,6 +12,10 @@ const newLoanEventName = "newLoanEvent"
 const loanUpdateEventName = "loanUpdateEvent"
 const newSubscriptionEventName = "newSubscriptionEvent"
 const subscriptionUpdateEventName = "subscriptionUpdateEvent"
+const newInvestEventName = "newInvestEvent"
+const investUpdateEventName = "investUpdateEvent"
+const baseAccountEventName = "baseAccountEvent"
+const loanAccountEventName = "loanAccountEvent"
 
 func AddNewLoanEvent(db vm_db.VmDb, ln *Loan) {
 	event := &NewLoanEvent{}
@@ -41,6 +45,39 @@ func AddSubscriptionUpdateEvent(db vm_db.VmDb, sub *Subscription) {
 	event.Address = sub.Address
 	event.Shares = sub.Shares
 	event.Status = sub.Status
+	common.DoEmitEventLog(db, event)
+}
+
+func AddNewInvestEvent(db vm_db.VmDb, invest *Invest) {
+	event := &NewInvestEvent{}
+	event.Invest = invest.Invest
+	common.DoEmitEventLog(db, event)
+}
+
+func AddInvestUpdateEvent(db vm_db.VmDb, invest *Invest) {
+	event := &InvestUpdateEvent{}
+	event.Id = invest.Id
+	event.Status = invest.Status
+	common.DoEmitEventLog(db, event)
+}
+
+func AddBaseAccountEvent(db vm_db.VmDb, address []byte, bizType int32, investType int32, loanId uint64, amount []byte) {
+	event := &BaseAccountEvent{}
+	event.Address = address
+	event.BizType = bizType
+	event.InvestType = investType
+	event.LoanId = loanId
+	event.Amount = amount
+	common.DoEmitEventLog(db, event)
+}
+
+func AddLoanAccountEvent(db vm_db.VmDb, address []byte, bizType int32, investType int32, loanId uint64, amount []byte) {
+	event := &LoanAccountEvent{}
+	event.Address = address
+	event.BizType = bizType
+	event.InvestType = investType
+	event.LoanId = loanId
+	event.Amount = amount
 	common.DoEmitEventLog(db, event)
 }
 
@@ -126,6 +163,94 @@ func (su SubscriptionUpdateEvent) ToDataBytes() []byte {
 func (su SubscriptionUpdateEvent) FromBytes(data []byte) interface{} {
 	event := SubscriptionUpdateEvent{}
 	if err := proto.Unmarshal(data, &event.SubscriptionUpdate); err != nil {
+		return nil
+	} else {
+		return event
+	}
+}
+
+type NewInvestEvent struct {
+	defiproto.Invest
+}
+
+func (nie NewInvestEvent) GetTopicId() types.Hash {
+	return common.FromNameToHash(newInvestEventName)
+}
+
+func (nie NewInvestEvent) ToDataBytes() []byte {
+	data, _ := proto.Marshal(&nie.Invest)
+	return data
+}
+
+func (nie NewInvestEvent) FromBytes(data []byte) interface{} {
+	event := NewInvestEvent{}
+	if err := proto.Unmarshal(data, &event.Invest); err != nil {
+		return nil
+	} else {
+		return event
+	}
+}
+
+type InvestUpdateEvent struct {
+	defiproto.InvestUpdate
+}
+
+func (iv InvestUpdateEvent) GetTopicId() types.Hash {
+	return common.FromNameToHash(investUpdateEventName)
+}
+
+func (iv InvestUpdateEvent) ToDataBytes() []byte {
+	data, _ := proto.Marshal(&iv.InvestUpdate)
+	return data
+}
+
+func (iv InvestUpdateEvent) FromBytes(data []byte) interface{} {
+	event := InvestUpdateEvent{}
+	if err := proto.Unmarshal(data, &event.InvestUpdate); err != nil {
+		return nil
+	} else {
+		return event
+	}
+}
+
+type BaseAccountEvent struct {
+	defiproto.BaseAccountUpdate
+}
+
+func (ba BaseAccountEvent) GetTopicId() types.Hash {
+	return common.FromNameToHash(baseAccountEventName)
+}
+
+func (ba BaseAccountEvent) ToDataBytes() []byte {
+	data, _ := proto.Marshal(&ba.BaseAccountUpdate)
+	return data
+}
+
+func (ba BaseAccountEvent) FromBytes(data []byte) interface{} {
+	event := BaseAccountEvent{}
+	if err := proto.Unmarshal(data, &event.BaseAccountUpdate); err != nil {
+		return nil
+	} else {
+		return event
+	}
+}
+
+type LoanAccountEvent struct {
+	defiproto.LoanAccountUpdate
+}
+
+func (la LoanAccountEvent) GetTopicId() types.Hash {
+	return common.FromNameToHash(loanAccountEventName)
+}
+
+func (la LoanAccountEvent) ToDataBytes() []byte {
+	data, _ := proto.Marshal(&la.LoanAccountUpdate)
+	return data
+}
+
+func (la LoanAccountEvent) FromBytes(data []byte) interface{} {
+	event := LoanAccountEvent{}
+	if err := proto.Unmarshal(data, &event.LoanAccountUpdate); err != nil {
 		return nil
 	} else {
 		return event

@@ -60,7 +60,7 @@ func UpdateInvests(db vm_db.VmDb, data []byte) {
 			}
 		}
 	} else {
-		iterator, err := db.NewStorageIterator(loanKeyPrefix)
+		iterator, err := db.NewStorageIterator(investKeyPrefix)
 		if err != nil {
 			panic(err)
 		}
@@ -121,7 +121,6 @@ func innerUpdateLoan(db vm_db.VmDb, loan *Loan, estTime, time int64, gs util.Glo
 func innerUpdateInvest(db vm_db.VmDb, invest *Invest, time int64) {
 	if invest.Status == InvestPending && invest.BizType != InvestForQuota && time-invest.Created > 100 {
 		//InvestForMining, InvestForSVIP, InvestForSBP
-		invest.Status = InvestSuccess
-		SaveInvest(db, invest)
+		ConfirmInvest(db, invest)
 	}
 }

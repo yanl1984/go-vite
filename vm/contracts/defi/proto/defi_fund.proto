@@ -27,7 +27,7 @@ message Fund {
     repeated Account Accounts = 2;
 }
 
-//newLoanEvent
+//storage+event
 message Loan {
     uint64 Id = 1;
     bytes Address = 2;
@@ -62,6 +62,7 @@ message Subscription {
     int64 Updated = 9;
 }
 
+//storage+event
 message Invest {
     uint64 Id = 1;
     uint64 LoanId = 2;
@@ -107,6 +108,7 @@ message LoanUpdate {
     int64 Timestamp = 5;
 }
 
+//event
 message SubscriptionUpdate {
     uint64 LoanId = 1;
     bytes Address = 2;
@@ -114,11 +116,13 @@ message SubscriptionUpdate {
     int32 Status = 4;
 }
 
+//event
 message InvestUpdate {
     uint64 Id = 1;
     int32 Status = 2;
 }
 
+//event
 message BaseAccountUpdate {
     bytes Address = 1;
     // 1 deposit, 2 withdraw,
@@ -126,17 +130,18 @@ message BaseAccountUpdate {
     // 7 loan interest lock, 8 loan interest reduce, 9 loan interest release, 10 subscribe interest income,
     // 11 invest reduce, 12 invest refund
     int32 BizType = 2;
-    // 1. reg SBP, 2 SVIP stake, 3 mining stake, 4 quota stake
+    // 1 mining stake, 2 SVIP stake, 3. reg SBP, 4 quota stake
     int32 InvestType = 3;
     uint64 LoanId = 4;
     bytes Amount = 5;
 }
 
+//event
 message LoanAccountUpdate {
     bytes Address = 1;
-    // 1 new success loan, 2 loan refund, 3 invest reduce, 4 invest refund
+    // 1 new success loan, 2 loan expired refund, 3 invest reduce, 4 invest refund
     int32 BizType = 2;
-    // 1. reg SBP, 2 SVIP stake, 3 mining stake, 4 quota stake
+    // 1 mining stake, 2 SVIP stake, 3. reg SBP, 4 quota stake
     int32 InvestType = 3;
     uint64 LoanId = 4;
     bytes Amount = 5;
