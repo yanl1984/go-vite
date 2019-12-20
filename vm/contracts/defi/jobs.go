@@ -1,6 +1,7 @@
 package defi
 
 import (
+	"github.com/vitelabs/go-vite/interfaces"
 	"github.com/vitelabs/go-vite/ledger"
 	"github.com/vitelabs/go-vite/vm/contracts/common"
 	"github.com/vitelabs/go-vite/vm/util"
@@ -23,7 +24,8 @@ func UpdateLoans(db vm_db.VmDb, data []byte, gs util.GlobalStatus) (blocks []*le
 			}
 		}
 	} else {
-		iterator, err := db.NewStorageIterator(loanKeyPrefix)
+		var iterator interfaces.StorageIterator
+		iterator, err = db.NewStorageIterator(loanKeyPrefix)
 		if err != nil {
 			panic(err)
 		}

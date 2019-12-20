@@ -328,14 +328,14 @@ func (md *MethodDeFiInvest) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock,
 	defi.AddNewInvestEvent(db, invest)
 	switch param.BizType {
 	case defi.InvestForMining:
-		blocks, err = defi.DoDexInvest(invest, dex.StakeForMining, sendBlock.Amount)
+		blocks, err = defi.DoDexInvest(invest, uint8(dex.StakeForMining), param.Amount)
 	case defi.InvestForSVIP:
-		blocks, err = defi.DoDexInvest(invest, dex.StakeForPrincipalSuperVIP, sendBlock.Amount)
+		blocks, err = defi.DoDexInvest(invest, uint8(dex.StakeForPrincipalSuperVIP), dex.StakeForSuperVIPAmount)
 	case defi.InvestForQuota:
-		blocks, err = defi.DoQuotaInvest(db, invest, sendBlock.Amount, nodeConfig.params.StakeHeight, block)
+		blocks, err = defi.DoQuotaInvest(db, sendBlock.AccountAddress, invest, param.Amount, nodeConfig.params.StakeHeight, block)
 	}
 	if err != nil {
-		handleDeFiReceiveErr(deFiLogger, md.MethodName, err, sendBlock)
+		return handleDeFiReceiveErr(deFiLogger, md.MethodName, err, sendBlock)
 	}
 	defi.AddLoanAccountEvent(db, loan.Address, defi.LoanInvestReduce, param.BizType, loan.Id, invest.LoanAmount)
 	if len(invest.BaseAmount) > 0 {
@@ -391,7 +391,7 @@ func (md *MethodDeFiCancelInvest) DoReceive(db vm_db.VmDb, block *ledger.Account
 	defi.CancellingInvest(db, invest)
 	switch invest.BizType {
 	case defi.InvestForMining, defi.InvestForSVIP:
-		blocks, err = defi.DoCancelDexInvest(invest.Id)
+		blocks, err = defi.DoCancelDexInvest(common.Uint64ToBytes(invest.Id))
 	case defi.InvestForQuota:
 		blocks, err = defi.DoCancelQuotaInvest(invest.InvestHash)
 	case defi.InvestForSBP:
@@ -588,10 +588,8 @@ func (md MethodDeFiRegisterSBP) DoReceive(db vm_db.VmDb, block *ledger.AccountBl
 	} else if !bytes.Equal(loan.Address, sendBlock.AccountAddress.Bytes()) {
 		return handleDeFiReceiveErr(deFiLogger, md.MethodName, defi.OnlyOwnerAllowErr, sendBlock)
 	}
-	groupInfo, err := abi.GetConsensusGroup(db, types.SNAPSHOT_GID)
-	stakeParam, _ := abi.GetRegisterStakeParamOfConsensusGroup(groupInfo.RegisterConditionParam)
 	available, availableHeight := defi.GetLoanAvailable(vm.GlobalStatus(), loan)
-	if loanInvested, baseInvested, durationHeight, err = defi.PrepareInvest(db, sendBlock.AccountAddress, defi.InvestForSBP, available, SbpStakeAmountMainnet, availableHeight, stakeParam.StakeHeight, nodeConfig.params.DexSuperVipStakeHeight); err != nil {
+	if loanInvested, baseInvested, durationHeight, err = defi.PrepareInvest(db, sendBlock.AccountAddress, defi.InvestForSBP, available, SbpStakeAmountMainnet, availableHeight, nodeConfig.params.SBPStakeHeight	, nodeConfig.params.DexSuperVipStakeHeight); err != nil {
 		return handleDeFiReceiveErr(deFiLogger, md.MethodName, err, sendBlock)
 	}
 	if _, err = defi.OnAccInvest(db, sendBlock.AccountAddress, loanInvested, baseInvested); err != nil {

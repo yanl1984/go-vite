@@ -53,7 +53,7 @@ func LoanToRpc(loan *defi.Loan) *RpcLoan {
 }
 
 type RpcSubscription struct {
-	LoanId      uint64 `json:"id"`
+	LoanId      uint64 `json:"loanId"`
 	Address     string `json:"address"`
 	Token       string `json:"token"`
 	ShareAmount string `json:"shareAmount"`
@@ -82,4 +82,86 @@ func SubscriptionToRpc(sub *defi.Subscription) *RpcSubscription {
 		}
 	}
 	return rs
+}
+
+type RpcInvest struct {
+	Id           uint64 `json:"id"`
+	LoanId       uint64 `json:"loanId"`
+	Address      string `json:"address"`
+	LoanAmount   string `json:"loanAmount"`
+	BaseAmount   string `json:"baseAmount"`
+	BizType      int32  `json:"bizType,omitempty"`
+	Beneficial   string `json:"beneficial,omitempty"`
+	CreateHeight uint64 `json:"createHeight"`
+	ExpireHeight uint64 `json:"expireHeight,omitempty"`
+	Status       int32  `json:"status,omitempty"`
+	InvestHash   string `json:"investHash"`
+	Created      int64  `json:"created"`
+	Updated      int64  `json:"updated,omitempty"`
+}
+
+func InvestToRpc(invest *defi.Invest) *RpcInvest {
+	var ri *RpcInvest = nil
+	if invest != nil {
+		address, _ := types.BytesToAddress(invest.Address)
+		ri = &RpcInvest{
+			Id:           invest.Id,
+			LoanId:       invest.LoanId,
+			Address:      address.String(),
+			LoanAmount:   dex.AmountBytesToString(invest.LoanAmount),
+			BaseAmount:   dex.AmountBytesToString(invest.BaseAmount),
+			BizType:      invest.BizType,
+			CreateHeight: invest.CreateHeight,
+			ExpireHeight: invest.ExpireHeight,
+			Status:       invest.Status,
+			Created:      invest.Created,
+			Updated:      invest.Updated,
+		}
+		if len(invest.Beneficial) > 0 {
+			beneficial, _ := types.BytesToAddress(invest.Beneficial)
+			ri.Beneficial = beneficial.String()
+		}
+	}
+	return ri
+}
+
+type RpcSBPRegistration struct {
+	InvestId              uint64 `json:"investId"`
+	Name                  string `json:"name"`
+	ProducingAddress      string `json:"producingAddress"`
+	RewardWithdrawAddress string `json:"rewardWithdrawAddress"`
+}
+
+func SBPRegistrationToRpc(sbp *defi.SBPRegistration) *RpcSBPRegistration {
+	var sbpR *RpcSBPRegistration = nil
+	if sbp != nil {
+		produceAddress, _ := types.BytesToAddress(sbp.ProducingAddress)
+		rewardAddress, _ := types.BytesToAddress(sbp.RewardWithdrawAddress)
+		sbpR = &RpcSBPRegistration{
+			InvestId:              sbp.InvestId,
+			Name:                  sbp.Name,
+			ProducingAddress:      produceAddress.String(),
+			RewardWithdrawAddress: rewardAddress.String(),
+		}
+	}
+	return sbpR
+}
+
+type RpcInvestQuotaInfo struct {
+	Address  string `json:"address"`
+	Amount   string `json:"amount"`
+	InvestId uint64 `json:"investId"`
+}
+
+func InvestQuotaInfoToRpc(iq *defi.InvestQuotaInfo) *RpcInvestQuotaInfo {
+	var res *RpcInvestQuotaInfo = nil
+	if iq != nil {
+		address, _ := types.BytesToAddress(iq.Address)
+		res = &RpcInvestQuotaInfo{
+			Address:  address.String(),
+			Amount:   dex.AmountBytesToString(iq.Amount),
+			InvestId: iq.InvestId,
+		}
+	}
+	return res
 }

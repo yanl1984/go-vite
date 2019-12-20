@@ -41,7 +41,7 @@ var (
 
 	BuiltinContracts                = []Address{AddressQuota, AddressGovernance, AddressAsset, AddressDexFund, AddressDexTrade, AddressDeFi}
 	BuiltinContractsWithoutQuota    = []Address{AddressQuota, AddressGovernance, AddressAsset, AddressDexTrade}
-	BuiltinContractsWithSendConfirm = []Address{AddressQuota, AddressGovernance, AddressAsset}
+	BuiltinContractsWithSendConfirm = []Address{AddressQuota, AddressGovernance, AddressAsset, AddressDeFi}
 )
 
 func IsContractAddr(addr Address) bool {

@@ -57,7 +57,6 @@ func (f DeFiApi) GetAccountInfo(addr types.Address, tokenId *types.TokenTypeId) 
 	if !ok {
 		return nil, nil
 	}
-
 	accounts := make(map[types.TokenTypeId]*DeFiAccount, 0)
 	for _, v := range defiAccs {
 		token, _ := types.BytesToTokenTypeId(v.Token)
@@ -125,26 +124,26 @@ func (f DeFiApi) GetSubscriptionInfo(loanId uint64, address types.Address) (*api
 	}
 }
 
-func (f DeFiApi) GetInvest(investId uint64) (*defi.Invest, error) {
+func (f DeFiApi) GetInvest(investId uint64) (*apidefi.RpcInvest, error) {
 	db, err := getVmDb(f.chain, types.AddressDeFi)
 	if err != nil {
 		return nil, err
 	}
 	if invest, ok := defi.GetInvest(db, investId); ok {
-		return invest, nil
+		return apidefi.InvestToRpc(invest), nil
 	} else {
 		return nil, defi.InvestNotExistsErr
 	}
 }
 
-func (f DeFiApi) GetSbpRegistration(investId uint64) (*defi.SBPRegistration, error) {
+func (f DeFiApi) GetSbpRegistration(investId uint64) (*apidefi.RpcSBPRegistration, error) {
 	db, err := getVmDb(f.chain, types.AddressDeFi)
 	if err != nil {
 		return nil, err
 	}
 	if invest, ok := defi.GetInvest(db, investId); ok {
 		if sbpReg, ok := defi.GetSBPRegistration(db, invest.InvestHash); ok {
-			return sbpReg, nil
+			return apidefi.SBPRegistrationToRpc(sbpReg), nil
 		} else {
 			return nil, defi.SBPRegistrationNotExistsErr
 		}
@@ -153,18 +152,26 @@ func (f DeFiApi) GetSbpRegistration(investId uint64) (*defi.SBPRegistration, err
 	}
 }
 
-func (f DeFiApi) GetInvestQuotaInfo(investId uint64) (*defi.InvestQuotaInfo, error) {
+func (f DeFiApi) GetInvestQuotaInfo(investId uint64) (*apidefi.RpcInvestQuotaInfo, error) {
 	db, err := getVmDb(f.chain, types.AddressDeFi)
 	if err != nil {
 		return nil, err
 	}
 	if invest, ok := defi.GetInvest(db, investId); ok {
 		if investQuota, ok := defi.GetInvestQuotaInfo(db, invest.InvestHash); ok {
-			return investQuota, nil
+			return apidefi.InvestQuotaInfoToRpc(investQuota), nil
 		} else {
 			return nil, defi.InvalidQuotaInvestErr
 		}
 	} else {
 		return nil, defi.InvestNotExistsErr
 	}
+}
+
+func (f DeFiApi) GetTimestamp() (int64, error) {
+	db, err := getVmDb(f.chain, types.AddressDeFi)
+	if err != nil {
+		return 0, err
+	}
+	return defi.GetDeFiTimestamp(db), nil
 }

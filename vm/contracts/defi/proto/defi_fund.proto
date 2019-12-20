@@ -105,7 +105,8 @@ message LoanUpdate {
     int32 SubscribedShares = 2;
     bytes Invested = 3;
     int32 Status = 4;
-    int64 Timestamp = 5;
+    uint64 ExpireHeight = 5;
+    int64 Timestamp = 6;
 }
 
 //event

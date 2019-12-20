@@ -241,8 +241,8 @@ const (
 
 //Invest status
 const (
-	Normal = iota + 1
-	Cancelling
+	InvestNormal = iota + 1
+	InvestCancelling
 )
 
 type QuoteTokenTypeInfo struct {
@@ -2014,14 +2014,14 @@ func SaveInvestStakeInfo(db vm_db.VmDb, sendBlock *ledger.AccountBlock, stakeId 
 	info.StakeId = stakeId.Bytes()
 	info.BizType = int32(param.BizType)
 	info.Amount = sendBlock.Amount.Bytes()
-	info.Status = Normal
+	info.Status = InvestNormal
 	common.SerializeToDb(db, GetInvestStakeInfoKey(param.InvestId), info)
 }
 
 func CancellingInvestStakeInfo(db vm_db.VmDb, investId uint64) {
 	GetInvestStakeInfo(db, investId)
 	info := &InvestInfo{}
-	info.Status = Cancelling
+	info.Status = InvestCancelling
 	common.SerializeToDb(db, GetInvestStakeInfoKey(investId), info)
 }
 

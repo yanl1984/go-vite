@@ -111,7 +111,7 @@ type ParamSubscribe struct {
 
 type ParamInvest struct {
 	LoanId      uint64
-	BizType     int32
+	BizType     uint8
 	Amount      *big.Int
 	Beneficiary types.Address
 }
@@ -271,7 +271,7 @@ func SaveLoan(db vm_db.VmDb, loan *Loan) {
 }
 
 func DeleteLoan(db vm_db.VmDb, loan *Loan) {
-	common.SerializeToDb(db, getLoanKey(loan.Id), loan)
+	common.SerializeToDb(db, getLoanKey(loan.Id), nil)
 }
 
 func GetLoan(db vm_db.VmDb, loanId uint64) (loan *Loan, ok bool) {
@@ -388,13 +388,17 @@ func GetSBPRegistration(db vm_db.VmDb, hash []byte) (info *SBPRegistration, ok b
 	return
 }
 
-func SaveSBPRegistration(db vm_db.VmDb, hash types.Hash, param *ParamRegisterSBP, invest *Invest) {
+func NewSBPRegistration(param *ParamRegisterSBP, invest *Invest) *SBPRegistration {
 	info := &SBPRegistration{}
 	info.InvestId = invest.Id
 	info.Name = param.SbpName
 	info.ProducingAddress = param.BlockProducingAddress.Bytes()
 	info.RewardWithdrawAddress = param.RewardWithdrawAddress.Bytes()
-	common.SerializeToDb(db, GetSBPRegistrationKey(hash.Bytes()), info)
+	return info
+}
+
+func SaveSBPRegistration(db vm_db.VmDb, hash []byte, info *SBPRegistration) {
+	common.SerializeToDb(db, GetSBPRegistrationKey(hash), info)
 }
 
 func DeleteSBPRegistration(db vm_db.VmDb, hash []byte) {

@@ -14,6 +14,8 @@ const newSubscriptionEventName = "newSubscriptionEvent"
 const subscriptionUpdateEventName = "subscriptionUpdateEvent"
 const newInvestEventName = "newInvestEvent"
 const investUpdateEventName = "investUpdateEvent"
+const sbpNewRegistrationEventName = "sbpNewRegistrationEvent"
+const sbpRegistrationUpdateEventName = "sbpRegistrationUpdate"
 const baseAccountEventName = "baseAccountEvent"
 const loanAccountEventName = "loanAccountEvent"
 
@@ -61,21 +63,33 @@ func AddInvestUpdateEvent(db vm_db.VmDb, invest *Invest) {
 	common.DoEmitEventLog(db, event)
 }
 
-func AddBaseAccountEvent(db vm_db.VmDb, address []byte, bizType int32, investType int32, loanId uint64, amount []byte) {
+func AddSBPNewRegistrationEvent(db vm_db.VmDb, newREg *SBPRegistration) {
+	event := &SBPNewRegistrationEvent{}
+	event.SBPRegistration = newREg.SBPRegistration
+	common.DoEmitEventLog(db, event)
+}
+
+func AddSBPRegistrationUpdateEvent(db vm_db.VmDb, regUpdate *SBPRegistration) {
+	event := &SBPNewRegistrationEvent{}
+	event.SBPRegistration = regUpdate.SBPRegistration
+	common.DoEmitEventLog(db, event)
+}
+
+func AddBaseAccountEvent(db vm_db.VmDb, address []byte, bizType int32, investType uint8, loanId uint64, amount []byte) {
 	event := &BaseAccountEvent{}
 	event.Address = address
 	event.BizType = bizType
-	event.InvestType = investType
+	event.InvestType = int32(investType)
 	event.LoanId = loanId
 	event.Amount = amount
 	common.DoEmitEventLog(db, event)
 }
 
-func AddLoanAccountEvent(db vm_db.VmDb, address []byte, bizType int32, investType int32, loanId uint64, amount []byte) {
+func AddLoanAccountEvent(db vm_db.VmDb, address []byte, bizType int32, investType uint8, loanId uint64, amount []byte) {
 	event := &LoanAccountEvent{}
 	event.Address = address
 	event.BizType = bizType
-	event.InvestType = investType
+	event.InvestType = int32(investType)
 	event.LoanId = loanId
 	event.Amount = amount
 	common.DoEmitEventLog(db, event)
@@ -207,6 +221,50 @@ func (iv InvestUpdateEvent) ToDataBytes() []byte {
 func (iv InvestUpdateEvent) FromBytes(data []byte) interface{} {
 	event := InvestUpdateEvent{}
 	if err := proto.Unmarshal(data, &event.InvestUpdate); err != nil {
+		return nil
+	} else {
+		return event
+	}
+}
+
+type SBPNewRegistrationEvent struct {
+	defiproto.SBPRegistration
+}
+
+func (snr SBPNewRegistrationEvent) GetTopicId() types.Hash {
+	return common.FromNameToHash(sbpNewRegistrationEventName)
+}
+
+func (snr SBPNewRegistrationEvent) ToDataBytes() []byte {
+	data, _ := proto.Marshal(&snr)
+	return data
+}
+
+func (snr SBPNewRegistrationEvent) FromBytes(data []byte) interface{} {
+	event := SBPNewRegistrationEvent{}
+	if err := proto.Unmarshal(data, &event.SBPRegistration); err != nil {
+		return nil
+	} else {
+		return event
+	}
+}
+
+type SBPRegistrationUpdateEvent struct {
+	defiproto.SBPRegistration
+}
+
+func (sru SBPRegistrationUpdateEvent) GetTopicId() types.Hash {
+	return common.FromNameToHash(sbpRegistrationUpdateEventName)
+}
+
+func (sru SBPRegistrationUpdateEvent) ToDataBytes() []byte {
+	data, _ := proto.Marshal(&sru.SBPRegistration)
+	return data
+}
+
+func (sru SBPRegistrationUpdateEvent) FromBytes(data []byte) interface{} {
+	event := SBPRegistrationUpdateEvent{}
+	if err := proto.Unmarshal(data, &event.SBPRegistration); err != nil {
 		return nil
 	} else {
 		return event

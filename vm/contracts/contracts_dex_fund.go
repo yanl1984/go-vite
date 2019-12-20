@@ -1848,7 +1848,7 @@ func (md *MethodDexFundDelegateInvest) DoSend(db vm_db.VmDb, block *ledger.Accou
 	switch param.BizType {
 	case dex.StakeForMining:
 		return nil
-	case dex.StakeForSuperVIP:
+	case dex.StakeForPrincipalSuperVIP:
 		if block.Amount.Cmp(dex.StakeForSuperVIPAmount) != 0 {
 			return dex.InvalidInputParamErr
 		} else {
@@ -1869,8 +1869,8 @@ func (md *MethodDexFundDelegateInvest) DoReceive(db vm_db.VmDb, block *ledger.Ac
 	switch param.BizType {
 	case dex.StakeForMining:
 		blocks, stakeId, err = dex.HandleStakeAction(db, param.BizType, dex.Stake, param.Address, types.ZERO_ADDRESS, sendBlock.Amount, nodeConfig.params.StakeHeight, block)
-	case dex.StakeForSuperVIP:
-		blocks, stakeId, err = dex.HandleStakeAction(db, param.BizType, dex.StakeForPrincipalSuperVIP, param.Address, param.Beneficiary, sendBlock.Amount, nodeConfig.params.DexSuperVipStakeHeight, block)
+	case dex.StakeForPrincipalSuperVIP:
+		blocks, stakeId, err = dex.HandleStakeAction(db, param.BizType, dex.Stake, param.Address, param.Beneficiary, sendBlock.Amount, nodeConfig.params.DexSuperVipStakeHeight, block)
 	}
 	if err == nil {
 		dex.SaveInvestStakeInfo(db, sendBlock, stakeId, param)
@@ -1916,13 +1916,13 @@ func (md *MethodDexFundCancelDelegateInvest) DoSend(db vm_db.VmDb, block *ledger
 
 func (md *MethodDexFundCancelDelegateInvest) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) (blocks []*ledger.AccountBlock, err error) {
 	var (
-		investIds      = new([]byte)
+		investIds = new([]byte)
 		stakeInfo *dex.DelegateStakeInfo
 	)
 	cabi.ABIDexFund.UnpackMethod(investIds, md.MethodName, sendBlock.Data)
-	for i:= 0; i < len(*investIds)/8; i++ {
+	for i := 0; i < len(*investIds)/8; i++ {
 		iv := (*investIds)[i*8 : (i+1)*8]
-		if investInfo, ok := dex.GetInvestStakeInfo(db, common.BytesToUint64(iv)); !ok || investInfo.Status != dex.Normal {
+		if investInfo, ok := dex.GetInvestStakeInfo(db, common.BytesToUint64(iv)); !ok || investInfo.Status != dex.InvestNormal {
 			return handleDexReceiveErr(fundLogger, md.MethodName, dex.InvestInfoNotExistsErr, sendBlock)
 		} else if stakeInfo, ok = dex.GetDelegateStakeInfo(db, investInfo.StakeId); !ok || stakeInfo.Status != dex.StakeConfirmed {
 			return handleDexReceiveErr(fundLogger, md.MethodName, dex.StakingInfoByIdNotExistsErr, sendBlock)

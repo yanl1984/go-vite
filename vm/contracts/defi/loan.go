@@ -75,6 +75,7 @@ func DoCancelExpiredLoanInvests(db vm_db.VmDb, loan *Loan) (blocks []*ledger.Acc
 		panic(err)
 	}
 	defer iterator.Release()
+	dexIdsToCancel := make([]byte, 0, 80)
 	for {
 		if !iterator.Next() {
 			if iterator.Error() != nil {
@@ -89,9 +90,10 @@ func DoCancelExpiredLoanInvests(db vm_db.VmDb, loan *Loan) (blocks []*ledger.Acc
 		investId := common.BytesToUint64(data)
 		var blks []*ledger.AccountBlock
 		if invest, ok := GetInvest(db, investId); ok && invest.Status == InvestSuccess {
+			CancellingInvest(db, invest)
 			switch invest.BizType {
 			case InvestForMining, InvestForSVIP:
-				blks, err = DoCancelDexInvest(investId)
+				dexIdsToCancel = append(dexIdsToCancel, common.Uint64ToBytes(investId)...)
 			case InvestForQuota:
 				blks, err = DoCancelQuotaInvest(invest.InvestHash)
 			case InvestForSBP:
@@ -102,6 +104,13 @@ func DoCancelExpiredLoanInvests(db vm_db.VmDb, loan *Loan) (blocks []*ledger.Acc
 			return
 		}
 		blocks = append(blocks, blks...)
+	}
+	if len(dexIdsToCancel) != 0 {
+		if dexBlk, err1 := DoCancelDexInvest(dexIdsToCancel); err1 != nil {
+			return nil, err1
+		} else {
+			blocks = append(blocks, dexBlk...)
+		}
 	}
 	return
 }
