@@ -31,7 +31,9 @@ func AddLoanUpdateEvent(db vm_db.VmDb, ln *Loan) {
 	event.SubscribedShares = ln.SubscribedShares
 	event.Invested = ln.Invested
 	event.Status = ln.Status
+	event.ExpireHeight = ln.ExpireHeight
 	event.Timestamp = ln.Updated
+
 	common.DoEmitEventLog(db, event)
 }
 
@@ -47,6 +49,7 @@ func AddSubscriptionUpdateEvent(db vm_db.VmDb, sub *Subscription) {
 	event.Address = sub.Address
 	event.Shares = sub.Shares
 	event.Status = sub.Status
+	event.Interest = sub.Interest
 	common.DoEmitEventLog(db, event)
 }
 

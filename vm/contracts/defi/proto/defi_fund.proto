@@ -114,7 +114,8 @@ message SubscriptionUpdate {
     uint64 LoanId = 1;
     bytes Address = 2;
     int32 Shares = 3;
-    int32 Status = 4;
+    int32 Status = 5;
+    bytes Interest = 4;
 }
 
 //event
