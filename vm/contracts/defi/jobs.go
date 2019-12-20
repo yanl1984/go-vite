@@ -53,12 +53,12 @@ func UpdateLoans(db vm_db.VmDb, data []byte, gs util.GlobalStatus) (blocks []*le
 	return
 }
 
-func UpdateInvests(db vm_db.VmDb, data []byte) {
+func UpdateInvests(db vm_db.VmDb, data []byte, confirmSeconds int64) {
 	if len(data) > 0 {
 		for i := 0; i < len(data)/8; i++ {
 			investId := common.BytesToUint64(data[i*8 : (i+1)*8])
 			if invest, ok := GetInvest(db, investId); ok {
-				innerUpdateInvest(db, invest, GetDeFiTimestamp(db))
+				innerUpdateInvest(db, invest, GetDeFiTimestamp(db), confirmSeconds)
 			}
 		}
 	} else {
@@ -79,7 +79,7 @@ func UpdateInvests(db vm_db.VmDb, data []byte) {
 			if err = invest.DeSerialize(investValue); err != nil {
 				panic(err)
 			}
-			innerUpdateInvest(db, invest, GetDeFiTimestamp(db))
+			innerUpdateInvest(db, invest, GetDeFiTimestamp(db), confirmSeconds)
 		}
 	}
 }
@@ -120,8 +120,8 @@ func innerUpdateLoan(db vm_db.VmDb, loan *Loan, estTime, time int64, gs util.Glo
 	return
 }
 
-func innerUpdateInvest(db vm_db.VmDb, invest *Invest, time int64) {
-	if invest.Status == InvestPending && invest.BizType != InvestForQuota && time-invest.Created > 100 {
+func innerUpdateInvest(db vm_db.VmDb, invest *Invest, time int64, confirmSeconds int64) {
+	if invest.Status == InvestPending && invest.BizType != InvestForQuota && time-invest.Created > confirmSeconds {
 		//InvestForMining, InvestForSVIP, InvestForSBP
 		ConfirmInvest(db, invest)
 	}

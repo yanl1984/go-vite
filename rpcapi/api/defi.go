@@ -168,6 +168,38 @@ func (f DeFiApi) GetInvestQuotaInfo(investId uint64) (*apidefi.RpcInvestQuotaInf
 	}
 }
 
+func (f DeFiApi) GetLoanSubscriptions(loaId uint64) ([]*apidefi.RpcSubscription, error) {
+	db, err := getVmDb(f.chain, types.AddressDeFi)
+	if err != nil {
+		return nil, err
+	}
+	if subs, err := defi.GetLoanSubscriptions(db, loaId); err == nil {
+		rpcSubs := make([]*apidefi.RpcSubscription, 0, 10)
+		for _, sub := range subs {
+			rpcSubs = append(rpcSubs, apidefi.SubscriptionToRpc(sub))
+		}
+		return rpcSubs, nil
+	} else {
+		return nil, err
+	}
+}
+
+func (f DeFiApi) GetLoanInvests(loaId uint64) ([]*apidefi.RpcInvest, error) {
+	db, err := getVmDb(f.chain, types.AddressDeFi)
+	if err != nil {
+		return nil, err
+	}
+	if ivts, err := defi.GetLoanInvests(db, loaId); err == nil {
+		rpcIvts := make([]*apidefi.RpcInvest, 0, 10)
+		for _, ivt := range ivts {
+			rpcIvts = append(rpcIvts, apidefi.InvestToRpc(ivt))
+		}
+		return rpcIvts, nil
+	} else {
+		return nil, err
+	}
+}
+
 func (f DeFiApi) GetTimestamp() (int64, error) {
 	db, err := getVmDb(f.chain, types.AddressDeFi)
 	if err != nil {

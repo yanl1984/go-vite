@@ -63,7 +63,7 @@ func DoFinishVxUnlock(db vm_db.VmDb, periodId uint64) error {
 }
 
 //periodId is finish period
-func DoFinishCancelMiningStake(db vm_db.VmDb, periodId uint64) (blocks []*ledger.AccountBlock, err error) {
+func DoFinishCancelMiningStake(db vm_db.VmDb, periodId uint64, deFiRefundReason uint8) (blocks []*ledger.AccountBlock, err error) {
 	if !IsEarthFork(db) {
 		return
 	}
@@ -73,8 +73,8 @@ func DoFinishCancelMiningStake(db vm_db.VmDb, periodId uint64) (blocks []*ledger
 		panic(err)
 	}
 	var (
-		investAmount  = new(big.Int)
-		investIdBytes = make([]byte, 0, 320)
+		investIdBytes     = make([]byte, 0, 320)
+		investAmountTotal = new(big.Int)
 	)
 	defer iterator.Release()
 	for {
@@ -101,11 +101,12 @@ func DoFinishCancelMiningStake(db vm_db.VmDb, periodId uint64) (blocks []*ledger
 		var (
 			i      = 0
 			amount = new(big.Int)
+			investedAmount = new(big.Int)
 		)
 		for _, cl := range cancelStakes.Cancels {
 			if cl.PeriodId+uint64(SchedulePeriods) <= periodId {
 				amount.Add(amount, new(big.Int).SetBytes(cl.Amount))
-				investAmount.Add(investAmount, new(big.Int).SetBytes(cl.InvestedAmount))
+				investedAmount.Add(investedAmount, new(big.Int).SetBytes(cl.InvestedAmount))
 				if len(cl.InvestIds) > 0 {
 					for _, iv := range cl.InvestIds {
 						investIdBytes = append(investIdBytes, common.Uint64ToBytes(iv)...)
@@ -119,13 +120,14 @@ func DoFinishCancelMiningStake(db vm_db.VmDb, periodId uint64) (blocks []*ledger
 		if i > 0 {
 			cancelStakes.Cancels = cancelStakes.Cancels[i:]
 			UpdateCancelStakes(db, address, cancelStakes)
-			if _, err = FinishCancelStake(db, address, amount, investAmount); err != nil {
+			if _, err = FinishCancelStake(db, address, amount, investedAmount); err != nil {
 				return
 			}
+			investAmountTotal.Add(investAmountTotal, investedAmount)
 		}
 	}
 	if len(investIdBytes) > 0 {
-		return DoRefundInvest(db, investIdBytes, RefundCancelledInvest, investAmount)
+		return DoRefundInvest(db, investIdBytes, deFiRefundReason, investAmountTotal)
 	}
 	return
 }

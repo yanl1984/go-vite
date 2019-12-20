@@ -170,8 +170,7 @@ func DoSubscribe(db vm_db.VmDb, gs util.GlobalStatus, loan *Loan, shares int32) 
 	SaveLoan(db, loan)
 	AddLoanUpdateEvent(db, loan)
 	if loan.Status == LoanSuccess {
-		subscriptionsPrefix := append(subscriptionKeyPrefix, common.Uint64ToBytes(loan.Id)...)
-		iterator, err := db.NewStorageIterator(subscriptionsPrefix)
+		iterator, err := db.NewStorageIterator(append(subscriptionKeyPrefix, common.Uint64ToBytes(loan.Id)...))
 		if err != nil {
 			panic(err)
 		}
@@ -210,4 +209,52 @@ func DoSubscribe(db vm_db.VmDb, gs util.GlobalStatus, loan *Loan, shares int32) 
 			AddBaseAccountEvent(db, sub.Address, BaseSubscribeInterestIncome, 0, loan.Id, sub.Interest)
 		}
 	}
+}
+
+func GetLoanSubscriptions(db vm_db.VmDb, loanId uint64) (subs []*Subscription, err error) {
+	var iterator interfaces.StorageIterator
+	iterator, err = db.NewStorageIterator(append(subscriptionKeyPrefix, common.Uint64ToBytes(loanId)...))
+	if err != nil {
+		panic(err)
+	}
+	defer iterator.Release()
+	subs = make([]*Subscription, 0, 10)
+	for {
+		if !iterator.Next() {
+			if iterator.Error() != nil {
+				panic(iterator.Error())
+			}
+			break
+		}
+		sub := &Subscription{}
+		if err = sub.DeSerialize(iterator.Value()); err != nil {
+			return
+		}
+		subs = append(subs, sub)
+	}
+	return
+}
+
+func GetLoanInvests(db vm_db.VmDb, loanId uint64) (invests []*Invest, err error) {
+	iterator, err := db.NewStorageIterator(append(investToLoanIndexKeyPrefix, common.Uint64ToBytes(loanId)...))
+	if err != nil {
+		panic(err)
+	}
+	defer iterator.Release()
+	invests = make([]*Invest, 0, 10)
+	for {
+		if !iterator.Next() {
+			if iterator.Error() != nil {
+				panic(iterator.Error())
+			}
+			break
+		}
+		investId := common.BytesToUint64(iterator.Key()[len(investToLoanIndexKeyPrefix)+8:])
+		if invest, ok := GetInvest(db, investId); !ok {
+			return nil, InvestNotExistsErr
+		} else {
+			invests = append(invests, invest)
+		}
+	}
+	return
 }

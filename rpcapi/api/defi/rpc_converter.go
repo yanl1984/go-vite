@@ -1,6 +1,7 @@
 package defi
 
 import (
+	"encoding/hex"
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/rpcapi/api/dex"
 	"github.com/vitelabs/go-vite/vm/contracts/defi"
@@ -114,6 +115,7 @@ func InvestToRpc(invest *defi.Invest) *RpcInvest {
 			CreateHeight: invest.CreateHeight,
 			ExpireHeight: invest.ExpireHeight,
 			Status:       invest.Status,
+			InvestHash:   hex.EncodeToString(invest.InvestHash),
 			Created:      invest.Created,
 			Updated:      invest.Updated,
 		}

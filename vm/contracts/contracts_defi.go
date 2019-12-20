@@ -723,7 +723,7 @@ func (md MethodDeFiTriggerJob) DoReceive(db vm_db.VmDb, block *ledger.AccountBlo
 	case defi.JobUpdateLoan:
 		blocks, err = defi.UpdateLoans(db, param.Data, vm.GlobalStatus())
 	case defi.JobUpdateInvest:
-		defi.UpdateInvests(db, param.Data)
+		defi.UpdateInvests(db, param.Data, nodeConfig.params.InvestConfirmSeconds)
 	}
 	if err != nil {
 		return handleDeFiReceiveErr(deFiLogger, md.MethodName, err, sendBlock)

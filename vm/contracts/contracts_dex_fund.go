@@ -344,7 +344,7 @@ func (md MethodDexFundTriggerPeriodJob) DoReceive(db vm_db.VmDb, block *ledger.A
 		case dex.FinishVxUnlock:
 			err = dex.DoFinishVxUnlock(db, param.PeriodId)
 		case dex.FinishCancelMiningStake:
-			blocks, err = dex.DoFinishCancelMiningStake(db, param.PeriodId)
+			blocks, err = dex.DoFinishCancelMiningStake(db, param.PeriodId, defi.RefundCancelledInvest)
 		}
 		if err != nil {
 			return handleDexReceiveErr(fundLogger, md.MethodName, err, sendBlock)
@@ -1005,7 +1005,7 @@ func (md MethodDexFundCancelDelegateStakeCallbackV2) DoReceive(db vm_db.VmDb, bl
 		dex.DeleteDelegateStakeInfo(db, param.Id.Bytes())
 		dex.DeleteDelegateStakeAddressIndex(db, info.Address, info.SerialNo)
 	}
-	return nil, nil
+	return
 }
 
 type MethodDexFundGetTokenInfoCallback struct {
@@ -1918,16 +1918,18 @@ func (md *MethodDexFundCancelDelegateInvest) DoReceive(db vm_db.VmDb, block *led
 	var (
 		investIds = new([]byte)
 		stakeInfo *dex.DelegateStakeInfo
+		investInfo *dex.InvestInfo
+		ok bool
 	)
 	cabi.ABIDexFund.UnpackMethod(investIds, md.MethodName, sendBlock.Data)
 	for i := 0; i < len(*investIds)/8; i++ {
 		iv := (*investIds)[i*8 : (i+1)*8]
-		if investInfo, ok := dex.GetInvestStakeInfo(db, common.BytesToUint64(iv)); !ok || investInfo.Status != dex.InvestNormal {
+		if investInfo, ok = dex.GetInvestStakeInfo(db, common.BytesToUint64(iv)); !ok || investInfo.Status != dex.InvestNormal {
 			return handleDexReceiveErr(fundLogger, md.MethodName, dex.InvestInfoNotExistsErr, sendBlock)
 		} else if stakeInfo, ok = dex.GetDelegateStakeInfo(db, investInfo.StakeId); !ok || stakeInfo.Status != dex.StakeConfirmed {
 			return handleDexReceiveErr(fundLogger, md.MethodName, dex.StakingInfoByIdNotExistsErr, sendBlock)
 		}
-		stakeId, _ := types.BytesToHash(stakeInfo.Id)
+		stakeId, _ := types.BytesToHash(investInfo.StakeId)
 		if blks, err := dex.DoRawCancelStakeV2(stakeId); err != nil {
 			return handleDexReceiveErr(fundLogger, md.MethodName, err, sendBlock)
 		} else {

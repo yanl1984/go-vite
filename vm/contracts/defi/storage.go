@@ -12,12 +12,12 @@ import (
 )
 
 var (
-	fundKeyPrefix              = []byte("fd:") //fund:address
-	loanKeyPrefix              = []byte("ln:") //loan:loanId 3+8
+	fundKeyPrefix              = []byte("fd:") //fd:address
+	loanKeyPrefix              = []byte("ln:") //ln:loanId 3+8
 	loanSerialNoKey            = []byte("lnSn:")
-	subscriptionKeyPrefix      = []byte("sb:")    //subscription:loanId+address 3+8+20 = 31
-	investKeyPrefix            = []byte("ivt:")   // invest:serialNo 4+8 = 19
-	investToLoanIndexKeyPrefix = []byte("iv2LI:") // investId:
+	subscriptionKeyPrefix      = []byte("sb:")    //sub:loanId+address 3+8+20 = 31
+	investKeyPrefix            = []byte("ivt:")   // ivt:Id 4+8 = 19
+	investToLoanIndexKeyPrefix = []byte("iv2LI:") // iv2LI:loanId,investId
 	investSerialNoKey          = []byte("ivtSn:") //invest:
 	investQuotaInfoKeyPrefix   = []byte("ivQ:")
 

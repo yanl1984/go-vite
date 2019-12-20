@@ -100,7 +100,7 @@ func DoRawCancelStakeV2(id types.Hash) ([]*ledger.AccountBlock, error) {
 	}
 }
 
-func DoRefundInvest(db vm_db.VmDb, investIds []byte, refundReason int, amount *big.Int) ([]*ledger.AccountBlock, error) {
+func DoRefundInvest(db vm_db.VmDb, investIds []byte, refundReason uint8, amount *big.Int) ([]*ledger.AccountBlock, error) {
 	for i := 0; i < len(investIds)/8; i++ {
 		iv := investIds[i*8 : (i+1)*8]
 		DeleteInvestStakeInfo(db, common.BytesToUint64(iv))
@@ -110,8 +110,8 @@ func DoRefundInvest(db vm_db.VmDb, investIds []byte, refundReason int, amount *b
 	} else {
 		blocks := []*ledger.AccountBlock{
 			{
-				AccountAddress: types.AddressDeFi,
-				ToAddress:      types.AddressQuota,
+				AccountAddress: types.AddressDexFund,
+				ToAddress:      types.AddressDeFi,
 				BlockType:      ledger.BlockTypeSendCall,
 				Amount:         amount,
 				TokenId:        ledger.ViteTokenId,

@@ -469,7 +469,7 @@ type CancelStake struct {
 	Amount           string   `json:"amount"`
 	ExpirationTime   int64    `json:"expirationTime"`
 	ExpirationPeriod uint64   `json:"expirationPeriod"`
-	InvestIds        []uint64 `json:"expirationPeriod"`
+	InvestIds        []uint64 `json:"investIds"`
 	InvestedAmount   string   `json:"investedAmount"`
 }
 
@@ -561,7 +561,7 @@ func InvestInfoToRpc(info *dex.InvestInfo) *RpcInvestInfo {
 	rpcInfo := new(RpcInvestInfo)
 	rpcInfo.StakeId = hex.EncodeToString(info.StakeId)
 	rpcInfo.BizType = info.BizType
-	rpcInfo.StakeId = AmountBytesToString(info.Amount)
+	rpcInfo.Amount = AmountBytesToString(info.Amount)
 	rpcInfo.Status = info.Status
 	return rpcInfo
 }

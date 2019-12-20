@@ -234,11 +234,6 @@ const (
 	StakeConfirmed
 )
 
-const (
-	RefundFailedInvest = iota + 1
-	RefundCancelledInvest
-)
-
 //Invest status
 const (
 	InvestNormal = iota + 1
@@ -1935,7 +1930,9 @@ func CheckMiningStakingsCanBeDelete(miningStakings *MiningStakings) bool {
 
 func GetDelegateStakeInfo(db vm_db.VmDb, hash []byte) (info *DelegateStakeInfo, ok bool) {
 	info = &DelegateStakeInfo{}
-	ok = common.DeserializeFromDb(db, GetDelegateStakeInfoKey(hash), info)
+	if ok = common.DeserializeFromDb(db, GetDelegateStakeInfoKey(hash), info); ok {
+		info.Id = hash
+	}
 	return
 }
 
@@ -2019,8 +2016,7 @@ func SaveInvestStakeInfo(db vm_db.VmDb, sendBlock *ledger.AccountBlock, stakeId 
 }
 
 func CancellingInvestStakeInfo(db vm_db.VmDb, investId uint64) {
-	GetInvestStakeInfo(db, investId)
-	info := &InvestInfo{}
+	info, _ := GetInvestStakeInfo(db, investId)
 	info.Status = InvestCancelling
 	common.SerializeToDb(db, GetInvestStakeInfoKey(investId), info)
 }
@@ -2298,7 +2294,6 @@ func AddCancelStake(db vm_db.VmDb, reader util.ConsensusReader, address types.Ad
 	}
 	if !updated {
 		newCancel := &dexproto.CancelStake{}
-		newCancel.Amount = amount.Bytes()
 		if investId == 0 {
 			newCancel.Amount = amount.Bytes()
 		} else {
