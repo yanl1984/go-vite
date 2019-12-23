@@ -2,7 +2,6 @@ package defi
 
 import (
 	"github.com/vitelabs/go-vite/common/types"
-	"github.com/vitelabs/go-vite/interfaces"
 	"github.com/vitelabs/go-vite/ledger"
 	"github.com/vitelabs/go-vite/vm/contracts/common"
 	"github.com/vitelabs/go-vite/vm/util"
@@ -56,10 +55,10 @@ func DoRefundLoan(db vm_db.VmDb, loan *Loan) {
 	case LoanFailed:
 		OnAccLoanFailed(db, address, loan.Interest)
 		AddBaseAccountEvent(db, loan.Address, BaseLoanInterestRelease, 0, loan.Id, loan.Interest)
-	case LoanExpired:
+	case LoanExpiredRefunded:
 		amount := CalculateAmount(loan.Shares, loan.ShareAmount)
 		OnAccLoanExpired(db, address, amount)
-		AddLoanAccountEvent(db, loan.Address, LoanExpiredRefund, 0, loan.Id, amount.Bytes())
+		AddLoanAccountEvent(db, loan.Address, LoanAccExpiredRefund, 0, loan.Id, amount.Bytes())
 	}
 	if loan.SubscribedShares > 0 {
 		refundLoanSubscriptions(db, loan)
@@ -69,25 +68,8 @@ func DoRefundLoan(db vm_db.VmDb, loan *Loan) {
 }
 
 func DoCancelExpiredLoanInvests(db vm_db.VmDb, loan *Loan) (blocks []*ledger.AccountBlock, err error) {
-	var iterator interfaces.StorageIterator
-	iterator, err = db.NewStorageIterator(append(investToLoanIndexKeyPrefix, common.Uint64ToBytes(loan.Id)...))
-	if err != nil {
-		panic(err)
-	}
-	defer iterator.Release()
 	dexIdsToCancel := make([]byte, 0, 80)
-	for {
-		if !iterator.Next() {
-			if iterator.Error() != nil {
-				panic(iterator.Error())
-			}
-			break
-		}
-		data := iterator.Value()
-		if len(data) != 8 {
-			panic(InnerError)
-		}
-		investId := common.BytesToUint64(data)
+	err = traverseLoanInvests(db, loan.Id, func(investId uint64) error {
 		var blks []*ledger.AccountBlock
 		if invest, ok := GetInvest(db, investId); ok && invest.Status == InvestSuccess {
 			CancellingInvest(db, invest)
@@ -101,9 +83,14 @@ func DoCancelExpiredLoanInvests(db vm_db.VmDb, loan *Loan) (blocks []*ledger.Acc
 			}
 		}
 		if err != nil {
-			return
+			return err
+		} else {
+			blocks = append(blocks, blks...)
+			return nil
 		}
-		blocks = append(blocks, blks...)
+	})
+	if err != nil {
+		return
 	}
 	if len(dexIdsToCancel) != 0 {
 		if dexBlk, err1 := DoCancelDexInvest(dexIdsToCancel); err1 != nil {
@@ -116,23 +103,7 @@ func DoCancelExpiredLoanInvests(db vm_db.VmDb, loan *Loan) (blocks []*ledger.Acc
 }
 
 func refundLoanSubscriptions(db vm_db.VmDb, loan *Loan) {
-	iterator, err := db.NewStorageIterator(append(subscriptionKeyPrefix, common.Uint64ToBytes(loan.Id)...))
-	if err != nil {
-		panic(err)
-	}
-	defer iterator.Release()
-	for {
-		if !iterator.Next() {
-			if iterator.Error() != nil {
-				panic(iterator.Error())
-			}
-			break
-		}
-		data := iterator.Value()
-		sub := &Subscription{}
-		if err = sub.DeSerialize(data); err != nil {
-			panic(err)
-		}
+	traverseLoanSubscriptions(db, loan, func(sub *Subscription) {
 		amount := CalculateAmount(sub.Shares, sub.ShareAmount)
 		if loan.Status == LoanExpiredRefunded {
 			OnAccRefundSuccessSubscription(db, sub.Address, amount)
@@ -141,7 +112,17 @@ func refundLoanSubscriptions(db vm_db.VmDb, loan *Loan) {
 			OnAccRefundFailedSubscription(db, sub.Address, amount)
 			AddBaseAccountEvent(db, sub.Address, BaseSubscribeFailedRelease, 0, loan.Id, amount.Bytes())
 		}
-	}
+		sub.Status = loan.Status
+		DeleteSubscription(db, sub)
+		AddSubscriptionUpdateEvent(db, sub)
+	})
+}
+
+func expireLoanSubscriptions(db vm_db.VmDb, loan *Loan) {
+	traverseLoanSubscriptions(db, loan, func(sub *Subscription) {
+		sub.Status = loan.Status
+		AddSubscriptionUpdateEvent(db, sub)
+	})
 }
 
 func NewSubscription(address types.Address, db vm_db.VmDb, param *ParamSubscribe, loan *Loan) *Subscription {
@@ -165,32 +146,13 @@ func DoSubscribe(db vm_db.VmDb, gs util.GlobalStatus, loan *Loan, shares int32) 
 		loan.StartTime = loan.Updated
 		OnAccLoanSuccess(db, loan.Address, loan)
 		AddBaseAccountEvent(db, loan.Address, BaseLoanInterestReduce, 0, loan.Id, loan.Interest)
-		AddBaseAccountEvent(db, loan.Address, LoanNewSuccessLoan, 0, loan.Id, CalculateAmount(loan.Shares, loan.ShareAmount).Bytes())
+		AddLoanAccountEvent(db, loan.Address, LoanAccNewSuccessLoan, 0, loan.Id, CalculateAmount(loan.Shares, loan.ShareAmount).Bytes())
 	}
 	SaveLoan(db, loan)
 	AddLoanUpdateEvent(db, loan)
 	if loan.Status == LoanSuccess {
-		iterator, err := db.NewStorageIterator(append(subscriptionKeyPrefix, common.Uint64ToBytes(loan.Id)...))
-		if err != nil {
-			panic(err)
-		}
-		defer iterator.Release()
 		leaveLoanInterest := new(big.Int).SetBytes(loan.Interest)
-		for {
-			if !iterator.Next() {
-				if iterator.Error() != nil {
-					panic(iterator.Error())
-				}
-				break
-			}
-			subVal := iterator.Value()
-			if len(subVal) == 0 {
-				continue
-			}
-			sub := &Subscription{}
-			if err = sub.DeSerialize(subVal); err != nil {
-				panic(err)
-			}
+		traverseLoanSubscriptions(db, loan, func(sub *Subscription) {
 			sub.Status = LoanSuccess
 			sub.Updated = loan.Updated
 			interest := CalculateInterest(sub.Shares, new(big.Int).SetBytes(sub.ShareAmount), loan.DayRate, loan.ExpireDays)
@@ -207,41 +169,25 @@ func DoSubscribe(db vm_db.VmDb, gs util.GlobalStatus, loan *Loan, shares int32) 
 			OnAccSubscribeSuccess(db, sub.Address, interest, amount)
 			AddBaseAccountEvent(db, sub.Address, BaseSubscribeSuccessReduce, 0, loan.Id, amount.Bytes())
 			AddBaseAccountEvent(db, sub.Address, BaseSubscribeInterestIncome, 0, loan.Id, sub.Interest)
-		}
+		})
 	}
 }
 
 func GetLoanSubscriptions(db vm_db.VmDb, loanId uint64) (subs []*Subscription, err error) {
-	var iterator interfaces.StorageIterator
-	iterator, err = db.NewStorageIterator(append(subscriptionKeyPrefix, common.Uint64ToBytes(loanId)...))
-	if err != nil {
-		panic(err)
-	}
-	defer iterator.Release()
-	subs = make([]*Subscription, 0, 10)
-	for {
-		if !iterator.Next() {
-			if iterator.Error() != nil {
-				panic(iterator.Error())
-			}
-			break
-		}
-		sub := &Subscription{}
-		if err = sub.DeSerialize(iterator.Value()); err != nil {
-			return
-		}
+	loan := &Loan{}
+	loan.Id = loanId
+	traverseLoanSubscriptions(db, loan, func(sub *Subscription) {
 		subs = append(subs, sub)
-	}
+	})
 	return
 }
 
-func GetLoanInvests(db vm_db.VmDb, loanId uint64) (invests []*Invest, err error) {
-	iterator, err := db.NewStorageIterator(append(investToLoanIndexKeyPrefix, common.Uint64ToBytes(loanId)...))
+func traverseLoanSubscriptions(db vm_db.VmDb, loan *Loan, traverseFunc func(sub *Subscription)) {
+	iterator, err := db.NewStorageIterator(append(subscriptionKeyPrefix, common.Uint64ToBytes(loan.Id)...))
 	if err != nil {
 		panic(err)
 	}
 	defer iterator.Release()
-	invests = make([]*Invest, 0, 10)
 	for {
 		if !iterator.Next() {
 			if iterator.Error() != nil {
@@ -249,12 +195,17 @@ func GetLoanInvests(db vm_db.VmDb, loanId uint64) (invests []*Invest, err error)
 			}
 			break
 		}
-		investId := common.BytesToUint64(iterator.Key()[len(investToLoanIndexKeyPrefix)+8:])
-		if invest, ok := GetInvest(db, investId); !ok {
-			return nil, InvestNotExistsErr
-		} else {
-			invests = append(invests, invest)
+		data := iterator.Value()
+		sub := &Subscription{}
+		if err = sub.DeSerialize(data); err != nil {
+			panic(err)
 		}
+		traverseFunc(sub)
 	}
-	return
+}
+
+func CalculateInterest(shares int32, shareAmount *big.Int, dayRate, days int32) *big.Int {
+	totalRate := dayRate * days
+	totalAmount := CalculateAmount1(shares, shareAmount)
+	return new(big.Int).SetBytes(common.CalculateAmountForRate(totalAmount.Bytes(), totalRate, LoanRateCardinalNum))
 }

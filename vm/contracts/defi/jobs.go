@@ -100,7 +100,9 @@ func innerUpdateLoan(db vm_db.VmDb, loan *Loan, estTime, time int64, gs util.Glo
 				DoRefundLoan(db, loan)
 			} else {
 				loan.Status = LoanExpired
+				expireLoanSubscriptions(db, loan)
 				SaveLoan(db, loan)
+				AddLoanUpdateEvent(db, loan)
 				blocks, err = DoCancelExpiredLoanInvests(db, loan)
 			}
 		}

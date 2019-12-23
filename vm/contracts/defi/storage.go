@@ -57,7 +57,7 @@ const (
 )
 
 const (
-	UpdateBlockProducintAddress    = 1
+	UpdateBlockProducingAddress    = 1
 	UpdateSBPRewardWithdrawAddress = 2
 )
 
@@ -84,10 +84,10 @@ const (
 
 //loanAccount update bizType
 const (
-	LoanNewSuccessLoan = iota + 1
-	LoanExpiredRefund
-	LoanInvestReduce
-	LoanInvestRefund
+	LoanAccNewSuccessLoan = iota + 1
+	LoanAccExpiredRefund
+	LoanAccInvestReduce
+	LoanAccInvestRefund
 )
 
 type ParamWithdraw struct {
@@ -271,7 +271,7 @@ func SaveLoan(db vm_db.VmDb, loan *Loan) {
 }
 
 func DeleteLoan(db vm_db.VmDb, loan *Loan) {
-	common.SerializeToDb(db, getLoanKey(loan.Id), nil)
+	common.SetValueToDb(db, getLoanKey(loan.Id), nil)
 }
 
 func GetLoan(db vm_db.VmDb, loanId uint64) (loan *Loan, ok bool) {
@@ -302,6 +302,10 @@ func GetSubscription(db vm_db.VmDb, loanId uint64, address []byte) (sub *Subscri
 	sub = &Subscription{}
 	ok = common.DeserializeFromDb(db, getSubscriptionKey(loanId, address), sub)
 	return
+}
+
+func DeleteSubscription(db vm_db.VmDb, sub *Subscription) {
+	common.SetValueToDb(db, getSubscriptionKey(sub.LoanId, sub.Address), nil)
 }
 
 func getSubscriptionKey(loanId uint64, address []byte) []byte {

@@ -1,7 +1,6 @@
 package defi
 
 import (
-	"fmt"
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/interfaces"
 	"github.com/vitelabs/go-vite/ledger"
@@ -40,7 +39,7 @@ func PrepareInvest(db vm_db.VmDb, address types.Address, bizType uint8, loanAvai
 	}
 	totalAvailable := new(big.Int).Add(loanAvailable, baseAvailable)
 
-	fmt.Printf("loanAvailable %s, baseAvailable %s\n", loanAvailable.String(), baseAvailable.String())
+	//fmt.Printf("loanAvailable %s, baseAvailable %s\n", loanAvailable.String(), baseAvailable.String())
 	switch bizType {
 	case InvestForMining:
 		if totalAvailable.Cmp(dex.StakeForMiningMinAmount) < 0 {
@@ -136,12 +135,12 @@ func DoCancelDexInvest(investId []byte) (blocks []*ledger.AccountBlock, err erro
 	}
 }
 
-func DoQuotaInvest(db vm_db.VmDb, address types.Address, invest *Invest, amount *big.Int, stakeHeight uint64, block *ledger.AccountBlock) (blocks []*ledger.AccountBlock, err error) {
+func DoQuotaInvest(db vm_db.VmDb, beneficiary types.Address, invest *Invest, amount *big.Int, stakeHeight uint64, block *ledger.AccountBlock) (blocks []*ledger.AccountBlock, err error) {
 	var (
 		data    []byte
 		stakeId types.Hash
 	)
-	if data, err = abi.ABIQuota.PackMethod(abi.MethodNameStakeWithCallback, address, stakeHeight); err != nil {
+	if data, err = abi.ABIQuota.PackMethod(abi.MethodNameStakeWithCallback, beneficiary, stakeHeight); err != nil {
 		return nil, err
 	}
 	blocks = []*ledger.AccountBlock{
@@ -232,7 +231,7 @@ func DoUpdateSBP(db vm_db.VmDb, traceHash []byte, param *ParamUpdateSBPRegistrat
 	if info, ok := GetSBPRegistration(db, traceHash); !ok {
 		panic(SBPRegistrationNotExistsErr)
 	} else {
-		if common.IsOperationValidWithMask(param.OperationCode, UpdateBlockProducintAddress) {
+		if common.IsOperationValidWithMask(param.OperationCode, UpdateBlockProducingAddress) {
 			info.ProducingAddress = param.BlockProducingAddress.Bytes()
 			if data, err := abi.ABIGovernance.PackMethod(abi.MethodNameUpdateBlockProducintAddressV3, info.Name, param.BlockProducingAddress); err != nil {
 				return nil, err
@@ -282,9 +281,9 @@ func DoRefundInvest(db vm_db.VmDb, invest *Invest) {
 	DeleteInvest(db, invest.Id)
 	DeleteInvestToLoanIndex(db, invest)
 	AddInvestUpdateEvent(db, invest)
-	AddLoanAccountEvent(db, invest.Address, LoanInvestRefund, uint8(invest.BizType), invest.Id, invest.LoanAmount)
+	AddLoanAccountEvent(db, invest.Address, LoanAccInvestRefund, uint8(invest.BizType), invest.Id, invest.LoanAmount)
 	if len(invest.BaseAmount) > 0 {
-		AddLoanAccountEvent(db, invest.Address, BaseInvestRefund, uint8(invest.BizType), invest.Id, invest.BaseAmount)
+		AddBaseAccountEvent(db, invest.Address, BaseInvestRefund, uint8(invest.BizType), invest.Id, invest.BaseAmount)
 	}
 }
 
@@ -360,6 +359,39 @@ func HandleGovernanceFeedback(db vm_db.VmDb, block *ledger.AccountBlock) (blocks
 	return
 }
 
+func GetLoanInvests(db vm_db.VmDb, loanId uint64) (invests []*Invest, err error) {
+	err = traverseLoanInvests(db, loanId, func(investId uint64) error {
+		if invest, ok := GetInvest(db, investId); !ok {
+			return InvestNotExistsErr
+		} else {
+			invests = append(invests, invest)
+		}
+		return nil
+	})
+	return
+}
+
+func traverseLoanInvests(db vm_db.VmDb, loanId uint64, traverseFunc func(investId uint64) error) error {
+	iterator, err := db.NewStorageIterator(append(investToLoanIndexKeyPrefix, common.Uint64ToBytes(loanId)...))
+	if err != nil {
+		panic(err)
+	}
+	defer iterator.Release()
+	for {
+		if !iterator.Next() {
+			if iterator.Error() != nil {
+				panic(iterator.Error())
+			}
+			break
+		}
+		investId := common.BytesToUint64(iterator.Key()[len(investToLoanIndexKeyPrefix)+8:])
+		if err = traverseFunc(investId); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func IsInvestExpired(gs util.GlobalStatus, invest *Invest) bool {
 	return gs.SnapshotBlock().Height >= invest.ExpireHeight
 }
@@ -373,12 +405,6 @@ func getInvestedAmount(leavedLoanAmount *big.Int, needInvestAmount *big.Int) (lo
 		baseInvested = new(big.Int)
 	}
 	return
-}
-
-func CalculateInterest(shares int32, shareAmount *big.Int, dayRate, days int32) *big.Int {
-	totalRate := dayRate * days
-	totalAmount := CalculateAmount1(shares, shareAmount)
-	return new(big.Int).SetBytes(common.CalculateAmountForRate(totalAmount.Bytes(), totalRate, LoanRateCardinalNum))
 }
 
 func CalculateAmount(shares int32, shareAmount []byte) *big.Int {

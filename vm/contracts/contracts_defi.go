@@ -332,12 +332,12 @@ func (md *MethodDeFiInvest) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock,
 	case defi.InvestForSVIP:
 		blocks, err = defi.DoDexInvest(invest, uint8(dex.StakeForPrincipalSuperVIP), dex.StakeForSuperVIPAmount)
 	case defi.InvestForQuota:
-		blocks, err = defi.DoQuotaInvest(db, sendBlock.AccountAddress, invest, param.Amount, nodeConfig.params.StakeHeight, block)
+		blocks, err = defi.DoQuotaInvest(db, param.Beneficiary, invest, param.Amount, nodeConfig.params.StakeHeight, block)
 	}
 	if err != nil {
 		return handleDeFiReceiveErr(deFiLogger, md.MethodName, err, sendBlock)
 	}
-	defi.AddLoanAccountEvent(db, loan.Address, defi.LoanInvestReduce, param.BizType, loan.Id, invest.LoanAmount)
+	defi.AddLoanAccountEvent(db, loan.Address, defi.LoanAccInvestReduce, param.BizType, loan.Id, invest.LoanAmount)
 	if len(invest.BaseAmount) > 0 {
 		defi.AddBaseAccountEvent(db, loan.Address, defi.BaseInvestReduce, param.BizType, loan.Id, invest.BaseAmount)
 	}
@@ -600,7 +600,7 @@ func (md MethodDeFiRegisterSBP) DoReceive(db vm_db.VmDb, block *ledger.AccountBl
 	invest = defi.NewInvest(db, vm.GlobalStatus(), sendBlock.AccountAddress, loan, defi.InvestForSBP, types.ZERO_ADDRESS, loanInvested, baseInvested, durationHeight)
 	defi.SaveInvestToLoanIndex(db, invest)
 	defi.AddNewInvestEvent(db, invest)
-	defi.AddLoanAccountEvent(db, loan.Address, defi.LoanInvestReduce, defi.InvestForSBP, loan.Id, invest.LoanAmount)
+	defi.AddLoanAccountEvent(db, loan.Address, defi.LoanAccInvestReduce, defi.InvestForSBP, loan.Id, invest.LoanAmount)
 	if len(invest.BaseAmount) > 0 {
 		defi.AddBaseAccountEvent(db, loan.Address, defi.BaseInvestReduce, defi.InvestForSBP, loan.Id, invest.BaseAmount)
 	}
@@ -643,8 +643,7 @@ func (md MethodDeFiUpdateSBPRegistration) DoReceive(db vm_db.VmDb, block *ledger
 	} else if !bytes.Equal(sendBlock.AccountAddress.Bytes(), invest.Address) {
 		return handleDeFiReceiveErr(deFiLogger, md.MethodName, defi.OnlyOwnerAllowErr, sendBlock)
 	}
-	defi.DoUpdateSBP(db, invest.InvestHash, param)
-	return nil, nil
+	return defi.DoUpdateSBP(db, invest.InvestHash, param)
 }
 
 type MethodDeFiDefault struct {
