@@ -13,6 +13,7 @@ type RpcLoan struct {
 	Token            string `json:"token"`
 	ShareAmount      string `json:"shareAmount"`
 	Shares           int32  `json:"shares"`
+	Amount           string `json:"amount"`
 	Interest         string `json:"interest,omitempty"`
 	DayRate          int32  `json:"dayRate"`
 	SubscribeDays    int32  `json:"subscribeDays"`
@@ -37,6 +38,7 @@ func LoanToRpc(loan *defi.Loan) *RpcLoan {
 			Token:            token.String(),
 			ShareAmount:      dex.AmountBytesToString(loan.ShareAmount),
 			Shares:           loan.Shares,
+			Amount:           defi.CalculateAmount(loan.Shares, loan.ShareAmount).String(),
 			Interest:         dex.AmountBytesToString(loan.Interest),
 			DayRate:          loan.DayRate,
 			SubscribeDays:    loan.SubscribeDays,
@@ -59,6 +61,7 @@ type RpcSubscription struct {
 	Token       string `json:"token"`
 	ShareAmount string `json:"shareAmount"`
 	Shares      int32  `json:"shares"`
+	Amount      string `json:"amount"`
 	Interest    string `json:"interest,omitempty"`
 	Status      int32  `json:"status,omitempty"`
 	Created     int64  `json:"created"`
@@ -76,6 +79,7 @@ func SubscriptionToRpc(sub *defi.Subscription) *RpcSubscription {
 			Token:       token.String(),
 			ShareAmount: dex.AmountBytesToString(sub.ShareAmount),
 			Shares:      sub.Shares,
+			Amount:      defi.CalculateAmount(sub.Shares, sub.ShareAmount).String(),
 			Interest:    dex.AmountBytesToString(sub.Interest),
 			Status:      sub.Status,
 			Created:     sub.Created,

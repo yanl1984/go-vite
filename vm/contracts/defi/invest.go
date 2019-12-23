@@ -217,7 +217,7 @@ func DoRevokeSBP(db vm_db.VmDb, traceHash []byte) (blocks []*ledger.AccountBlock
 			return []*ledger.AccountBlock{
 				{
 					AccountAddress: types.AddressDeFi,
-					ToAddress:      types.AddressQuota,
+					ToAddress:      types.AddressGovernance,
 					BlockType:      ledger.BlockTypeSendCall,
 					Amount:         big.NewInt(0),
 					TokenId:        ledger.ViteTokenId,
@@ -317,9 +317,9 @@ func HandleGovernanceFeedback(db vm_db.VmDb, block *ledger.AccountBlock) (blocks
 		param    = new(abi.ParamRegister)
 		sbpName  = new(string)
 	)
-	if err = abi.ABIGovernance.UnpackMethod(param, abi.MethodNameRegisterV3, block.Data); err == nil {
+	if err = abi.ABIGovernance.UnpackMethod(param, abi.MethodNameRegisterV3, block.Data); err == nil && block.Amount.Sign() > 0 {//governance.RegisterSBP failed
 		*sbpName = param.SbpName
-	} else if err = abi.ABIGovernance.UnpackMethod(sbpName, abi.MethodNameRevokeV3, block.Data); err == nil {
+	} else if err = abi.ABIGovernance.UnpackMethod(sbpName, abi.MethodNameRevokeV3, block.Data); err == nil {//governance.RevokeSBP success
 		isRevoke = true
 	} else {
 		err = InvalidInputParamErr
@@ -342,7 +342,7 @@ func HandleGovernanceFeedback(db vm_db.VmDb, block *ledger.AccountBlock) (blocks
 		regValue = iterator.Value()
 		sbpRegistration := &SBPRegistration{}
 		sbpRegistration.DeSerialize(regValue)
-		if sbpRegistration.Name == param.SbpName {
+		if sbpRegistration.Name == *sbpName {
 			if invest, ok := GetInvest(db, sbpRegistration.InvestId); !ok {
 				err = InvestNotExistsErr
 				return

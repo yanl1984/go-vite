@@ -675,10 +675,14 @@ func (md *MethodDeFiDefault) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) e
 }
 
 func (md MethodDeFiDefault) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) (blocks []*ledger.AccountBlock, err error) {
-	if originSendBlock := util.GetOriginalSendBlock(db, sendBlock.Hash); originSendBlock != nil && originSendBlock.AccountAddress == types.AddressDeFi && originSendBlock.Amount.Sign() > 0 {
+	if originSendBlock := util.GetOriginalSendBlock(db, sendBlock.Hash); originSendBlock != nil && originSendBlock.AccountAddress == types.AddressDeFi {
 		switch originSendBlock.ToAddress {
 		case types.AddressDexFund: //dex.DelegateInvest failed
-			blocks, err = defi.HandleDexRefundOnFail(db, originSendBlock)
+			if originSendBlock.Amount.Sign() > 0 {
+				blocks, err = defi.HandleDexRefundOnFail(db, originSendBlock)
+			} else {
+				err = defi.InvalidInputParamErr
+			}
 		case types.AddressGovernance: //governance.RegisterSBP failed, RevokeSBP success
 			blocks, err = defi.HandleGovernanceFeedback(db, originSendBlock)
 		}
