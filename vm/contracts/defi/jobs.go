@@ -132,7 +132,7 @@ func innerUpdateInvest(db vm_db.VmDb, invest *Invest, time int64, confirmSeconds
 }
 
 func innerSettleLoanInterest(db vm_db.VmDb, loan *Loan, gs util.GlobalStatus, deFiDayHeight uint64) (err error) {
-	if (loan.Status == LoanSuccess || loan.Status == LoanExpired) && loan.SettledDays < loan.ExpireDays {
+	if loan.Status == LoanSuccess && loan.SettledDays < loan.ExpireDays {
 		interest := new(big.Int).SetBytes(loan.Interest)
 		settledInterest := new(big.Int).SetBytes(loan.SettledInterest)
 		if settledInterest.Cmp(interest) >= 0 {

@@ -153,18 +153,9 @@ func DoSubscribe(db vm_db.VmDb, gs util.GlobalStatus, loan *Loan, shares int32, 
 	SaveLoan(db, loan)
 	AddLoanUpdateEvent(db, loan)
 	if loan.Status == LoanSuccess {
-		leaveLoanInterest := new(big.Int).SetBytes(loan.Interest)
 		err = traverseLoanSubscriptions(db, loan, func(sub *Subscription) (err1 error) {
 			sub.Status = LoanSuccess
 			sub.Updated = loan.Updated
-			interest := CalculateInterest(sub.Shares, new(big.Int).SetBytes(sub.ShareAmount), loan.DayRate, loan.ExpireDays)
-			if leaveLoanInterest.Cmp(interest) < 0 {
-				interest = leaveLoanInterest
-				leaveLoanInterest = big.NewInt(0)
-			} else {
-				leaveLoanInterest.Sub(leaveLoanInterest, interest)
-			}
-			sub.Interest = interest.Bytes()
 			amount := CalculateAmount(sub.Shares, sub.ShareAmount)
 			SaveSubscription(db, sub)
 			AddSubscriptionUpdateEvent(db, sub)
