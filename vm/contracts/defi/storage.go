@@ -62,8 +62,9 @@ const (
 )
 
 const (
-	JobUpdateLoan   = 1
-	JobUpdateInvest = 2
+	JobUpdateLoan     = 1
+	JobUpdateInvest   = 2
+	JobSettleInterest = 3
 )
 
 //baseAccount update bizType

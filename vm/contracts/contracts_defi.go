@@ -230,13 +230,12 @@ func (md *MethodDeFiSubscribe) DoSend(db vm_db.VmDb, block *ledger.AccountBlock)
 	return nil
 }
 
-func (md *MethodDeFiSubscribe) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) ([]*ledger.AccountBlock, error) {
+func (md *MethodDeFiSubscribe) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBlock *ledger.AccountBlock, vm vmEnvironment) (blocks []*ledger.AccountBlock, err error) {
 	var (
-		param       = new(defi.ParamSubscribe)
-		loan        *defi.Loan
-		sub         *defi.Subscription
+		param        = new(defi.ParamSubscribe)
+		loan         *defi.Loan
+		sub          *defi.Subscription
 		ok, subAgain bool
-		err         error
 	)
 	abi.ABIDeFi.UnpackMethod(param, md.MethodName, sendBlock.Data)
 	if loan, ok = defi.GetLoan(db, param.LoanId); !ok || loan.Status != defi.LoanOpen {
@@ -262,8 +261,8 @@ func (md *MethodDeFiSubscribe) DoReceive(db vm_db.VmDb, block *ledger.AccountBlo
 	}
 	defi.SaveSubscription(db, sub)
 	defi.AddBaseAccountEvent(db, sendBlock.AccountAddress.Bytes(), defi.BaseSubscribeLock, 0, loan.Id, amount.Bytes())
-	defi.DoSubscribe(db, vm.GlobalStatus(), loan, param.Shares, nodeConfig.params.DeFiDayHeight)
-	return nil, nil
+	err = defi.DoSubscribe(db, vm.GlobalStatus(), loan, param.Shares, nodeConfig.params.DeFiDayHeight)
+	return
 }
 
 type MethodDeFiInvest struct {
@@ -727,6 +726,8 @@ func (md MethodDeFiTriggerJob) DoReceive(db vm_db.VmDb, block *ledger.AccountBlo
 		blocks, err = defi.UpdateLoans(db, param.Data, vm.GlobalStatus(), nodeConfig.params.DeFiDayHeight)
 	case defi.JobUpdateInvest:
 		defi.UpdateInvests(db, param.Data, nodeConfig.params.DeFiInvestConfirmSeconds)
+	case defi.JobSettleInterest:
+		defi.SettleInterest(db, param.Data, vm.GlobalStatus(), nodeConfig.params.DeFiDayHeight)
 	}
 	if err != nil {
 		return handleDeFiReceiveErr(deFiLogger, md.MethodName, err, sendBlock)

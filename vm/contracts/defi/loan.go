@@ -103,7 +103,7 @@ func DoCancelExpiredLoanInvests(db vm_db.VmDb, loan *Loan) (blocks []*ledger.Acc
 }
 
 func refundLoanSubscriptions(db vm_db.VmDb, loan *Loan) {
-	traverseLoanSubscriptions(db, loan, func(sub *Subscription) {
+	traverseLoanSubscriptions(db, loan, func(sub *Subscription) error {
 		amount := CalculateAmount(sub.Shares, sub.ShareAmount)
 		if loan.Status == LoanExpiredRefunded {
 			OnAccRefundSuccessSubscription(db, sub.Address, amount)
@@ -115,13 +115,15 @@ func refundLoanSubscriptions(db vm_db.VmDb, loan *Loan) {
 		sub.Status = loan.Status
 		DeleteSubscription(db, sub)
 		AddSubscriptionUpdateEvent(db, sub)
+		return nil
 	})
 }
 
 func expireLoanSubscriptions(db vm_db.VmDb, loan *Loan) {
-	traverseLoanSubscriptions(db, loan, func(sub *Subscription) {
+	traverseLoanSubscriptions(db, loan, func(sub *Subscription) error {
 		sub.Status = loan.Status
 		AddSubscriptionUpdateEvent(db, sub)
+		return nil
 	})
 }
 
@@ -137,7 +139,7 @@ func NewSubscription(address types.Address, db vm_db.VmDb, param *ParamSubscribe
 	return sub
 }
 
-func DoSubscribe(db vm_db.VmDb, gs util.GlobalStatus, loan *Loan, shares int32, deFiDayHeight uint64) {
+func DoSubscribe(db vm_db.VmDb, gs util.GlobalStatus, loan *Loan, shares int32, deFiDayHeight uint64) (err error) {
 	loan.SubscribedShares = loan.SubscribedShares + shares
 	loan.Updated = GetDeFiTimestamp(db)
 	if loan.Shares == loan.SubscribedShares {
@@ -146,14 +148,13 @@ func DoSubscribe(db vm_db.VmDb, gs util.GlobalStatus, loan *Loan, shares int32, 
 		loan.StartHeight = gs.SnapshotBlock().Height
 		loan.StartTime = loan.Updated
 		OnAccLoanSuccess(db, loan.Address, loan)
-		AddBaseAccountEvent(db, loan.Address, BaseLoanInterestReduce, 0, loan.Id, loan.Interest)
 		AddLoanAccountEvent(db, loan.Address, LoanAccNewSuccessLoan, 0, loan.Id, CalculateAmount(loan.Shares, loan.ShareAmount).Bytes())
 	}
 	SaveLoan(db, loan)
 	AddLoanUpdateEvent(db, loan)
 	if loan.Status == LoanSuccess {
 		leaveLoanInterest := new(big.Int).SetBytes(loan.Interest)
-		traverseLoanSubscriptions(db, loan, func(sub *Subscription) {
+		err = traverseLoanSubscriptions(db, loan, func(sub *Subscription) (err1 error) {
 			sub.Status = LoanSuccess
 			sub.Updated = loan.Updated
 			interest := CalculateInterest(sub.Shares, new(big.Int).SetBytes(sub.ShareAmount), loan.DayRate, loan.ExpireDays)
@@ -167,23 +168,27 @@ func DoSubscribe(db vm_db.VmDb, gs util.GlobalStatus, loan *Loan, shares int32, 
 			amount := CalculateAmount(sub.Shares, sub.ShareAmount)
 			SaveSubscription(db, sub)
 			AddSubscriptionUpdateEvent(db, sub)
-			OnAccSubscribeSuccess(db, sub.Address, interest, amount)
+			if _, err1 = OnAccSubscribeSuccess(db, sub.Address, amount); err1 != nil {
+				return err1
+			}
 			AddBaseAccountEvent(db, sub.Address, BaseSubscribeSuccessReduce, 0, loan.Id, amount.Bytes())
-			AddBaseAccountEvent(db, sub.Address, BaseSubscribeInterestIncome, 0, loan.Id, sub.Interest)
+			return
 		})
 	}
+	return
 }
 
 func GetLoanSubscriptions(db vm_db.VmDb, loanId uint64) (subs []*Subscription, err error) {
 	loan := &Loan{}
 	loan.Id = loanId
-	traverseLoanSubscriptions(db, loan, func(sub *Subscription) {
+	err = traverseLoanSubscriptions(db, loan, func(sub *Subscription) error {
 		subs = append(subs, sub)
+		return nil
 	})
 	return
 }
 
-func traverseLoanSubscriptions(db vm_db.VmDb, loan *Loan, traverseFunc func(sub *Subscription)) {
+func traverseLoanSubscriptions(db vm_db.VmDb, loan *Loan, traverseFunc func(sub *Subscription) error ) (err error) {
 	iterator, err := db.NewStorageIterator(append(subscriptionKeyPrefix, common.Uint64ToBytes(loan.Id)...))
 	if err != nil {
 		panic(err)
@@ -201,7 +206,7 @@ func traverseLoanSubscriptions(db vm_db.VmDb, loan *Loan, traverseFunc func(sub 
 		if err = sub.DeSerialize(data); err != nil {
 			panic(err)
 		}
-		traverseFunc(sub)
+		err = traverseFunc(sub)
 	}
 }
 
