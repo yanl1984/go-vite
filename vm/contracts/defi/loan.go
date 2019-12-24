@@ -206,8 +206,11 @@ func traverseLoanSubscriptions(db vm_db.VmDb, loan *Loan, traverseFunc func(sub 
 		if err = sub.DeSerialize(data); err != nil {
 			panic(err)
 		}
-		err = traverseFunc(sub)
+		if err = traverseFunc(sub); err != nil {
+			return
+		}
 	}
+	return
 }
 
 func CalculateInterest(shares int32, shareAmount *big.Int, dayRate, days int32) *big.Int {

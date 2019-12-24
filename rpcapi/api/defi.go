@@ -207,3 +207,13 @@ func (f DeFiApi) GetTimestamp() (int64, error) {
 	}
 	return defi.GetDeFiTimestamp(db), nil
 }
+
+
+func (f DeFiApi) VerifyBalance() (*defi.DeFiVerifyRes, error) {
+	db, err := getVmDb(f.chain, types.AddressDeFi)
+	if err != nil {
+		return nil, err
+	}
+	return defi.VerifyDeFiBalance(db), nil
+}
+

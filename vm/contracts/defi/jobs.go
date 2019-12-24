@@ -156,6 +156,7 @@ func innerSettleLoanInterest(db vm_db.VmDb, loan *Loan, gs util.GlobalStatus, de
 						return
 					}
 					AddBaseAccountEvent(db, sub.Address, BaseSubscribeInterestIncome, 0, loan.Id, subNewInterest.Bytes())
+					return
 				}); err != nil {
 					return
 				}
