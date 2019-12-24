@@ -39,13 +39,14 @@ message Loan {
     int32 SubscribeDays = 8;
     int32 ExpireDays = 9;
     int32 SubscribedShares = 10;
-    uint64 ExpireHeight = 11;
-    bytes Invested = 12;
+    uint64 StartHeight = 11;
+    uint64 ExpireHeight = 12;
+    bytes Invested = 13;
     // 1 open, 2 success, 3 failed, 4 expired, 5 fail refunded, 6 expire refunded
-    int32 Status = 13;
-    int64 Created = 14;
-    int64 StartTime = 15;
-    int64 Updated = 16;
+    int32 Status = 14;
+    int64 Created = 15;
+    int64 StartTime = 16;
+    int64 Updated = 17;
 }
 
 //storage+event
@@ -106,7 +107,8 @@ message LoanUpdate {
     bytes Invested = 3;
     int32 Status = 4;
     uint64 ExpireHeight = 5;
-    int64 Timestamp = 6;
+    uint64 StartHeight = 6;
+    int64 Timestamp = 7;
 }
 
 //event

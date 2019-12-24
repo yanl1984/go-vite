@@ -25,7 +25,7 @@ var (
 	minShareAmount = new(big.Int).Mul(big.NewInt(10), commonTokenPow)
 )
 
-func PrepareInvest(db vm_db.VmDb, address types.Address, bizType uint8, loanAvailable, stakeAmount *big.Int, availableHeight, stakeHeightMin, stakeSVIPHeight uint64) (loanInvested, baseInvested *big.Int, durationHeight uint64, err error) {
+func PrepareInvest(db vm_db.VmDb, address types.Address, bizType uint8, loanAvailable, stakeAmount *big.Int, availableHeight, stakeHeightMin, stakeSVIPHeight, deFiDayHeight uint64) (loanInvested, baseInvested *big.Int, durationHeight uint64, err error) {
 	var (
 		baseAvailable = new(big.Int)
 		fund          *Fund
@@ -45,7 +45,7 @@ func PrepareInvest(db vm_db.VmDb, address types.Address, bizType uint8, loanAvai
 		if totalAvailable.Cmp(dex.StakeForMiningMinAmount) < 0 {
 			err = ExceedFundAvailableErr
 			return
-		} else if availableHeight < stakeHeightMin + uint64(dex.SchedulePeriods*24*3600) {
+		} else if availableHeight < stakeHeightMin + uint64(dex.SchedulePeriods)*deFiDayHeight {
 			err = AvailableHeightNotValidForInvestErr
 			return
 		}

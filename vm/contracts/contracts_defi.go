@@ -241,7 +241,7 @@ func (md *MethodDeFiSubscribe) DoReceive(db vm_db.VmDb, block *ledger.AccountBlo
 	abi.ABIDeFi.UnpackMethod(param, md.MethodName, sendBlock.Data)
 	if loan, ok = defi.GetLoan(db, param.LoanId); !ok || loan.Status != defi.LoanOpen {
 		return handleDeFiReceiveErr(deFiLogger, md.MethodName, defi.LoanNotExistsErr, sendBlock)
-	} else if defi.IsOpenLoanSubscribeFail(db, loan) {
+	} else if defi.IsOpenLoanSubscribeFail(db, loan, nodeConfig.params.DeFiDayHeight) {
 		return handleDeFiReceiveErr(deFiLogger, md.MethodName, defi.LoanSubscribeFailed, sendBlock)
 	}
 	leavedShares := loan.Shares - loan.SubscribedShares
@@ -262,7 +262,7 @@ func (md *MethodDeFiSubscribe) DoReceive(db vm_db.VmDb, block *ledger.AccountBlo
 	}
 	defi.SaveSubscription(db, sub)
 	defi.AddBaseAccountEvent(db, sendBlock.AccountAddress.Bytes(), defi.BaseSubscribeLock, 0, loan.Id, amount.Bytes())
-	defi.DoSubscribe(db, vm.GlobalStatus(), loan, param.Shares)
+	defi.DoSubscribe(db, vm.GlobalStatus(), loan, param.Shares, nodeConfig.params.DeFiDayHeight)
 	return nil, nil
 }
 
@@ -314,7 +314,7 @@ func (md *MethodDeFiInvest) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock,
 		return handleDeFiReceiveErr(deFiLogger, md.MethodName, defi.OnlyOwnerAllowErr, sendBlock)
 	}
 	leavedAmount, availableHeight := defi.GetLoanAvailable(vm.GlobalStatus(), loan)
-	if loanInvested, baseInvested, durationHeight, err = defi.PrepareInvest(db, sendBlock.AccountAddress, param.BizType, leavedAmount, param.Amount, availableHeight, nodeConfig.params.StakeHeight, nodeConfig.params.DexSuperVipStakeHeight); err != nil {
+	if loanInvested, baseInvested, durationHeight, err = defi.PrepareInvest(db, sendBlock.AccountAddress, param.BizType, leavedAmount, param.Amount, availableHeight, nodeConfig.params.StakeHeight, nodeConfig.params.DexSuperVipStakeHeight, nodeConfig.params.DeFiDayHeight); err != nil {
 		return handleDeFiReceiveErr(deFiLogger, md.MethodName, err, sendBlock)
 	}
 	if _, err = defi.OnAccInvest(db, sendBlock.AccountAddress, loanInvested, baseInvested); err != nil {
@@ -589,7 +589,7 @@ func (md MethodDeFiRegisterSBP) DoReceive(db vm_db.VmDb, block *ledger.AccountBl
 		return handleDeFiReceiveErr(deFiLogger, md.MethodName, defi.OnlyOwnerAllowErr, sendBlock)
 	}
 	available, availableHeight := defi.GetLoanAvailable(vm.GlobalStatus(), loan)
-	if loanInvested, baseInvested, durationHeight, err = defi.PrepareInvest(db, sendBlock.AccountAddress, defi.InvestForSBP, available, SbpStakeAmountMainnet, availableHeight, nodeConfig.params.SBPStakeHeight	, nodeConfig.params.DexSuperVipStakeHeight); err != nil {
+	if loanInvested, baseInvested, durationHeight, err = defi.PrepareInvest(db, sendBlock.AccountAddress, defi.InvestForSBP, available, SbpStakeAmountMainnet, availableHeight, nodeConfig.params.SBPStakeHeight, nodeConfig.params.DexSuperVipStakeHeight, nodeConfig.params.DeFiDayHeight); err != nil {
 		return handleDeFiReceiveErr(deFiLogger, md.MethodName, err, sendBlock)
 	}
 	if _, err = defi.OnAccInvest(db, sendBlock.AccountAddress, loanInvested, baseInvested); err != nil {
@@ -724,9 +724,9 @@ func (md MethodDeFiTriggerJob) DoReceive(db vm_db.VmDb, block *ledger.AccountBlo
 	abi.ABIDeFi.UnpackMethod(param, md.MethodName, sendBlock.Data)
 	switch param.BizType {
 	case defi.JobUpdateLoan:
-		blocks, err = defi.UpdateLoans(db, param.Data, vm.GlobalStatus())
+		blocks, err = defi.UpdateLoans(db, param.Data, vm.GlobalStatus(), nodeConfig.params.DeFiDayHeight)
 	case defi.JobUpdateInvest:
-		defi.UpdateInvests(db, param.Data, nodeConfig.params.InvestConfirmSeconds)
+		defi.UpdateInvests(db, param.Data, nodeConfig.params.DeFiInvestConfirmSeconds)
 	}
 	if err != nil {
 		return handleDeFiReceiveErr(deFiLogger, md.MethodName, err, sendBlock)

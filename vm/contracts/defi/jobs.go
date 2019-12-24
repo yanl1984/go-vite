@@ -9,14 +9,14 @@ import (
 	"math/big"
 )
 
-func UpdateLoans(db vm_db.VmDb, data []byte, gs util.GlobalStatus) (blocks []*ledger.AccountBlock, err error) {
+func UpdateLoans(db vm_db.VmDb, data []byte, gs util.GlobalStatus, deFiDayHeight uint64) (blocks []*ledger.AccountBlock, err error) {
 	estTime, time := GetDeFiEstimateTimestamp(db, gs)
 	var bls []*ledger.AccountBlock
 	if len(data) > 0 {
 		for i := 0; i < len(data)/8; i++ {
 			loanId := common.BytesToUint64(data[i*8 : (i+1)*8])
 			if loan, ok := GetLoan(db, loanId); ok {
-				if bls, err = innerUpdateLoan(db, loan, estTime, time, gs); err != nil {
+				if bls, err = innerUpdateLoan(db, loan, estTime, time, gs, deFiDayHeight); err != nil {
 					return
 				} else {
 					blocks = append(blocks, bls...)
@@ -43,7 +43,7 @@ func UpdateLoans(db vm_db.VmDb, data []byte, gs util.GlobalStatus) (blocks []*le
 			if err = loan.DeSerialize(loanValue); err != nil {
 				panic(err)
 			}
-			if bls, err = innerUpdateLoan(db, loan, estTime, time, gs); err != nil {
+			if bls, err = innerUpdateLoan(db, loan, estTime, time, gs, deFiDayHeight); err != nil {
 				return
 			} else {
 				blocks = append(blocks, bls...)
@@ -84,10 +84,10 @@ func UpdateInvests(db vm_db.VmDb, data []byte, confirmSeconds int64) {
 	}
 }
 
-func innerUpdateLoan(db vm_db.VmDb, loan *Loan, estTime, time int64, gs util.GlobalStatus) (blocks []*ledger.AccountBlock, err error) {
+func innerUpdateLoan(db vm_db.VmDb, loan *Loan, estTime, time int64, gs util.GlobalStatus, deFiDayHeight uint64) (blocks []*ledger.AccountBlock, err error) {
 	switch loan.Status {
 	case LoanOpen:
-		if loan.Created+int64(loan.SubscribeDays)*24*3600 < estTime {
+		if loan.Created+int64(loan.SubscribeDays)*int64(deFiDayHeight) < estTime {
 			loan.Status = LoanFailed
 			loan.Updated = time
 			DoRefundLoan(db, loan)

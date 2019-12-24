@@ -45,23 +45,26 @@ type contractsParams struct {
 	DexSuperVipStakeHeight uint64 // locking height for dex_fund contract, in order to upgrade to dex super vip
 	SBPStakeHeight         uint64
 
-	InvestConfirmSeconds int64
+	DeFiInvestConfirmSeconds int64
+	DeFiDayHeight            uint64
 }
 
 var (
 	contractsParamsTest = contractsParams{
-		StakeHeight:            600,
-		DexVipStakeHeight:      600,
-		DexSuperVipStakeHeight: 600,
-		SBPStakeHeight:         600,
-		InvestConfirmSeconds:   20,
+		StakeHeight:              600,
+		DexVipStakeHeight:        600,
+		DexSuperVipStakeHeight:   600,
+		SBPStakeHeight:           600,
+		DeFiInvestConfirmSeconds: 20,
+		DeFiDayHeight:            200,
 	}
 
 	contractsParamsMainNet = contractsParams{
-		StakeHeight:            3600 * 24 * 3,
-		DexVipStakeHeight:      3600 * 24 * 30,
-		DexSuperVipStakeHeight: 3600 * 24 * 30,
-		SBPStakeHeight:         7776100,
-		InvestConfirmSeconds:   100,
+		StakeHeight:              3600 * 24 * 3,
+		DexVipStakeHeight:        3600 * 24 * 30,
+		DexSuperVipStakeHeight:   3600 * 24 * 30,
+		SBPStakeHeight:           7776100,
+		DeFiInvestConfirmSeconds: 100,
+		DeFiDayHeight:            3600 * 24,
 	}
 )

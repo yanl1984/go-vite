@@ -137,12 +137,13 @@ func NewSubscription(address types.Address, db vm_db.VmDb, param *ParamSubscribe
 	return sub
 }
 
-func DoSubscribe(db vm_db.VmDb, gs util.GlobalStatus, loan *Loan, shares int32) {
+func DoSubscribe(db vm_db.VmDb, gs util.GlobalStatus, loan *Loan, shares int32, deFiDayHeight uint64) {
 	loan.SubscribedShares = loan.SubscribedShares + shares
 	loan.Updated = GetDeFiTimestamp(db)
 	if loan.Shares == loan.SubscribedShares {
 		loan.Status = LoanSuccess
-		loan.ExpireHeight = GetExpireHeight(gs, loan.ExpireDays)
+		loan.ExpireHeight = GetExpireHeight(gs, loan.ExpireDays, deFiDayHeight)
+		loan.StartHeight = gs.SnapshotBlock().Height
 		loan.StartTime = loan.Updated
 		OnAccLoanSuccess(db, loan.Address, loan)
 		AddBaseAccountEvent(db, loan.Address, BaseLoanInterestReduce, 0, loan.Id, loan.Interest)

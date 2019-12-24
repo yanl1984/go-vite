@@ -32,8 +32,8 @@ func AddLoanUpdateEvent(db vm_db.VmDb, ln *Loan) {
 	event.Invested = ln.Invested
 	event.Status = ln.Status
 	event.ExpireHeight = ln.ExpireHeight
+	event.StartHeight = ln.StartHeight
 	event.Timestamp = ln.Updated
-
 	common.DoEmitEventLog(db, event)
 }
 

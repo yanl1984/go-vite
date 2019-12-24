@@ -286,8 +286,8 @@ func GetLoanAvailable(gs util.GlobalStatus, loan *Loan) (available *big.Int, ava
 	return
 }
 
-func IsOpenLoanSubscribeFail(db vm_db.VmDb, loan *Loan) bool {
-	return loan.Status == LoanOpen && GetDeFiTimestamp(db) > GetLoanFailTime(loan)
+func IsOpenLoanSubscribeFail(db vm_db.VmDb, loan *Loan, deFiDayHeight uint64) bool {
+	return loan.Status == LoanOpen && GetDeFiTimestamp(db) > GetLoanFailTime(loan, deFiDayHeight)
 }
 
 func getLoanKey(loanId uint64) []byte {
@@ -441,12 +441,12 @@ func GetDeFiEstimateTimestamp(db vm_db.VmDb, gs util.GlobalStatus) (int64, int64
 	return twh.Timestamp + int64(gs.SnapshotBlock().Height-twh.Height), twh.Timestamp
 }
 
-func GetExpireHeight(gs util.GlobalStatus, days int32) uint64 {
-	return gs.SnapshotBlock().Height + uint64(days*24*3600)
+func GetExpireHeight(gs util.GlobalStatus, days int32, deFiDayHeight uint64) uint64 {
+	return gs.SnapshotBlock().Height + uint64(days)*deFiDayHeight
 }
 
-func GetLoanFailTime(loan *Loan) int64 {
-	return loan.Created + int64(loan.SubscribeDays*24*3600)
+func GetLoanFailTime(loan *Loan, deFiDayHeight uint64) int64 {
+	return loan.Created + int64(loan.SubscribeDays)*int64(deFiDayHeight)
 }
 
 func newAccount(token []byte) *defiproto.Account {

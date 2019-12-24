@@ -19,6 +19,7 @@ type RpcLoan struct {
 	SubscribeDays    int32  `json:"subscribeDays"`
 	ExpireDays       int32  `json:"expireDays"`
 	SubscribedShares int32  `json:"subscribedShares,omitempty"`
+	StartHeight      uint64 `json:"startHeight,omitempty"`
 	ExpireHeight     uint64 `json:"expireHeight,omitempty"`
 	Invested         string `json:"invested,omitempty"`
 	Status           int32  `json:"status,omitempty"`
@@ -44,6 +45,7 @@ func LoanToRpc(loan *defi.Loan) *RpcLoan {
 			SubscribeDays:    loan.SubscribeDays,
 			ExpireDays:       loan.ExpireDays,
 			SubscribedShares: loan.SubscribedShares,
+			StartHeight:      loan.StartHeight,
 			ExpireHeight:     loan.ExpireHeight,
 			Invested:         dex.AmountBytesToString(loan.Invested),
 			Status:           loan.Status,
