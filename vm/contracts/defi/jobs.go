@@ -133,6 +133,10 @@ func innerUpdateInvest(db vm_db.VmDb, invest *Invest, time int64, confirmSeconds
 
 func innerSettleLoanInterest(db vm_db.VmDb, loan *Loan, gs util.GlobalStatus, deFiDayHeight uint64) (err error) {
 	if loan.Status == LoanSuccess && loan.SettledDays < loan.ExpireDays {
+		toSettleDays := int32((gs.SnapshotBlock().Height - loan.StartHeight) / deFiDayHeight)
+		if loan.SettledDays >= toSettleDays {
+			return
+		}
 		interest := new(big.Int).SetBytes(loan.Interest)
 		settledInterest := new(big.Int).SetBytes(loan.SettledInterest)
 		if settledInterest.Cmp(interest) >= 0 {
@@ -140,7 +144,6 @@ func innerSettleLoanInterest(db vm_db.VmDb, loan *Loan, gs util.GlobalStatus, de
 		} else {
 			leavedInterest := new(big.Int).Sub(interest, settledInterest)
 			loanNewInterest := new(big.Int)
-			toSettleDays := int32((gs.SnapshotBlock().Height - loan.StartHeight) / deFiDayHeight)
 			for i := loan.SettledDays; i < toSettleDays && i < loan.ExpireDays && leavedInterest.Sign() > 0; i++ {
 				if err = traverseLoanSubscriptions(db, loan, func(sub *Subscription) (err1 error) {
 					subNewInterest := CalculateInterest(sub.Shares, new(big.Int).SetBytes(sub.ShareAmount), loan.DayRate, 1)
