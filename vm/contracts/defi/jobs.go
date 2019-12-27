@@ -51,7 +51,8 @@ func UpdateInvests(db vm_db.VmDb, data []byte, gs util.GlobalStatus, confirmSeco
 			}
 		}
 	} else {
-		iterator, err := db.NewStorageIterator(investKeyPrefix)
+		var iterator interfaces.StorageIterator
+		iterator, err = db.NewStorageIterator(investKeyPrefix)
 		if err != nil {
 			panic(err)
 		}
@@ -186,12 +187,12 @@ func innerSettleLoanInterest(db vm_db.VmDb, loan *Loan, gs util.GlobalStatus, de
 			}
 			loan.SettledDays = toSettleDays
 			loan.SettledInterest = common.AddBigInt(loan.SettledInterest, loanNewInterest.Bytes())
-			loan.Updated = GetDeFiTimestamp(db)
 			if _, err = OnAccLoanSettleInterest(db, loan.Address, loanNewInterest.Bytes()); err != nil {
 				return
 			}
 			AddBaseAccountEvent(db, loan.Address, BaseLoanInterestReduce, 0, loan.Id, loanNewInterest.Bytes())
 		}
+		loan.Updated = GetDeFiTimestamp(db)
 		SaveLoan(db, loan)
 		AddLoanUpdateEvent(db, loan)
 	}
