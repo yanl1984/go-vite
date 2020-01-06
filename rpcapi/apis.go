@@ -17,6 +17,13 @@ func Init(dir, lvl string, testApi_prikey, testApi_tti string, netId uint, dexAv
 func GetApi(vite *vite.Vite, apiModule string) rpc.API {
 	switch apiModule {
 	// private IPC
+	case "health":
+		return rpc.API{
+			Namespace: "health",
+			Version:   "1.0",
+			Service:   api.NewHealthApi(vite),
+			Public:    true,
+		}
 	case "wallet":
 		return rpc.API{
 			Namespace: "wallet",
@@ -87,14 +94,14 @@ func GetApi(vite *vite.Vite, apiModule string) rpc.API {
 		return rpc.API{
 			Namespace: "mintage",
 			Version:   "1.0",
-			Service:   api.NewMintageApi(vite),
+			Service:   api.NewAssetApi(vite),
 			Public:    true,
 		}
 	case "pledge":
 		return rpc.API{
 			Namespace: "pledge",
 			Version:   "1.0",
-			Service:   api.NewPledgeApi(vite),
+			Service:   api.NewQuotaApi(vite),
 			Public:    true,
 		}
 	case "dexfund":
@@ -217,5 +224,5 @@ func GetApis(vite *vite.Vite, apiModule ...string) []rpc.API {
 }
 
 func GetPublicApis(vite *vite.Vite) []rpc.API {
-	return GetApis(vite, "ledger", "net", "contract", "util")
+	return GetApis(vite, "ledger", "net", "contract", "util", "health")
 }

@@ -66,7 +66,7 @@ func renderMarketInfoWithTradeTokenInfo(db vm_db.VmDb, marketInfo *MarketInfo, t
 	marketInfo.Owner = tradeTokenInfo.Owner
 }
 
-func OnNewMarketValid(db vm_db.VmDb, reader util.ConsensusReader, marketInfo *MarketInfo, tradeToken, quoteToken types.TokenTypeId, address *types.Address) (block []*ledger.AccountBlock, err error) {
+func OnNewMarketValid(db vm_db.VmDb, reader util.ConsensusReader, marketInfo *MarketInfo, tradeToken, quoteToken types.TokenTypeId, address *types.Address) (blocks []*ledger.AccountBlock, err error) {
 	if _, err = ReduceAccount(db, *address, ledger.ViteTokenId.Bytes(), NewMarketFeeAmount); err != nil {
 		DeleteMarketInfo(db, tradeToken, quoteToken)
 		AddErrEvent(db, err)
@@ -76,7 +76,11 @@ func OnNewMarketValid(db vm_db.VmDb, reader util.ConsensusReader, marketInfo *Ma
 	userFee := &dexproto.FeeSettle{}
 	userFee.Address = address.Bytes()
 	userFee.BaseFee = NewMarketFeeMineAmount.Bytes()
-	SettleFeesWithTokenId(db, reader, true, ledger.ViteTokenId, ViteTokenDecimals, ViteTokenType, []*dexproto.FeeSettle{userFee}, NewMarketFeeDonateAmount, nil)
+	var donateAmount = new(big.Int).Set(NewMarketFeeDonateAmount)
+	if IsEarthFork(db) {
+		donateAmount.Add(donateAmount, NewMarketFeeBurnAmount)
+	}
+	SettleFeesWithTokenId(db, reader, true, ledger.ViteTokenId, ViteTokenDecimals, ViteTokenType, []*dexproto.FeeSettle{userFee}, donateAmount, nil)
 	marketInfo.MarketId = NewAndSaveMarketId(db)
 	SaveMarketInfo(db, marketInfo, tradeToken, quoteToken)
 	AddMarketEvent(db, marketInfo)
@@ -84,8 +88,6 @@ func OnNewMarketValid(db vm_db.VmDb, reader util.ConsensusReader, marketInfo *Ma
 	if marketBytes, err = marketInfo.Serialize(); err != nil {
 		panic(err)
 	} else {
-		var syncNewMarketBlock, newMarketFeeBurnBlock *ledger.AccountBlock
-
 		var syncNewMarketMethod = cabi.MethodNameDexTradeSyncNewMarket
 		if !IsLeafFork(db) {
 			syncNewMarketMethod = cabi.MethodNameDexTradeNotifyNewMarket
@@ -93,28 +95,30 @@ func OnNewMarketValid(db vm_db.VmDb, reader util.ConsensusReader, marketInfo *Ma
 		if syncData, err = cabi.ABIDexTrade.PackMethod(syncNewMarketMethod, marketBytes); err != nil {
 			panic(err)
 		} else {
-			syncNewMarketBlock = &ledger.AccountBlock{
+			blocks = append(blocks, &ledger.AccountBlock{
 				AccountAddress: types.AddressDexFund,
 				ToAddress:      types.AddressDexTrade,
 				BlockType:      ledger.BlockTypeSendCall,
 				TokenId:        ledger.ViteTokenId,
 				Amount:         big.NewInt(0),
 				Data:           syncData,
+			})
+		}
+		if !IsEarthFork(db) { // burn on fee dividend, not on new market
+			if burnData, err = cabi.ABIAsset.PackMethod(cabi.MethodNameBurn); err != nil {
+				panic(err)
+			} else {
+				blocks = append(blocks, &ledger.AccountBlock{
+					AccountAddress: types.AddressDexFund,
+					ToAddress:      types.AddressAsset,
+					BlockType:      ledger.BlockTypeSendCall,
+					TokenId:        ledger.ViteTokenId,
+					Amount:         NewMarketFeeBurnAmount,
+					Data:           burnData,
+				})
 			}
 		}
-		if burnData, err = cabi.ABIMintage.PackMethod(cabi.MethodNameBurn); err != nil {
-			panic(err)
-		} else {
-			newMarketFeeBurnBlock = &ledger.AccountBlock{
-				AccountAddress: types.AddressDexFund,
-				ToAddress:      types.AddressMintage,
-				BlockType:      ledger.BlockTypeSendCall,
-				TokenId:        ledger.ViteTokenId,
-				Amount:         NewMarketFeeBurnAmount,
-				Data:           burnData,
-			}
-		}
-		return []*ledger.AccountBlock{syncNewMarketBlock, newMarketFeeBurnBlock}, nil
+		return
 	}
 }
 
@@ -123,7 +127,7 @@ func OnNewMarketPending(db vm_db.VmDb, param *ParamOpenNewMarket, marketInfo *Ma
 	if err = AddToPendingNewMarkets(db, param.TradeToken, param.QuoteToken); err != nil {
 		return
 	}
-	if data, err = abi.ABIMintage.PackMethod(abi.MethodNameGetTokenInfo, param.TradeToken, uint8(GetTokenForNewMarket)); err != nil {
+	if data, err = abi.ABIAsset.PackMethod(abi.MethodNameGetTokenInfo, param.TradeToken, uint8(GetTokenForNewMarket)); err != nil {
 		panic(err)
 	} else {
 		return
@@ -192,7 +196,7 @@ func OnNewMarketGetTokenInfoFailed(db vm_db.VmDb, tradeTokenId types.TokenTypeId
 
 func OnSetQuoteTokenPending(db vm_db.VmDb, token types.TokenTypeId, quoteTokenType uint8) []byte {
 	AddToPendingSetQuotes(db, token, quoteTokenType)
-	if data, err := abi.ABIMintage.PackMethod(abi.MethodNameGetTokenInfo, token, uint8(GetTokenForSetQuote)); err != nil {
+	if data, err := abi.ABIAsset.PackMethod(abi.MethodNameGetTokenInfo, token, uint8(GetTokenForSetQuote)); err != nil {
 		panic(err)
 	} else {
 		return data
@@ -218,7 +222,7 @@ func OnSetQuoteGetTokenInfoFailed(db vm_db.VmDb, tokenId types.TokenTypeId) (err
 
 func OnTransferTokenOwnerPending(db vm_db.VmDb, token types.TokenTypeId, origin, new types.Address) []byte {
 	AddToPendingTransferTokenOwners(db, token, origin, new)
-	if data, err := abi.ABIMintage.PackMethod(abi.MethodNameGetTokenInfo, token, uint8(GetTokenForTransferOwner)); err != nil {
+	if data, err := abi.ABIAsset.PackMethod(abi.MethodNameGetTokenInfo, token, uint8(GetTokenForTransferOwner)); err != nil {
 		panic(err)
 	} else {
 		return data
@@ -513,6 +517,22 @@ func IsLeafFork(db vm_db.VmDb) bool {
 		panic(err)
 	} else {
 		return fork.IsLeafFork(latestSb.Height)
+	}
+}
+
+func IsEarthFork(db vm_db.VmDb) bool {
+	if latestSb, err := db.LatestSnapshotBlock(); err != nil {
+		panic(err)
+	} else {
+		return fork.IsEarthFork(latestSb.Height)
+	}
+}
+
+func IsDexMiningFork(db vm_db.VmDb) bool {
+	if latestSb, err := db.LatestSnapshotBlock(); err != nil {
+		panic(err)
+	} else {
+		return fork.IsDexMiningFork(latestSb.Height)
 	}
 }
 

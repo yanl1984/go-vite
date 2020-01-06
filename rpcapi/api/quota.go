@@ -13,33 +13,33 @@ import (
 	"sort"
 )
 
-type PledgeApi struct {
+type QuotaApi struct {
 	chain     chain.Chain
 	log       log15.Logger
 	ledgerApi *LedgerApi
 }
 
-func NewPledgeApi(vite *vite.Vite) *PledgeApi {
-	return &PledgeApi{
+func NewQuotaApi(vite *vite.Vite) *QuotaApi {
+	return &QuotaApi{
 		chain:     vite.Chain(),
-		log:       log15.New("module", "rpc_api/pledge_api"),
+		log:       log15.New("module", "rpc_api/quota_api"),
 		ledgerApi: NewLedgerApi(vite),
 	}
 }
 
-func (p PledgeApi) String() string {
-	return "PledgeApi"
+func (p QuotaApi) String() string {
+	return "QuotaApi"
 }
 
 // Private
-func (p *PledgeApi) GetPledgeData(beneficialAddr types.Address) ([]byte, error) {
-	return abi.ABIPledge.PackMethod(abi.MethodNamePledge, beneficialAddr)
+func (p *QuotaApi) GetPledgeData(beneficialAddr types.Address) ([]byte, error) {
+	return abi.ABIQuota.PackMethod(abi.MethodNameStake, beneficialAddr)
 }
 
 // Private
-func (p *PledgeApi) GetCancelPledgeData(beneficialAddr types.Address, amount string) ([]byte, error) {
+func (p *QuotaApi) GetCancelPledgeData(beneficialAddr types.Address, amount string) ([]byte, error) {
 	if bAmount, err := stringToBigInt(&amount); err == nil {
-		return abi.ABIPledge.PackMethod(abi.MethodNameCancelPledge, beneficialAddr, bAmount)
+		return abi.ABIQuota.PackMethod(abi.MethodNameCancelStake, beneficialAddr, bAmount)
 	} else {
 		return nil, err
 	}
@@ -54,18 +54,18 @@ type AgentPledgeParam struct {
 }
 
 // Private
-func (p *PledgeApi) GetAgentPledgeData(param AgentPledgeParam) ([]byte, error) {
+func (p *QuotaApi) GetAgentPledgeData(param AgentPledgeParam) ([]byte, error) {
 	stakeHeight, err := StringToUint64(param.StakeHeight)
 	if err != nil {
 		return nil, err
 	}
-	return abi.ABIPledge.PackMethod(abi.MethodNameAgentPledge, param.PledgeAddr, param.BeneficialAddr, param.Bid, stakeHeight)
+	return abi.ABIQuota.PackMethod(abi.MethodNameDelegateStake, param.PledgeAddr, param.BeneficialAddr, param.Bid, stakeHeight)
 }
 
 // Private
-func (p *PledgeApi) GetAgentCancelPledgeData(param AgentPledgeParam) ([]byte, error) {
+func (p *QuotaApi) GetAgentCancelPledgeData(param AgentPledgeParam) ([]byte, error) {
 	if bAmount, err := stringToBigInt(&param.Amount); err == nil {
-		return abi.ABIPledge.PackMethod(abi.MethodNameAgentCancelPledge, param.PledgeAddr, param.BeneficialAddr, bAmount, param.Bid)
+		return abi.ABIQuota.PackMethod(abi.MethodNameCancelDelegateStake, param.PledgeAddr, param.BeneficialAddr, bAmount, param.Bid)
 	} else {
 		return nil, err
 	}
@@ -81,17 +81,17 @@ type QuotaAndTxNum struct {
 }
 
 // Deprecated: use contract_getQuotaByAccount instead
-func (p *PledgeApi) GetPledgeQuota(addr types.Address) (*QuotaAndTxNum, error) {
-	amount, q, err := p.chain.GetPledgeQuota(addr)
+func (p *QuotaApi) GetPledgeQuota(addr types.Address) (*QuotaAndTxNum, error) {
+	amount, q, err := p.chain.GetStakeQuota(addr)
 	if err != nil {
 		return nil, err
 	}
 	return &QuotaAndTxNum{
-		QuotaPerSnapshotBlock: Uint64ToString(q.PledgeQuotaPerSnapshotBlock()),
+		QuotaPerSnapshotBlock: Uint64ToString(q.StakeQuotaPerSnapshotBlock()),
 		CurrentQuota:          Uint64ToString(q.Current()),
-		CurrentTxNumPerSec:    Uint64ToString(q.Current() / quota.QuotaForUtps),
-		CurrentUt:             Float64ToString(float64(q.Current())/float64(quota.QuotaForUtps), 4),
-		Utpe:                  Float64ToString(float64(q.PledgeQuotaPerSnapshotBlock()*util.OneRound)/float64(quota.QuotaForUtps), 4),
+		CurrentTxNumPerSec:    Uint64ToString(q.Current() / quota.QuotaPerUt),
+		CurrentUt:             Float64ToString(float64(q.Current())/float64(quota.QuotaPerUt), 4),
+		Utpe:                  Float64ToString(float64(q.StakeQuotaPerSnapshotBlock()*util.QuotaAccumulationBlockCount)/float64(quota.QuotaPerUt), 4),
 		PledgeAmount:          *bigIntToString(amount)}, nil
 }
 
@@ -108,41 +108,43 @@ type PledgeInfo struct {
 	Agent          bool          `json:"agent"`
 	AgentAddress   types.Address `json:"agentAddress"`
 	Bid            uint8         `json:"bid"`
+	Id             *types.Hash   `json:"id"`
 }
 
-func NewPledgeInfo(info *types.PledgeInfo, snapshotBlock *ledger.SnapshotBlock) *PledgeInfo {
+func NewPledgeInfo(info *types.StakeInfo, snapshotBlock *ledger.SnapshotBlock) *PledgeInfo {
 	return &PledgeInfo{
 		*bigIntToString(info.Amount),
-		info.BeneficialAddr,
-		Uint64ToString(info.WithdrawHeight),
-		getWithdrawTime(snapshotBlock.Timestamp, snapshotBlock.Height, info.WithdrawHeight),
-		info.Agent,
-		info.AgentAddress,
-		info.Bid}
+		info.Beneficiary,
+		Uint64ToString(info.ExpirationHeight),
+		getWithdrawTime(snapshotBlock.Timestamp, snapshotBlock.Height, info.ExpirationHeight),
+		info.IsDelegated,
+		info.DelegateAddress,
+		info.Bid,
+		info.Id}
 }
 
-type byWithdrawHeight []*types.PledgeInfo
+type byExpirationHeight []*types.StakeInfo
 
-func (a byWithdrawHeight) Len() int      { return len(a) }
-func (a byWithdrawHeight) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
-func (a byWithdrawHeight) Less(i, j int) bool {
-	if a[i].WithdrawHeight == a[j].WithdrawHeight {
-		return a[i].BeneficialAddr.String() < a[j].BeneficialAddr.String()
+func (a byExpirationHeight) Len() int      { return len(a) }
+func (a byExpirationHeight) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a byExpirationHeight) Less(i, j int) bool {
+	if a[i].ExpirationHeight == a[j].ExpirationHeight {
+		return a[i].Beneficiary.String() < a[j].Beneficiary.String()
 	}
-	return a[i].WithdrawHeight < a[j].WithdrawHeight
+	return a[i].ExpirationHeight < a[j].ExpirationHeight
 }
 
 // Deprecated: use contract_getStakeList instead
-func (p *PledgeApi) GetPledgeList(addr types.Address, index int, count int) (*PledgeInfoList, error) {
-	db, err := getVmDb(p.chain, types.AddressPledge)
+func (p *QuotaApi) GetPledgeList(addr types.Address, index int, count int) (*PledgeInfoList, error) {
+	db, err := getVmDb(p.chain, types.AddressQuota)
 	if err != nil {
 		return nil, err
 	}
-	list, amount, err := abi.GetPledgeInfoList(db, addr)
+	list, amount, err := abi.GetStakeInfoList(db, addr)
 	if err != nil {
 		return nil, err
 	}
-	sort.Sort(byWithdrawHeight(list))
+	sort.Sort(byExpirationHeight(list))
 	startHeight, endHeight := index*count, (index+1)*count
 	if startHeight >= len(list) {
 		return &PledgeInfoList{TotalPledgeAmount: *bigIntToString(amount), Count: len(list), List: []*PledgeInfo{}}, nil
@@ -162,8 +164,8 @@ func (p *PledgeApi) GetPledgeList(addr types.Address, index int, count int) (*Pl
 }
 
 // Deprecated: use contract_getBeneficialStakingAmount instead
-func (p *PledgeApi) GetPledgeBeneficialAmount(addr types.Address) (string, error) {
-	amount, err := p.chain.GetPledgeBeneficialAmount(addr)
+func (p *QuotaApi) GetPledgeBeneficialAmount(addr types.Address) (string, error) {
+	amount, err := p.chain.GetStakeBeneficialAmount(addr)
 	if err != nil {
 		return "", err
 	}
@@ -171,8 +173,8 @@ func (p *PledgeApi) GetPledgeBeneficialAmount(addr types.Address) (string, error
 }
 
 // Private
-func (p *PledgeApi) GetQuotaUsedList(addr types.Address) ([]types.QuotaInfo, error) {
-	db, err := getVmDb(p.chain, types.AddressPledge)
+func (p *QuotaApi) GetQuotaUsedList(addr types.Address) ([]types.QuotaInfo, error) {
+	db, err := getVmDb(p.chain, types.AddressQuota)
 	if err != nil {
 		return nil, err
 	}
@@ -180,13 +182,13 @@ func (p *PledgeApi) GetQuotaUsedList(addr types.Address) ([]types.QuotaInfo, err
 }
 
 // Deprecated: use contract_getRequiredStakeAmount instead
-func (p *PledgeApi) GetPledgeAmountByUtps(utps string) (*string, error) {
+func (p *QuotaApi) GetPledgeAmountByUtps(utps string) (*string, error) {
 	utpfF, err := StringToFloat64(utps)
 	if err != nil {
 		return nil, err
 	}
-	q := uint64(math.Ceil(utpfF * float64(quota.QuotaForUtps)))
-	amount, err := quota.CalcPledgeAmountByQuota(q)
+	q := uint64(math.Ceil(utpfF * float64(quota.QuotaPerUt)))
+	amount, err := quota.CalcStakeAmountByQuota(q)
 	if err != nil {
 		return nil, err
 	}
@@ -201,8 +203,8 @@ type PledgeQueryParams struct {
 }
 
 // Deprecated
-func (p *PledgeApi) GetAgentPledgeInfo(params PledgeQueryParams) (*PledgeInfo, error) {
-	db, err := getVmDb(p.chain, types.AddressPledge)
+func (p *QuotaApi) GetAgentPledgeInfo(params PledgeQueryParams) (*PledgeInfo, error) {
+	db, err := getVmDb(p.chain, types.AddressQuota)
 	if err != nil {
 		return nil, err
 	}
@@ -210,7 +212,7 @@ func (p *PledgeApi) GetAgentPledgeInfo(params PledgeQueryParams) (*PledgeInfo, e
 	if err != nil {
 		return nil, err
 	}
-	info, err := abi.GetPledgeInfo(db, params.PledgeAddr, params.BeneficialAddr, params.AgentAddr, true, params.Bid)
+	info, err := abi.GetStakeInfo(db, params.PledgeAddr, params.BeneficialAddr, params.AgentAddr, true, params.Bid)
 	if err != nil {
 		return nil, err
 	}
@@ -228,7 +230,7 @@ type QuotaCoefficientInfo struct {
 }
 
 // Private
-func (p *PledgeApi) GetQuotaCoefficient() (*QuotaCoefficientInfo, error) {
+func (p *QuotaApi) GetQuotaCoefficient() (*QuotaCoefficientInfo, error) {
 	qc, globalQuota, isCongestion := quota.CalcQc(p.chain, p.chain.GetLatestSnapshotBlock().Height)
 	return &QuotaCoefficientInfo{bigIntToString(qc), Uint64ToString(globalQuota), Float64ToString(float64(globalQuota)/21000/74, 2), isCongestion}, nil
 }

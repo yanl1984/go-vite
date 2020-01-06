@@ -27,11 +27,38 @@ func init() {
 
 func initFork() {
 	fork.SetForkPoints(&config.ForkPoints{
-		SeedFork:   &config.ForkPoint{Height: 100, Version: 1},
-		DexFork:    &config.ForkPoint{Height: 200, Version: 2},
-		DexFeeFork: &config.ForkPoint{Height: 250, Version: 3},
-		StemFork:   &config.ForkPoint{Height: 300, Version: 4},
-		LeafFork:   &config.ForkPoint{Height: 400, Version: 5}})
+		SeedFork:      &config.ForkPoint{Height: 100, Version: 1},
+		DexFork:       &config.ForkPoint{Height: 200, Version: 2},
+		DexFeeFork:    &config.ForkPoint{Height: 250, Version: 3},
+		StemFork:      &config.ForkPoint{Height: 300, Version: 4},
+		LeafFork:      &config.ForkPoint{Height: 400, Version: 5},
+		EarthFork:     &config.ForkPoint{Height: 500, Version: 6},
+		DexMiningFork: &config.ForkPoint{Height: 600, Version: 7}})
+	fork.SetActiveChecker(mockActiveChecker{})
+}
+
+var (
+	forkTimestamp100     = time.Unix(1546272100, 0)
+	forkTimestamp200     = time.Unix(1546272200, 0)
+	forkTimestamp250     = time.Unix(1546272250, 0)
+	forkTimestamp300     = time.Unix(1546272300, 0)
+	forkTimestamp400     = time.Unix(1546272400, 0)
+	forkTimestamp500     = time.Unix(1546272500, 0)
+	forkSnapshotBlockMap = map[uint64]*ledger.SnapshotBlock{
+		100: {Height: 100, Timestamp: &forkTimestamp100},
+		200: {Height: 200, Timestamp: &forkTimestamp200},
+		250: {Height: 250, Timestamp: &forkTimestamp250},
+		300: {Height: 300, Timestamp: &forkTimestamp300},
+		400: {Height: 400, Timestamp: &forkTimestamp400},
+		500: {Height: 500, Timestamp: &forkTimestamp500},
+	}
+)
+
+type mockActiveChecker struct {
+}
+
+func (m mockActiveChecker) IsForkActive(point fork.ForkPointItem) bool {
+	return true
 }
 
 func TestVmRun(t *testing.T) {
@@ -83,7 +110,7 @@ func TestVmRun(t *testing.T) {
 
 	// receive create
 	addr2 := sendCreateBlock.AccountBlock.ToAddress
-	db.storageMap[types.AddressPledge][ToKey(abi.GetPledgeBeneficialKey(addr2))], _ = abi.ABIPledge.PackVariable(abi.VariableNamePledgeBeneficial, new(big.Int).Mul(big.NewInt(1e9), big.NewInt(1e18)))
+	db.storageMap[types.AddressQuota][ToKey(abi.GetStakeBeneficialKey(addr2))], _ = abi.ABIQuota.PackVariable(abi.VariableNameStakeBeneficial, new(big.Int).Mul(big.NewInt(1e9), big.NewInt(1e18)))
 	balance2 := big.NewInt(0)
 
 	hash21 := types.DataHash([]byte{2, 1})
@@ -303,10 +330,10 @@ func TestCall(t *testing.T) {
 	db.contractMetaMap[addr3] = &ledger.ContractMeta{Gid: types.DELEGATE_GID, SendConfirmedTimes: 2, QuotaRatio: 10}
 
 	db.accountBlockMap[addr2] = make(map[types.Hash]*ledger.AccountBlock)
-	db.storageMap[types.AddressPledge][ToKey(abi.GetPledgeBeneficialKey(addr2))], _ = abi.ABIPledge.PackVariable(abi.VariableNamePledgeBeneficial, new(big.Int).Mul(big.NewInt(1e9), big.NewInt(1e18)))
+	db.storageMap[types.AddressQuota][ToKey(abi.GetStakeBeneficialKey(addr2))], _ = abi.ABIQuota.PackVariable(abi.VariableNameStakeBeneficial, new(big.Int).Mul(big.NewInt(1e9), big.NewInt(1e18)))
 
 	db.accountBlockMap[addr3] = make(map[types.Hash]*ledger.AccountBlock)
-	db.storageMap[types.AddressPledge][ToKey(abi.GetPledgeBeneficialKey(addr3))], _ = abi.ABIPledge.PackVariable(abi.VariableNamePledgeBeneficial, new(big.Int).Mul(big.NewInt(1e9), big.NewInt(1e18)))
+	db.storageMap[types.AddressQuota][ToKey(abi.GetStakeBeneficialKey(addr3))], _ = abi.ABIQuota.PackVariable(abi.VariableNameStakeBeneficial, new(big.Int).Mul(big.NewInt(1e9), big.NewInt(1e18)))
 
 	vm := NewVM(nil)
 	//vm.Debug = true
@@ -523,9 +550,10 @@ func TestVmInterpreter(t *testing.T) {
 				Hash:      types.DataHash([]byte{1, 1}),
 			}
 			vm := NewVM(nil)
-			vm.i = newInterpreter(1, false)
-			vm.gasTable = util.GasTableByHeight(1)
+			vm.i = newInterpreter(testCase.SBHeight, false)
+			vm.gasTable = util.QuotaTableByHeight(testCase.SBHeight)
 			vm.globalStatus = NewTestGlobalStatus(testCase.Seed, &sb)
+			vm.latestSnapshotHeight = testCase.SBHeight
 			//fmt.Printf("testcase %v: %v\n", testFile.Name(), k)
 			inputData, _ := hex.DecodeString(testCase.InputData)
 			amount, _ := hex.DecodeString(testCase.Amount)

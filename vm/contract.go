@@ -4,6 +4,7 @@ import (
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/ledger"
 	"github.com/vitelabs/go-vite/log15"
+	"github.com/vitelabs/go-vite/vm/util"
 	"github.com/vitelabs/go-vite/vm_db"
 )
 
@@ -12,26 +13,28 @@ var (
 )
 
 type contract struct {
-	jumpdests  destinations
-	data       []byte
-	code       []byte
-	codeAddr   types.Address
-	block      *ledger.AccountBlock
-	db         vm_db.VmDb
-	sendBlock  *ledger.AccountBlock
-	quotaLeft  uint64
-	intPool    *intPool
-	returnData []byte
+	jumpdests       destinations
+	data            []byte
+	code            []byte
+	codeAddr        types.Address
+	block           *ledger.AccountBlock
+	db              vm_db.VmDb
+	sendBlock       *ledger.AccountBlock
+	quotaLeft       uint64
+	intPool         *util.IntPool
+	returnData      []byte
+	storageModified map[string]interface{}
 }
 
 func newContract(block *ledger.AccountBlock, db vm_db.VmDb, sendBlock *ledger.AccountBlock, data []byte, quotaLeft uint64) *contract {
 	return &contract{
-		block:     block,
-		db:        db,
-		sendBlock: sendBlock,
-		data:      data,
-		quotaLeft: quotaLeft,
-		jumpdests: make(destinations),
+		block:           block,
+		db:              db,
+		sendBlock:       sendBlock,
+		data:            data,
+		quotaLeft:       quotaLeft,
+		jumpdests:       make(destinations),
+		storageModified: make(map[string]interface{}),
 	}
 }
 
@@ -52,9 +55,9 @@ func (c *contract) setCallCode(addr types.Address, code []byte) {
 }
 
 func (c *contract) run(vm *VM) (ret []byte, err error) {
-	c.intPool = poolOfIntPools.get()
+	c.intPool = util.PoolOfIntPools.Get()
 	defer func() {
-		poolOfIntPools.put(c.intPool)
+		util.PoolOfIntPools.Put(c.intPool)
 		c.intPool = nil
 	}()
 

@@ -42,7 +42,7 @@ func (sDB *StateDB) RollbackSnapshotBlocks(deletedSnapshotSegments []*ledger.Sna
 			snapshotHeight += 1
 
 			for _, accountBlock := range seg.AccountBlocks {
-				if !hasBuiltInContract && types.IsBuiltinContractAddr(accountBlock.AccountAddress) {
+				if !hasBuiltInContract && sDB.shouldCacheContractData(accountBlock.AccountAddress) {
 					hasBuiltInContract = true
 				}
 			}
@@ -89,7 +89,7 @@ func (sDB *StateDB) RollbackSnapshotBlocks(deletedSnapshotSegments []*ledger.Sna
 			for _, accountBlock := range seg.AccountBlocks {
 				addrMap[accountBlock.AccountAddress] = struct{}{}
 
-				if !hasBuiltInContract && types.IsBuiltinContractAddr(accountBlock.AccountAddress) {
+				if !hasBuiltInContract && sDB.shouldCacheContractData(accountBlock.AccountAddress) {
 					hasBuiltInContract = true
 				}
 
@@ -366,7 +366,11 @@ func (sDB *StateDB) recoverLatestIndexByRedo(batch *leveldb.Batch, addrMap map[t
 		redoLogList := redoLogMap[addr]
 		for _, redoLog := range redoLogList {
 			for _, kv := range redoLog.Storage {
-				batch.Put(chain_utils.CreateStorageValueKey(&addr, kv[0]), kv[1])
+				if len(kv[1]) <= 0 {
+					batch.Delete(chain_utils.CreateStorageValueKey(&addr, kv[0]))
+				} else {
+					batch.Put(chain_utils.CreateStorageValueKey(&addr, kv[0]), kv[1])
+				}
 				if _, ok := rollbackKeySet[addr]; ok {
 					delete(rollbackKeySet[addr], string(kv[0]))
 				}
@@ -598,7 +602,7 @@ func (sDB *StateDB) deleteHistoryKey(batch interfaces.Batch, key []byte) {
 	if err != nil {
 		panic(err)
 	}
-	if types.IsBuiltinContractAddr(addr) {
+	if sDB.shouldCacheContractData(addr) {
 		sDB.cache.Delete(snapshotValuePrefix + string(addrBytes) + string(sDB.parseStorageKey(key)))
 	}
 }
