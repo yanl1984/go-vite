@@ -388,6 +388,8 @@ func (cache *RoundCache) DeleteSnapshotBlocks(snapshotBlocks []*ledger.SnapshotB
 		} else if data.roundIndex == firstRoundIndex {
 			// remove currentData
 			data.mu.Lock()
+			// viteliz 20200110
+			cache.destroyMemDb(data.currentData)
 			data.currentData = nil
 
 			// remove lastSnapshotBlock

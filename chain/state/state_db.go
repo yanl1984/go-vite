@@ -398,6 +398,8 @@ func (sDB *StateDB) getSnapshotBalanceList(balanceMap map[types.Address]*big.Int
 
 		ok := iter.Prev()
 		if !ok {
+			// viteliz 20200110
+			balanceMap[addr] = big.NewInt(0)
 			continue
 		}
 

@@ -32,7 +32,8 @@ func (sDB *StateDB) RollbackSnapshotBlocks(deletedSnapshotSegments []*ledger.Sna
 
 	snapshotHeight := latestSnapshotBlock.Height
 
-	hasBuiltInContract := true
+	// viteliz 20200109
+	hasBuiltInContract := false
 
 	if hasRedo {
 		rollbackKeySet := make(map[types.Address]map[string]struct{})
@@ -252,9 +253,10 @@ func (sDB *StateDB) rollbackByRedo(batch *leveldb.Batch, snapshotBlock *ledger.S
 				copy(resetBalanceTemplate[1+types.AddressSize:], tokenTypeId.Bytes())
 
 				if isHistory {
-					batch.Delete(resetBalanceTemplate)
-				} else {
+					// viteliz 20200109
 					sDB.deleteBalance(batch, resetBalanceTemplate)
+				} else {
+					batch.Delete(resetBalanceTemplate)
 				}
 			}
 
