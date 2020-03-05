@@ -1,15 +1,13 @@
 package chain_genesis
 
 import (
-	"encoding/hex"
-	"github.com/vitelabs/go-vite/vm/contracts/abi"
-	"github.com/vitelabs/go-vite/vm/util"
 	"math/big"
-	"sort"
 
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/config"
 	"github.com/vitelabs/go-vite/ledger"
+	"github.com/vitelabs/go-vite/vm/contracts/abi"
+	"github.com/vitelabs/go-vite/vm/util"
 	"github.com/vitelabs/go-vite/vm_db"
 )
 
@@ -17,8 +15,6 @@ func NewGenesisAccountBlocks(cfg *config.Genesis) []*vm_db.VmAccountBlock {
 	list := make([]*vm_db.VmAccountBlock, 0)
 	addrSet := make(map[types.Address]interface{})
 	list, addrSet = newGenesisGovernanceContractBlocks(cfg, list, addrSet)
-	list, addrSet = newGenesisAssetContractBlocks(cfg, list, addrSet)
-	list, addrSet = newGenesisQuotaContractBlocks(cfg, list, addrSet)
 	list = newGenesisNormalAccountBlocks(cfg, list, addrSet)
 	return list
 }
@@ -42,7 +38,6 @@ func newGenesisGovernanceContractBlocks(cfg *config.Genesis, list []*vm_db.VmAcc
 			Height:         1,
 			AccountAddress: contractAddr,
 			Amount:         big.NewInt(0),
-			Fee:            big.NewInt(0),
 		}
 		vmdb := vm_db.NewGenesisVmDB(&contractAddr)
 		for gidStr, groupInfo := range cfg.GovernanceInfo.ConsensusGroupInfoMap {
@@ -149,107 +144,6 @@ func (a byTokenId) Less(i, j int) bool {
 	return a[i].tokenId.Hex() > a[j].tokenId.Hex()
 }
 
-func newGenesisAssetContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock, addrSet map[types.Address]interface{}) ([]*vm_db.VmAccountBlock, map[types.Address]interface{}) {
-	if cfg.AssetInfo != nil {
-		nextIndexMap := make(map[string]uint16)
-		contractAddr := types.AddressAsset
-		block := ledger.AccountBlock{
-			BlockType:      ledger.BlockTypeGenesisReceive,
-			Height:         1,
-			AccountAddress: contractAddr,
-			Amount:         big.NewInt(0),
-			Fee:            big.NewInt(0),
-		}
-		vmdb := vm_db.NewGenesisVmDB(&contractAddr)
-		tokenList := make([]*tokenInfoForSort, 0, len(cfg.AssetInfo.TokenInfoMap))
-		for tokenIdStr, tokenInfo := range cfg.AssetInfo.TokenInfoMap {
-			tokenId, err := types.HexToTokenTypeId(tokenIdStr)
-			dealWithError(err)
-			tokenList = append(tokenList, &tokenInfoForSort{tokenId, *tokenInfo})
-		}
-		sort.Sort(byTokenId(tokenList))
-		for _, tokenInfo := range tokenList {
-			nextIndex := uint16(0)
-			if index, ok := nextIndexMap[tokenInfo.TokenSymbol]; ok {
-				nextIndex = index
-			}
-			value, err := abi.ABIAsset.PackVariable(abi.VariableNameTokenInfo,
-				tokenInfo.TokenName,
-				tokenInfo.TokenSymbol,
-				tokenInfo.TotalSupply,
-				tokenInfo.Decimals,
-				tokenInfo.Owner,
-				tokenInfo.IsReIssuable,
-				tokenInfo.MaxSupply,
-				tokenInfo.IsOwnerBurnOnly,
-				nextIndex)
-			dealWithError(err)
-			nextIndex = nextIndex + 1
-			nextIndexMap[tokenInfo.TokenSymbol] = nextIndex
-			nextIndexValue, err := abi.ABIAsset.PackVariable(abi.VariableNameTokenIndex, nextIndex)
-			dealWithError(err)
-			util.SetValue(vmdb, abi.GetNextTokenIndexKey(tokenInfo.TokenSymbol), nextIndexValue)
-			util.SetValue(vmdb, abi.GetTokenInfoKey(tokenInfo.tokenId), value)
-		}
-
-		if len(cfg.AssetInfo.LogList) > 0 {
-			for _, log := range cfg.AssetInfo.LogList {
-				dataBytes, err := hex.DecodeString(log.Data)
-				dealWithError(err)
-				vmdb.AddLog(&ledger.VmLog{Data: dataBytes, Topics: log.Topics})
-			}
-		}
-		block.LogHash = vmdb.GetLogListHash()
-		updateAccountBalanceMap(cfg, contractAddr, vmdb)
-		block.Hash = block.ComputeHash()
-		list = append(list, &vm_db.VmAccountBlock{&block, vmdb})
-		addrSet[contractAddr] = struct{}{}
-	}
-	return list, addrSet
-}
-
-func newGenesisQuotaContractBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock, addrSet map[types.Address]interface{}) ([]*vm_db.VmAccountBlock, map[types.Address]interface{}) {
-	if cfg.QuotaInfo != nil {
-		contractAddr := types.AddressQuota
-		block := ledger.AccountBlock{
-			BlockType:      ledger.BlockTypeGenesisReceive,
-			Height:         1,
-			AccountAddress: contractAddr,
-			Amount:         big.NewInt(0),
-			Fee:            big.NewInt(0),
-		}
-		vmdb := vm_db.NewGenesisVmDB(&contractAddr)
-		for stakeAddrStr, stakeInfoList := range cfg.QuotaInfo.StakeInfoMap {
-			stakeAddr, err := types.HexToAddress(stakeAddrStr)
-			dealWithError(err)
-			for i, stakeInfo := range stakeInfoList {
-				value, err := abi.ABIQuota.PackVariable(abi.VariableNameStakeInfo,
-					stakeInfo.Amount,
-					stakeInfo.ExpirationHeight,
-					stakeInfo.Beneficiary,
-					false,
-					types.ZERO_ADDRESS,
-					uint8(0))
-				dealWithError(err)
-				util.SetValue(vmdb, abi.GetStakeInfoKey(stakeAddr, uint64(i)), value)
-			}
-		}
-
-		for beneficiaryStr, amount := range cfg.QuotaInfo.StakeBeneficialMap {
-			beneficiary, err := types.HexToAddress(beneficiaryStr)
-			dealWithError(err)
-			value, err := abi.ABIQuota.PackVariable(abi.VariableNameStakeBeneficial, amount)
-			dealWithError(err)
-			util.SetValue(vmdb, abi.GetStakeBeneficialKey(beneficiary), value)
-		}
-		updateAccountBalanceMap(cfg, contractAddr, vmdb)
-		block.Hash = block.ComputeHash()
-		list = append(list, &vm_db.VmAccountBlock{&block, vmdb})
-		addrSet[contractAddr] = struct{}{}
-	}
-	return list, addrSet
-}
-
 func newGenesisNormalAccountBlocks(cfg *config.Genesis, list []*vm_db.VmAccountBlock, addrSet map[types.Address]interface{}) []*vm_db.VmAccountBlock {
 	for addrStr, balanceMap := range cfg.AccountBalanceMap {
 		addr, err := types.HexToAddress(addrStr)
@@ -262,7 +156,6 @@ func newGenesisNormalAccountBlocks(cfg *config.Genesis, list []*vm_db.VmAccountB
 			Height:         1,
 			AccountAddress: addr,
 			Amount:         big.NewInt(0),
-			Fee:            big.NewInt(0),
 		}
 		vmdb := vm_db.NewGenesisVmDB(&addr)
 		for tokenIdStr, balance := range balanceMap {

@@ -1,13 +1,10 @@
 package chain
 
 import (
-	"github.com/olebedev/emitter"
-	"github.com/vitelabs/go-vite/common/fork"
-
-	"github.com/vitelabs/go-vite/vm/contracts/dex"
-
 	"math/big"
 	"time"
+
+	"github.com/olebedev/emitter"
 
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/vitelabs/go-vite/chain/block"
@@ -249,27 +246,10 @@ type Chain interface {
 
 	GetConsensusGroup(snapshotHash types.Hash, gid types.Gid) (*types.ConsensusGroupInfo, error)
 
-	GetVoteList(snapshotHash types.Hash, gid types.Gid) ([]*types.VoteInfo, error)
-
-	GetStakeBeneficialAmount(addr types.Address) (*big.Int, error)
-
 	// total
-	GetStakeQuota(addr types.Address) (*big.Int, *types.Quota, error)
+	GetCurrentStakeQuota(addr types.Address) (uint64, error)
 
-	// total
-	GetStakeQuotas(addrList []types.Address) (map[types.Address]*types.Quota, error)
-
-	GetTokenInfoById(tokenId types.TokenTypeId) (*types.TokenInfo, error)
-
-	GetAllTokenInfo() (map[types.TokenTypeId]*types.TokenInfo, error)
-
-	CalVoteDetails(gid types.Gid, info *core.GroupInfo, snapshotBlock ledger.HashHeight) ([]*interfaces.VoteDetails, error)
-
-	GetStakeListByPage(snapshotHash types.Hash, lastKey []byte, count uint64) ([]*types.StakeInfo, []byte, error)
-
-	GetDexFundsByPage(snapshotHash types.Hash, lastAddress types.Address, count int) ([]*dex.Fund, error)
-
-	GetDexStakeListByPage(snapshotHash types.Hash, lastKey []byte, count int) ([]*dex.DelegateStakeInfo, []byte, error)
+	GetCurrentStakeQuotas(addrList []types.Address) (map[types.Address]uint64, error)
 
 	// ====== Sync ledger ======
 	GetLedgerReaderByHeight(startHeight uint64, endHeight uint64) (cr interfaces.LedgerReader, err error)
@@ -314,8 +294,6 @@ type Chain interface {
 
 	QueryGenesisCheckSum() (*types.Hash, error)
 
-	IsForkActive(point fork.ForkPointItem) bool
-
 	// ====== Check ======
 	CheckRedo() error
 
@@ -324,4 +302,6 @@ type Chain interface {
 	CheckOnRoad() error
 
 	GetStatus() []interfaces.DBStatus
+
+	GetTokenInfoById(tokenId types.TokenTypeId) (*types.TokenInfo, error)
 }

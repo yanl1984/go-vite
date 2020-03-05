@@ -2,8 +2,9 @@ package config
 
 import (
 	"encoding/json"
-	"github.com/vitelabs/go-vite/common/types"
 	"math/big"
+
+	"github.com/vitelabs/go-vite/common/types"
 )
 
 type Genesis struct {
@@ -80,13 +81,6 @@ type ForkPoint struct {
 }
 
 type ForkPoints struct {
-	SeedFork      *ForkPoint
-	DexFork       *ForkPoint
-	DexFeeFork    *ForkPoint
-	StemFork      *ForkPoint
-	LeafFork      *ForkPoint
-	EarthFork     *ForkPoint
-	DexMiningFork *ForkPoint
 }
 
 type GenesisVmLog struct {

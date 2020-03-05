@@ -3,6 +3,7 @@ package chain_cache
 import (
 	"container/list"
 	"fmt"
+
 	"github.com/pkg/errors"
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/ledger"
@@ -67,7 +68,6 @@ func (ql *quotaList) GetGlobalQuota() types.QuotaInfo {
 	for _, quotaInfo := range ql.backElement {
 		globalQuota.BlockCount -= quotaInfo.BlockCount
 		globalQuota.QuotaTotal -= quotaInfo.QuotaTotal
-		globalQuota.QuotaUsedTotal -= quotaInfo.QuotaUsedTotal
 	}
 	return globalQuota
 }
@@ -97,26 +97,24 @@ func (ql *quotaList) GetQuotaUsedList(addr types.Address) []types.QuotaInfo {
 	return usedList
 }
 
-func (ql *quotaList) Add(addr types.Address, quota uint64, quotaUsed uint64) {
+func (ql *quotaList) Add(addr types.Address, quota uint64) {
 	// add back element quota
-	ql.add(ql.backElement, addr, quota, quotaUsed)
+	ql.add(ql.backElement, addr, quota)
 
 	// add globalUsed quota
 	ql.globalUsed.BlockCount += 1
 	ql.globalUsed.QuotaTotal += quota
-	ql.globalUsed.QuotaUsedTotal += quotaUsed
 
 }
 
-func (ql *quotaList) Sub(addr types.Address, quota uint64, quotaUsed uint64) {
+func (ql *quotaList) Sub(addr types.Address, quota uint64) {
 
 	// sub back element quota
-	ql.sub(ql.backElement, addr, 1, quota, quotaUsed)
+	ql.sub(ql.backElement, addr, 1, quota)
 
 	// sub globalUsed quota
 	ql.globalUsed.BlockCount -= 1
 	ql.globalUsed.QuotaTotal -= quota
-	ql.globalUsed.QuotaUsedTotal -= quotaUsed
 }
 
 func (ql *quotaList) ResetUnconfirmedQuotas(unconfirmedBlocks []*ledger.AccountBlock) {
@@ -134,19 +132,16 @@ func (ql *quotaList) ResetUnconfirmedQuotas(unconfirmedBlocks []*ledger.AccountB
 		}
 		qi.BlockCount += 1
 		qi.QuotaTotal += unconfirmedBlock.Quota
-		qi.QuotaUsedTotal += unconfirmedBlock.QuotaUsed
 	}
 	// set globalUsed
-	originBlockCount, originQuotaTotal, originQuotaUsedTotal := ql.aggregate(ql.backElement)
-	blockCount, quotaTotal, quotaUsedTotal := ql.aggregate(backElement)
+	originBlockCount, originQuotaTotal := ql.aggregate(ql.backElement)
+	blockCount, quotaTotal := ql.aggregate(backElement)
 
 	ql.globalUsed.BlockCount -= originBlockCount
 	ql.globalUsed.QuotaTotal -= originQuotaTotal
-	ql.globalUsed.QuotaUsedTotal -= originQuotaUsedTotal
 
 	ql.globalUsed.BlockCount += blockCount
 	ql.globalUsed.QuotaTotal += quotaTotal
-	ql.globalUsed.QuotaUsedTotal += quotaUsedTotal
 
 	// remove back
 	ql.list.Remove(ql.list.Back())
@@ -175,14 +170,12 @@ func (ql *quotaList) NewNext(confirmedBlocks []*ledger.AccountBlock) {
 		}
 		qi.BlockCount += 1
 		qi.QuotaTotal += confirmedBlock.Quota
-		qi.QuotaUsedTotal += confirmedBlock.QuotaUsed
 
 		if backQi.BlockCount <= 1 {
 			delete(ql.backElement, confirmedBlock.AccountAddress)
 		} else {
 			backQi.BlockCount -= 1
 			backQi.QuotaTotal -= confirmedBlock.Quota
-			backQi.QuotaUsedTotal -= confirmedBlock.QuotaUsed
 		}
 	}
 
@@ -276,14 +269,12 @@ func (ql *quotaList) build() (returnError error) {
 			for _, block := range seg.AccountBlocks {
 				if _, ok := newItem[block.AccountAddress]; !ok {
 					newItem[block.AccountAddress] = &quotaInfo{
-						QuotaTotal:     block.Quota,
-						QuotaUsedTotal: block.QuotaUsed,
-						BlockCount:     1,
+						QuotaTotal: block.Quota,
+						BlockCount: 1,
 					}
 				} else {
 					quotaInfo := newItem[block.AccountAddress]
 					quotaInfo.QuotaTotal += block.Quota
-					quotaInfo.QuotaUsedTotal += block.QuotaUsed
 					quotaInfo.BlockCount += 1
 				}
 
@@ -309,14 +300,12 @@ func (ql *quotaList) build() (returnError error) {
 			for _, block := range seg.AccountBlocks {
 				if _, ok := newItem[block.AccountAddress]; !ok {
 					newItem[block.AccountAddress] = &quotaInfo{
-						QuotaTotal:     block.Quota,
-						QuotaUsedTotal: block.QuotaUsed,
-						BlockCount:     1,
+						QuotaTotal: block.Quota,
+						BlockCount: 1,
 					}
 				} else {
 					quotaInfo := newItem[block.AccountAddress]
 					quotaInfo.QuotaTotal += block.Quota
-					quotaInfo.QuotaUsedTotal += block.QuotaUsed
 					quotaInfo.BlockCount += 1
 				}
 			}
@@ -349,7 +338,6 @@ func (ql *quotaList) moveNext(backElement map[types.Address]*quotaInfo) {
 		if usedStartItem == nil {
 			continue
 		}
-		ql.globalUsed.QuotaUsedTotal -= usedStartItem.QuotaUsedTotal
 		ql.globalUsed.BlockCount -= usedStartItem.BlockCount
 		ql.globalUsed.QuotaTotal -= usedStartItem.QuotaTotal
 	}
@@ -361,7 +349,7 @@ func (ql *quotaList) moveNext(backElement map[types.Address]*quotaInfo) {
 
 }
 
-func (ql *quotaList) add(quotaInfoMap map[types.Address]*quotaInfo, addr types.Address, quota uint64, quotaUsed uint64) {
+func (ql *quotaList) add(quotaInfoMap map[types.Address]*quotaInfo, addr types.Address, quota uint64) {
 	qi := quotaInfoMap[addr]
 	if qi == nil {
 		qi = &quotaInfo{}
@@ -369,10 +357,9 @@ func (ql *quotaList) add(quotaInfoMap map[types.Address]*quotaInfo, addr types.A
 	}
 	qi.BlockCount += 1
 	qi.QuotaTotal += quota
-	qi.QuotaUsedTotal += quotaUsed
 }
 
-func (ql *quotaList) sub(quotaInfoMap map[types.Address]*quotaInfo, addr types.Address, blockCount, quota uint64, quotaUsed uint64) {
+func (ql *quotaList) sub(quotaInfoMap map[types.Address]*quotaInfo, addr types.Address, blockCount, quota uint64) {
 	qi := quotaInfoMap[addr]
 	if qi == nil {
 		return
@@ -382,7 +369,6 @@ func (ql *quotaList) sub(quotaInfoMap map[types.Address]*quotaInfo, addr types.A
 	} else {
 		qi.BlockCount -= blockCount
 		qi.QuotaTotal -= quota
-		qi.QuotaUsedTotal -= quotaUsed
 		return
 	}
 
@@ -397,7 +383,6 @@ func (ql *quotaList) calculateGlobalUsed() {
 		for _, tmpItem := range tmpUsed {
 			globalUsed.BlockCount += tmpItem.BlockCount
 			globalUsed.QuotaTotal += tmpItem.QuotaTotal
-			globalUsed.QuotaUsedTotal += tmpItem.QuotaUsedTotal
 		}
 
 		pointer = pointer.Next()
@@ -419,11 +404,10 @@ func (ql *quotaList) resetUsedStart() {
 	}
 }
 
-func (ql *quotaList) aggregate(quotaMap map[types.Address]*quotaInfo) (blockCount uint64, quotaTotal uint64, quotaUsedTotal uint64) {
+func (ql *quotaList) aggregate(quotaMap map[types.Address]*quotaInfo) (blockCount uint64, quotaTotal uint64) {
 	for _, qi := range quotaMap {
 		blockCount += qi.BlockCount
 		quotaTotal += qi.QuotaTotal
-		quotaUsedTotal += qi.QuotaUsedTotal
 	}
 	return
 }

@@ -21,7 +21,7 @@ func (cache *Cache) RollbackAccountBlocks(accountBlocks []*ledger.AccountBlock) 
 
 	// rollback quota list
 	for _, block := range accountBlocks {
-		cache.quotaList.Sub(block.AccountAddress, block.Quota, block.QuotaUsed)
+		cache.quotaList.Sub(block.AccountAddress, block.Quota)
 	}
 
 	// delete account data
@@ -72,5 +72,5 @@ func (cache *Cache) insertAccountBlock(block *ledger.AccountBlock) {
 	cache.unconfirmedPool.InsertAccountBlock(block)
 
 	// add quota
-	cache.quotaList.Add(block.AccountAddress, block.Quota, block.QuotaUsed)
+	cache.quotaList.Add(block.AccountAddress, block.Quota)
 }

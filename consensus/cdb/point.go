@@ -48,8 +48,6 @@ type Point struct {
 	PrevHash types.Hash
 	Hash     types.Hash
 	Sbps     map[types.Address]*Content
-
-	Votes *VoteContent
 }
 
 func (self *Point) Json() string {
@@ -75,21 +73,6 @@ func (self *Point) Marshal() ([]byte, error) {
 		}
 	}
 
-	if self.Votes != nil {
-		pb.Votes = make([]*vitepb.PointVoteContent, len(self.Votes.Details)+1)
-		i := 0
-		c := &vitepb.PointVoteContent{}
-		c.VoteCnt = self.Votes.Total.Bytes()
-		pb.Votes[i] = c
-		i++
-		for k, v := range self.Votes.Details {
-			c := &vitepb.PointVoteContent{}
-			c.Name = k
-			c.VoteCnt = v.Bytes()
-			pb.Votes[i] = c
-			i++
-		}
-	}
 	buf, err := proto.Marshal(pb)
 	if err != nil {
 		return nil, err
@@ -123,15 +106,6 @@ func (self *Point) Unmarshal(buf []byte) error {
 		self.Sbps[addr] = &Content{ExpectedNum: v.ENum, FactualNum: v.FNum}
 	}
 
-	if len(pb.Votes) > 0 {
-		self.Votes = &VoteContent{Details: make(map[string]*big.Int), Total: big.NewInt(0).SetBytes(pb.Votes[0].VoteCnt)}
-		for k, v := range pb.Votes {
-			if k == 0 {
-				continue
-			}
-			self.Votes.Details[v.Name] = big.NewInt(0).SetBytes(v.VoteCnt)
-		}
-	}
 	return nil
 }
 func (self *Point) LeftAppend(p *Point) error {

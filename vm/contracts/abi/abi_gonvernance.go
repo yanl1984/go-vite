@@ -2,13 +2,13 @@ package abi
 
 import (
 	"bytes"
+	"strings"
+
 	"github.com/vitelabs/go-vite/common/helper"
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/interfaces"
 	"github.com/vitelabs/go-vite/vm/abi"
 	"github.com/vitelabs/go-vite/vm/util"
-	"math/big"
-	"strings"
 )
 
 const (
@@ -88,29 +88,53 @@ var (
 	voteInfoKeyPrefix  = []byte{0}
 )
 
-type VariableRegisterStakeParam struct {
-	StakeAmount *big.Int
-	StakeToken  types.TokenTypeId
-	StakeHeight uint64
+type Serializable interface {
+	Serialize() []interface{}
 }
 
 type ParamRegister struct {
-	Gid                   types.Gid
 	SbpName               string
 	BlockProducingAddress types.Address
-	RewardWithdrawAddress types.Address
-}
-type ParamCancelRegister struct {
-	Gid     types.Gid
-	SbpName string
-}
-type ParamReward struct {
-	Gid            types.Gid
-	SbpName        string
-	ReceiveAddress types.Address
+	OwnerAddress          types.Address
+
+	ProposerSbpName string
 }
 
-type ParamVote struct {
+func (p ParamRegister) Serialize() []interface{} {
+	return util.Serialize(p.SbpName, p.BlockProducingAddress, p.OwnerAddress, p.ProposerSbpName)
+}
+
+type ParamVoting struct {
+	SbpName  string
+	VoteType uint8
+	Approval bool
+
+	ProposerSbpName string
+}
+
+func (p ParamVoting) Serialize() []interface{} {
+	return util.Serialize(p.SbpName, p.VoteType, p.Approval, p.ProposerSbpName)
+}
+
+type ParamRevoke struct {
+	SbpName         string
+	ProposerSbpName string
+}
+
+func (p ParamRevoke) Serialize() []interface{} {
+	return util.Serialize(p.SbpName, p.ProposerSbpName)
+}
+
+type ParamUpdateProducingAddress struct {
+	SbpName               string
+	BlockProducingAddress types.Address
+}
+
+func (p ParamUpdateProducingAddress) Serialize() []interface{} {
+	return util.Serialize(p.SbpName, p.BlockProducingAddress)
+}
+
+type ParamCancelRegister struct {
 	Gid     types.Gid
 	SbpName string
 }
@@ -144,6 +168,10 @@ func GetHisNameKey(addr types.Address, gid types.Gid) []byte {
 // GetVoteInfoKey generate db key for vote info
 func GetVoteInfoKey(addr types.Address, gid types.Gid) []byte {
 	return helper.JoinBytes(voteInfoKeyPrefix, gid.Bytes(), addr.Bytes())
+}
+
+func GetVoteKey(addr types.Address) []byte {
+	return nil
 }
 
 func getVoteInfoKeyPerfixByGid(gid types.Gid) []byte {
@@ -220,23 +248,6 @@ func GetRegisterStakeParamOfConsensusGroup(data []byte) (*VariableRegisterStakeP
 	err := ABIGovernance.UnpackVariable(stakeParam, VariableNameRegisterStakeParam, data)
 	stakeParam.StakeAmount = nil
 	return stakeParam, err
-}
-
-// IsActiveRegistration checks whether a sbp name is exist and is not canceled
-func IsActiveRegistration(db StorageDatabase, name string, gid types.Gid) (bool, error) {
-	if *db.Address() != types.AddressGovernance {
-		return false, util.ErrAddressNotMatch
-	}
-	value, err := db.GetValue(GetRegistrationInfoKey(name, gid))
-	if err != nil {
-		return false, err
-	}
-	if len(value) > 0 {
-		if registration, err := UnpackRegistration(value); err == nil {
-			return registration.IsActive(), nil
-		}
-	}
-	return false, nil
 }
 
 // GetAllRegistrationList query all registration info
@@ -323,33 +334,6 @@ func GetRegistrationList(db StorageDatabase, gid types.Gid, stakeAddr types.Addr
 	return registrationList, nil
 }
 
-func GetRegistrationListByRewardWithdrawAddr(db StorageDatabase, gid types.Gid, rewardWithdrawAddr types.Address) ([]*types.Registration, error) {
-	if *db.Address() != types.AddressGovernance {
-		return nil, util.ErrAddressNotMatch
-	}
-	if gid == types.DELEGATE_GID {
-		gid = types.SNAPSHOT_GID
-	}
-	names, err := db.GetValue(rewardWithdrawAddr.Bytes())
-	if err != nil {
-		return nil, err
-	}
-	registrationList := make([]*types.Registration, 0)
-	if len(names) > 0 {
-		nameList := strings.Split(string(names), WithdrawRewardAddressSeparation)
-		for _, sbpName := range nameList {
-			r, err := GetRegistration(db, gid, sbpName)
-			if err != nil {
-				return nil, err
-			}
-			if r != nil {
-				registrationList = append(registrationList, r)
-			}
-		}
-	}
-	return registrationList, nil
-}
-
 var registerInfoValuePrefix = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0}
 
 // GetRegistration query registration info by consensus group id and sbp name
@@ -373,6 +357,7 @@ func UnpackRegistration(value []byte) (*types.Registration, error) {
 	if bytes.Equal(value[:32], registerInfoValuePrefix) {
 		if err := ABIGovernance.UnpackVariable(registration, VariableNameRegistrationInfo, value); err == nil {
 			registration.RewardWithdrawAddress = registration.StakeAddress
+			registration.IsActive()
 			return registration, nil
 		}
 	} else {
@@ -383,55 +368,15 @@ func UnpackRegistration(value []byte) (*types.Registration, error) {
 	return nil, nil
 }
 
-// GetVote query vote info by consensus group id and vote address
-func GetVote(db StorageDatabase, gid types.Gid, addr types.Address) (*types.VoteInfo, error) {
-	if *db.Address() != types.AddressGovernance {
-		return nil, util.ErrAddressNotMatch
-	}
-	data, err := db.GetValue(GetVoteInfoKey(addr, gid))
-	if err != nil {
-		return nil, err
-	}
-	if len(data) > 0 {
-		sbpName := new(string)
-		ABIGovernance.UnpackVariable(sbpName, VariableNameVoteInfo, data)
-		return &types.VoteInfo{addr, *sbpName}, nil
-	}
+func PackRegistration(registration types.Registration) ([]byte, error) {
+	// todo
+	// save withdraw reward address -> sbp name
+	//registerInfo, _ := ABIGovernance.PackVariable(
+	//	VariableNameRegistrationInfoV2,
+	//	registration.Name,
+	//	param.BlockProducingAddress,
+	//	ownerAddress,
+	//	int64(0),
+	//	hisAddrList)
 	return nil, nil
-}
-
-// GetVoteList query vote info list by consensus group id
-func GetVoteList(db StorageDatabase, gid types.Gid) ([]*types.VoteInfo, error) {
-	if *db.Address() != types.AddressGovernance {
-		return nil, util.ErrAddressNotMatch
-	}
-	var iterator interfaces.StorageIterator
-	var err error
-	if gid == types.DELEGATE_GID {
-		iterator, err = db.NewStorageIterator(getVoteInfoKeyPerfixByGid(types.SNAPSHOT_GID))
-	} else {
-		iterator, err = db.NewStorageIterator(getVoteInfoKeyPerfixByGid(gid))
-	}
-	if err != nil {
-		return nil, err
-	}
-	defer iterator.Release()
-	voteInfoList := make([]*types.VoteInfo, 0)
-	for {
-		if !iterator.Next() {
-			if iterator.Error() != nil {
-				return nil, iterator.Error()
-			}
-			break
-		}
-		if !filterKeyValue(iterator.Key(), iterator.Value(), isVoteInfoKey) {
-			continue
-		}
-		voteAddr := getAddrFromVoteInfoKey(iterator.Key())
-		sbpName := new(string)
-		if err := ABIGovernance.UnpackVariable(sbpName, VariableNameVoteInfo, iterator.Value()); err == nil {
-			voteInfoList = append(voteInfoList, &types.VoteInfo{voteAddr, *sbpName})
-		}
-	}
-	return voteInfoList, nil
 }

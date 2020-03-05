@@ -2,12 +2,13 @@ package onroad
 
 import (
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/generator"
 	"github.com/vitelabs/go-vite/log15"
 	"github.com/vitelabs/go-vite/vm/quota"
-	"strings"
-	"time"
 )
 
 // ContractTaskProcessor is to handle onroad and generate new contract receive block.
@@ -112,8 +113,7 @@ func (tp *ContractTaskProcessor) processOneAddress(task *contractTask) (canConti
 				return nil, nil, err
 			}
 			return key.SignData(data)
-		}, nil)
-
+		})
 
 	// judge generator result
 	if err != nil || genResult == nil {
@@ -148,14 +148,14 @@ func (tp *ContractTaskProcessor) processOneAddress(task *contractTask) (canConti
 		if genResult.IsRetry {
 			blog.Info("genResult.IsRetry true")
 			if !types.IsBuiltinContractAddrInUseWithoutQuota(task.Addr) {
-				_, q, err := tp.worker.manager.Chain().GetStakeQuota(task.Addr)
-				if err != nil || q == nil {
+				q, err := tp.worker.manager.Chain().GetCurrentStakeQuota(task.Addr)
+				if err != nil {
 					blog.Error(fmt.Sprintf("failed to get stake quota, err:%v", err))
 					return true
 				}
-				if quotaSatisfyRetry, snapshotHeightWaited := quota.CheckQuota(gen.GetVMDB(), *q, task.Addr); !quotaSatisfyRetry {
+				if quotaSatisfyRetry, snapshotHeightWaited := quota.CheckQuota(gen.GetVMDB(), q, task.Addr); !quotaSatisfyRetry {
 					blog.Info("Check quota is gone to be insufficient", "snapshotHeightWaited", snapshotHeightWaited,
-						"quota", fmt.Sprintf("(u:%v c:%v sc:%v a:%v sb:%v)", q.StakeQuotaPerSnapshotBlock(), q.Current(), q.SnapshotCurrent(), q.Avg(), addrState.LatestSnapshotHash))
+						"quota", fmt.Sprintf("(u:%v sb:%v)", q, addrState.LatestSnapshotHash))
 					if snapshotHeightWaited >= 3 {
 						tp.restrictContract(task.Addr, OUT)
 					} else {

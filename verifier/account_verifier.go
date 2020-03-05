@@ -3,9 +3,9 @@ package verifier
 import (
 	"bytes"
 	"fmt"
-	"github.com/vitelabs/go-vite/common/fork"
-	"github.com/vitelabs/go-vite/common/helper"
 	"math/big"
+
+	"github.com/vitelabs/go-vite/common/helper"
 
 	"github.com/pkg/errors"
 	"github.com/vitelabs/go-vite/common/math"
@@ -15,7 +15,6 @@ import (
 	"github.com/vitelabs/go-vite/ledger"
 	"github.com/vitelabs/go-vite/log15"
 	"github.com/vitelabs/go-vite/onroad"
-	"github.com/vitelabs/go-vite/pow"
 	"github.com/vitelabs/go-vite/vm_db"
 )
 
@@ -79,7 +78,7 @@ func (v *AccountVerifier) verifyConfirmedTimes(recvBlock *ledger.AccountBlock, s
 	if sendConfirmedTimes < uint64(meta.SendConfirmedTimes) {
 		return ErrVerifyConfirmedTimesNotEnough
 	}
-	if fork.IsSeedFork(sbHeight) && meta.SeedConfirmedTimes > 0 {
+	if meta.SeedConfirmedTimes > 0 {
 		isSeedCountOk, err := v.chain.IsSeedConfirmedNTimes(recvBlock.FromBlockHash, uint64(meta.SeedConfirmedTimes))
 		if err != nil {
 			return err
@@ -105,9 +104,6 @@ func (v *AccountVerifier) verifySelf(block *ledger.AccountBlock) *VerifierError 
 		}
 	}
 	if err := v.verifyProducerLegality(block); err != nil {
-		return newError(err.Error())
-	}
-	if err := v.verifyNonce(block); err != nil {
 		return newError(err.Error())
 	}
 	return nil
@@ -220,13 +216,6 @@ func (v *AccountVerifier) verifySendBlockIntegrity(block *ledger.AccountBlock) e
 		}
 	}
 
-	if block.Fee == nil {
-		block.Fee = big.NewInt(0)
-	} else {
-		if block.Fee.Sign() < 0 || block.Fee.BitLen() > math.MaxBigIntLen {
-			return errors.New("sendBlock.Fee out of bounds")
-		}
-	}
 	if block.FromBlockHash != types.ZERO_HASH {
 		return errors.New("sendBlock.FromBlockHash must be ZERO_HASH")
 	}
@@ -253,9 +242,6 @@ func (v *AccountVerifier) verifyReceiveBlockIntegrity(block *ledger.AccountBlock
 	}
 	if block.Amount != nil && block.Amount.Cmp(helper.Big0) != 0 {
 		return errors.New("receive.Amount can't be anything other than nil or 0 ")
-	}
-	if block.Fee != nil && block.Fee.Cmp(helper.Big0) != 0 {
-		return errors.New("receive.Fee can't be anything other than nil or 0")
 	}
 	if block.ToAddress != types.ZERO_ADDRESS {
 		return errors.New("receive.ToAddress must be ZERO_ADDRESS")
@@ -314,29 +300,6 @@ func (v *AccountVerifier) verifyHash(block *ledger.AccountBlock) error {
 	for idx, v := range block.SendBlockList {
 		if v.Hash != v.ComputeSendHash(block, uint8(idx)) {
 			return ErrVerifyHashFailed
-		}
-	}
-	return nil
-}
-
-func (v *AccountVerifier) verifyNonce(block *ledger.AccountBlock) error {
-	if len(block.Nonce) != 0 {
-		if types.IsContractAddr(block.AccountAddress) {
-			return ErrVerifyPowNotEligible
-		}
-		if block.Difficulty == nil {
-			return ErrVerifyPowNotEligible
-		}
-		if len(block.Nonce) != 8 {
-			return ErrVerifyPowNotEligible
-		}
-		hash256Data := crypto.Hash256(block.AccountAddress.Bytes(), block.PrevHash.Bytes())
-		if !pow.CheckPowNonce(block.Difficulty, block.Nonce, hash256Data) {
-			return ErrVerifyNonceFailed
-		}
-	} else {
-		if block.Difficulty != nil {
-			return ErrVerifyPowNotEligible
 		}
 	}
 	return nil
@@ -431,9 +394,6 @@ func (v *AccountVerifier) verifyVMResult(origBlock *ledger.AccountBlock, genBloc
 	if !bytes.Equal(origBlock.Data, genBlock.Data) {
 		return errors.New("Data")
 	}
-	if !bytes.Equal(origBlock.Nonce, genBlock.Nonce) {
-		return errors.New("Nonce")
-	}
 	if (origBlock.LogHash == nil && genBlock.LogHash != nil) || (origBlock.LogHash != nil && genBlock.LogHash == nil) {
 		return errors.New("LogHash")
 	}
@@ -446,9 +406,6 @@ func (v *AccountVerifier) verifyVMResult(origBlock *ledger.AccountBlock, genBloc
 	}*/
 
 	if origBlock.IsSendBlock() {
-		if origBlock.Fee.Cmp(genBlock.Fee) != 0 {
-			return errors.New("Fee")
-		}
 		if origBlock.Amount.Cmp(genBlock.Amount) != 0 {
 			return errors.New("Amount")
 		}

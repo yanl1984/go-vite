@@ -2,6 +2,12 @@ package api
 
 import (
 	"context"
+	"math/big"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/hashicorp/golang-lru"
 	"github.com/pkg/errors"
 	"github.com/robfig/cron"
@@ -11,11 +17,6 @@ import (
 	"github.com/vitelabs/go-vite/ledger"
 	"github.com/vitelabs/go-vite/log15"
 	"github.com/vitelabs/go-vite/vm_db"
-	"math/big"
-	"path/filepath"
-	"strconv"
-	"strings"
-	"time"
 )
 
 var (
@@ -173,9 +174,6 @@ func getVmDb(c chain.Chain, addr types.Address) (vm_db.VmDb, error) {
 }
 
 func checkTxToAddressAvailable(address types.Address) bool {
-	if !dexTxAvailable {
-		return address != types.AddressDexTrade && address != types.AddressDexFund
-	}
 	return true
 }
 
@@ -189,13 +187,10 @@ func checkSnapshotValid(latestSb *ledger.SnapshotBlock) error {
 
 func checkTokenIdValid(chain chain.Chain, tokenId *types.TokenTypeId) error {
 	if tokenId != nil && (*tokenId) != types.ZERO_TOKENID {
-		tkInfo, err := chain.GetTokenInfoById(*tokenId)
-		if err != nil {
-			return err
+		if tokenId.Hex() == ledger.ViteTokenId.Hex() {
+			return nil
 		}
-		if tkInfo == nil {
-			return errors.New("tokenId doesn’t exist")
-		}
+		return errors.New("tokenId doesn’t exist")
 	}
 	return nil
 }

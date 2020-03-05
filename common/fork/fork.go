@@ -2,10 +2,11 @@ package fork
 
 import (
 	"fmt"
-	"github.com/vitelabs/go-vite/common/db/xleveldb/errors"
-	"github.com/vitelabs/go-vite/config"
 	"reflect"
 	"sort"
+
+	"github.com/vitelabs/go-vite/common/db/xleveldb/errors"
+	"github.com/vitelabs/go-vite/config"
 )
 
 var forkPoints config.ForkPoints
@@ -18,8 +19,6 @@ type ForkPointItem struct {
 type ForkPointList []*ForkPointItem
 type ForkPointMap map[string]*ForkPointItem
 
-var activeChecker ActiveChecker
-
 var forkPointList ForkPointList
 var forkPointMap ForkPointMap
 
@@ -30,10 +29,6 @@ func (a ForkPointList) Less(i, j int) bool { return a[i].Height < a[j].Height }
 func IsInitForkPoint() bool {
 	return forkPointMap != nil
 }
-func IsInitActiveChecker() bool {
-	return activeChecker != nil
-}
-
 func SetForkPoints(points *config.ForkPoints) {
 	if points != nil {
 		forkPoints = *points
@@ -61,10 +56,6 @@ func SetForkPoints(points *config.ForkPoints) {
 	}
 }
 
-func SetActiveChecker(ac ActiveChecker) {
-	activeChecker = ac
-}
-
 func CheckForkPoints(points config.ForkPoints) error {
 	t := reflect.TypeOf(points)
 	v := reflect.ValueOf(points)
@@ -90,95 +81,6 @@ func CheckForkPoints(points config.ForkPoints) error {
 	}
 
 	return nil
-}
-
-/*
-IsSeedFork checks whether current snapshot block height is over seed hard fork.
-Vite pre-mainnet hard forks at snapshot block height 3488471.
-Contents:
-  1. Vm log list hash add account address and prevHash since seed fork.
-  2. Create contract params add seed count since seed fork.
-  3. Verifier verifies seed count since seed fork.
-  4. Vm interpreters add SEED opcode since seed fork.
-*/
-func IsSeedFork(snapshotHeight uint64) bool {
-	seedForkPoint, ok := forkPointMap["SeedFork"]
-	if !ok {
-		panic("check seed fork failed. SeedFork is not existed.")
-	}
-	return snapshotHeight >= seedForkPoint.Height && IsForkActive(*seedForkPoint)
-}
-
-/*
-IsDexFork checks whether current snapshot block height is over sprout hard fork.
-Vite pre-mainnet hard forks at snapshot block height 5442723.
-Features:
-  1. Dynamic quota acquisition. Quota acquisition from staking will reduce
-     when network traffic rate is too high.
-  2. Adjustment of quota consumption for some built-in contract transactions
-     and VM instructions.
-  3. ViteX decentralized exchange support.
-*/
-func IsDexFork(snapshotHeight uint64) bool {
-	dexForkPoint, ok := forkPointMap["DexFork"]
-	if !ok {
-		panic("check dex fork failed. DexFork is not existed.")
-	}
-	return snapshotHeight >= dexForkPoint.Height && IsForkActive(*dexForkPoint)
-}
-
-/*
-IsDexFeeFork checks whether current snapshot block height is over dex fee hard fork.
-Vite pre-mainnet hard forks at snapshot block height 8013367.
-Dex fee hard fork is an emergency hard fork to solve one wrongly placed order which
-has caused ViteX failed to display user balances.
-*/
-func IsDexFeeFork(snapshotHeight uint64) bool {
-	dexFeeForkPoint, ok := forkPointMap["DexFeeFork"]
-	if !ok {
-		panic("check dex fee fork failed. DexFeeFork is not existed.")
-	}
-	return snapshotHeight >= dexFeeForkPoint.Height && IsForkActive(*dexFeeForkPoint)
-}
-
-/*
-IsStemFork checks whether current snapshot block height is over stem hard fork.
-Vite pre-mainnet hard forks at snapshot block height 8403110.
-Features:
-  1. Capability of placing/cancelling orders via delegation.
-  2. Super VIP membership. Stake and then enjoy zero trading fee!
-     (Additional operator fee cannot be exempted)
-*/
-func IsStemFork(snapshotHeight uint64) bool {
-	stemForkPoint, ok := forkPointMap["StemFork"]
-	if !ok {
-		panic("check stem fork failed. StemFork is not existed.")
-	}
-	return snapshotHeight >= stemForkPoint.Height && IsForkActive(*stemForkPoint)
-}
-
-func IsLeafFork(snapshotHeight uint64) bool {
-	leafForkPoint, ok := forkPointMap["LeafFork"]
-	if !ok {
-		panic("check leaf fork failed. LeafFork is not existed.")
-	}
-	return snapshotHeight >= leafForkPoint.Height && IsForkActive(*leafForkPoint)
-}
-
-func IsEarthFork(snapshotHeight uint64) bool {
-	earthForkPoint, ok := forkPointMap["EarthFork"]
-	if !ok {
-		panic("check earth fork failed. EarthFork is not existed.")
-	}
-	return snapshotHeight >= earthForkPoint.Height && IsForkActive(*earthForkPoint)
-}
-
-func IsDexMiningFork(snapshotHeight uint64) bool {
-	dexMiningForkPoint, ok := forkPointMap["DexMiningFork"]
-	if !ok {
-		panic("check dex mining fork failed. DexMiningFork is not existed.")
-	}
-	return snapshotHeight >= dexMiningForkPoint.Height && IsForkActive(*dexMiningForkPoint)
 }
 
 func GetLeafForkPoint() *ForkPointItem {
@@ -255,8 +157,11 @@ func GetRecentActiveFork(blockHeight uint64) *ForkPointItem {
 	return nil
 }
 
-func GetLastForkPoint() *ForkPointItem {
-	return forkPointList[forkPointList.Len()-1]
+func GetLastForkPointVersion() uint32 {
+	if len(forkPointList) == 0 {
+		return 0
+	}
+	return forkPointList[forkPointList.Len()-1].Version
 }
 
 func IsForkActive(point ForkPointItem) bool {

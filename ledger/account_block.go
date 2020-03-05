@@ -2,6 +2,8 @@ package ledger
 
 import (
 	"encoding/binary"
+	"math/big"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/vitelabs/go-vite/common"
 	"github.com/vitelabs/go-vite/common/types"
@@ -9,7 +11,6 @@ import (
 	"github.com/vitelabs/go-vite/crypto/ed25519"
 	"github.com/vitelabs/go-vite/log15"
 	"github.com/vitelabs/go-vite/vitepb"
-	"math/big"
 )
 
 var accountBlockLog = log15.New("module", "ledger/account_block")
@@ -17,7 +18,6 @@ var accountBlockLog = log15.New("module", "ledger/account_block")
 const (
 	BlockTypeSendCreate   = byte(1) // send
 	BlockTypeSendCall     = byte(2) // send
-	BlockTypeSendReward   = byte(3) // send
 	BlockTypeReceive      = byte(4) // receive
 	BlockTypeReceiveError = byte(5) // receive
 	BlockTypeSendRefund   = byte(6) // send
@@ -47,15 +47,7 @@ type AccountBlock struct {
 
 	Quota uint64 `json:"quota"` // quotaUsed = quota + pow quota
 
-	QuotaUsed uint64 `json:"quotaUsed"` // quotaUsed = quota + pow quota
-
-	Fee *big.Int `json:"fee"` // 10 padding 32 bytes
-
 	LogHash *types.Hash `json:"logHash"` // 11
-
-	Difficulty *big.Int `json:"difficulty"`
-
-	Nonce []byte `json:"nonce"` // 12 padding 8 bytes
 
 	SendBlockList []*AccountBlock `json:"sendBlockList"` // 13
 
@@ -69,25 +61,12 @@ func (ab *AccountBlock) Copy() *AccountBlock {
 		newAb.Amount = new(big.Int).Set(ab.Amount)
 	}
 
-	if ab.Fee != nil {
-		newAb.Fee = new(big.Int).Set(ab.Fee)
-	}
-
 	newAb.Data = make([]byte, len(ab.Data))
 	copy(newAb.Data, ab.Data)
 
 	if ab.LogHash != nil {
 		logHash := *ab.LogHash
 		newAb.LogHash = &logHash
-	}
-
-	if ab.Difficulty != nil {
-		newAb.Difficulty = new(big.Int).Set(ab.Difficulty)
-	}
-
-	if len(ab.Nonce) > 0 {
-		newAb.Nonce = make([]byte, len(ab.Nonce))
-		copy(newAb.Nonce, ab.Nonce)
 	}
 
 	if len(ab.Signature) > 0 {
@@ -166,20 +145,10 @@ func (ab *AccountBlock) hashSource(extraByte []byte) []byte {
 		source = append(source, dataHashBytes...)
 	}
 
-	// Fee(fixed 32 bytes, left padding)
-	var feeBytes []byte
-	if ab.Fee != nil {
-		feeBytes = ab.Fee.Bytes()
-	}
-	source = append(source, common.LeftPadBytes(feeBytes, 32)...)
-
 	// LogHash
 	if ab.LogHash != nil {
 		source = append(source, ab.LogHash.Bytes()...)
 	}
-
-	// Nonce(fixed 8 bytes, left padding)
-	source = append(source, common.LeftPadBytes(ab.Nonce, 8)...)
 
 	// Send block hash list
 	for _, sendBlock := range ab.SendBlockList {
@@ -273,25 +242,10 @@ func (ab *AccountBlock) Proto() *vitepb.AccountBlock {
 	// 12
 	pb.Quota = ab.Quota
 
-	// 20
-	pb.QuotaUsed = ab.QuotaUsed
-
-	if ab.Fee != nil {
-		// 13
-		pb.Fee = ab.Fee.Bytes()
-	}
-
 	if ab.LogHash != nil {
 		// 14
 		pb.LogHash = ab.LogHash.Bytes()
 	}
-
-	if ab.Difficulty != nil {
-		// 15
-		pb.Difficulty = ab.Difficulty.Bytes()
-	}
-	// 16
-	pb.Nonce = ab.Nonce
 	// 17
 	pb.SendBlockList = make([]*vitepb.AccountBlock, 0, len(ab.SendBlockList))
 	for _, sendBlock := range ab.SendBlockList {
@@ -353,15 +307,6 @@ func (ab *AccountBlock) DeProto(pb *vitepb.AccountBlock) error {
 	// 12
 	ab.Quota = pb.Quota
 
-	// 20
-	ab.QuotaUsed = pb.QuotaUsed
-
-	// 13
-	ab.Fee = big.NewInt(0)
-	if len(pb.Fee) > 0 {
-		ab.Fee.SetBytes(pb.Fee)
-	}
-
 	// 14
 	if len(pb.LogHash) > 0 {
 		logHash, err := types.BytesToHash(pb.LogHash)
@@ -371,13 +316,6 @@ func (ab *AccountBlock) DeProto(pb *vitepb.AccountBlock) error {
 
 		ab.LogHash = &logHash
 	}
-
-	// 15
-	if len(pb.Difficulty) > 0 {
-		ab.Difficulty = new(big.Int).SetBytes(pb.Difficulty)
-	}
-	// 16
-	ab.Nonce = pb.Nonce
 
 	// 17
 	ab.SendBlockList = make([]*AccountBlock, 0, len(pb.SendBlockList))
@@ -413,7 +351,6 @@ func (ab *AccountBlock) IsSendBlock() bool {
 func IsSendBlock(blockType byte) bool {
 	return blockType == BlockTypeSendCreate ||
 		blockType == BlockTypeSendCall ||
-		blockType == BlockTypeSendReward ||
 		blockType == BlockTypeSendRefund
 }
 

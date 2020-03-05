@@ -2,7 +2,6 @@ package api
 
 import (
 	"errors"
-	"github.com/vitelabs/go-vite/vm/quota"
 	"math/big"
 	"strconv"
 
@@ -21,11 +20,9 @@ type AccountBlock struct {
 	Height    string     `json:"height"`
 	Hash      types.Hash `json:"hash"`
 
-	PrevHash     types.Hash `json:"prevHash"`
 	PreviousHash types.Hash `json:"previousHash"`
 
-	AccountAddress types.Address `json:"accountAddress"`
-	Address        types.Address `json:"address"`
+	Address types.Address `json:"address"`
 
 	PublicKey []byte `json:"publicKey"`
 
@@ -33,40 +30,26 @@ type AccountBlock struct {
 
 	FromAddress   types.Address `json:"fromAddress"`
 	ToAddress     types.Address `json:"toAddress"`
-	FromBlockHash types.Hash    `json:"fromBlockHash"`
 	SendBlockHash types.Hash    `json:"sendBlockHash"`
 
 	TokenId types.TokenTypeId `json:"tokenId"`
 	Amount  *string           `json:"amount"`
-	Fee     *string           `json:"fee"`
 
 	Data []byte `json:"data"`
 
-	Difficulty *string `json:"difficulty"`
-	Nonce      []byte  `json:"nonce"`
-
 	Signature []byte `json:"signature"`
 
-	Quota        *string `json:"quota"`
-	QuotaByStake *string `json:"quotaByStake"`
+	Quota *string `json:"quota"`
 
-	QuotaUsed  *string `json:"quotaUsed"`
-	TotalQuota *string `json:"totalQuota"`
-
-	UtUsed    *string     `json:"utUsed"` // TODO: to remove
-	LogHash   *types.Hash `json:"logHash"`
 	VmLogHash *types.Hash `json:"vmLogHash"`
 
-	SendBlockList          []*AccountBlock `json:"sendBlockList"`
 	TriggeredSendBlockList []*AccountBlock `json:"triggeredSendBlockList"`
 
 	// extra info below
 	TokenInfo *RpcTokenInfo `json:"tokenInfo"`
 
-	ConfirmedTimes *string `json:"confirmedTimes"`
-	Confirmations  *string `json:"confirmations"`
+	Confirmations *string `json:"confirmations"`
 
-	ConfirmedHash     *types.Hash `json:"confirmedHash"`
 	FirstSnapshotHash *types.Hash `json:"firstSnapshotHash"`
 
 	ReceiveBlockHeight *string     `json:"receiveBlockHeight"`
@@ -89,18 +72,17 @@ func (block *AccountBlock) RpcToLedgerBlock() (*ledger.AccountBlock, error) {
 	lAb := &ledger.AccountBlock{
 		BlockType:      block.BlockType,
 		Hash:           block.Hash,
-		PrevHash:       block.PrevHash,
-		AccountAddress: block.AccountAddress,
+		PrevHash:       block.PreviousHash,
+		AccountAddress: block.Address,
 		PublicKey:      block.PublicKey,
 		ToAddress:      block.ToAddress,
 
-		FromBlockHash: block.FromBlockHash,
+		FromBlockHash: block.SendBlockHash,
 		TokenId:       block.TokenId,
 
 		Data:      block.Data,
-		Nonce:     block.Nonce,
 		Signature: block.Signature,
-		LogHash:   block.LogHash,
+		LogHash:   block.VmLogHash,
 	}
 
 	// set vm log hash
@@ -135,30 +117,9 @@ func (block *AccountBlock) RpcToLedgerBlock() (*ledger.AccountBlock, error) {
 		}
 	}
 
-	lAb.Fee = big.NewInt(0)
-	if block.Fee != nil {
-		if _, ok := lAb.Fee.SetString(*block.Fee, 10); !ok {
-			return nil, ErrStrToBigInt
-		}
-	}
-
-	if block.Nonce != nil {
-		if block.Difficulty == nil {
-			return nil, errors.New("lack of difficulty field")
-		} else {
-			difficultyStr, ok := new(big.Int).SetString(*block.Difficulty, 10)
-			if !ok {
-				return nil, ErrStrToBigInt
-			}
-			lAb.Difficulty = difficultyStr
-		}
-	}
-
 	// quota
 	var quotaStr *string
-	if block.QuotaByStake != nil {
-		quotaStr = block.QuotaByStake
-	} else if block.Quota != nil {
+	if block.Quota != nil {
 		quotaStr = block.Quota
 	}
 	if quotaStr != nil {
@@ -168,29 +129,15 @@ func (block *AccountBlock) RpcToLedgerBlock() (*ledger.AccountBlock, error) {
 		}
 	}
 
-	// total quota
-	var totalQuotaStr *string
-	if block.TotalQuota != nil {
-		totalQuotaStr = block.TotalQuota
-	} else if block.QuotaUsed != nil {
-		totalQuotaStr = block.QuotaUsed
-	}
-	if totalQuotaStr != nil {
-		lAb.QuotaUsed, err = strconv.ParseUint(*totalQuotaStr, 10, 64)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if !types.IsContractAddr(block.AccountAddress) {
+	if !types.IsContractAddr(block.Address) {
 		return lAb, nil
 	}
 
 	var sendBlockList []*AccountBlock
 	if len(block.TriggeredSendBlockList) > 0 {
 		sendBlockList = block.TriggeredSendBlockList
-	} else if len(block.SendBlockList) > 0 {
-		sendBlockList = block.SendBlockList
+	} else if len(block.TriggeredSendBlockList) > 0 {
+		sendBlockList = block.TriggeredSendBlockList
 	}
 
 	if len(sendBlockList) > 0 {
@@ -247,10 +194,8 @@ func (block *AccountBlock) addExtraInfo(chain chain.Chain) error {
 	if confirmedBlock != nil && latestSb != nil && confirmedBlock.Height <= latestSb.Height {
 		confirmedTimeStr := strconv.FormatUint(latestSb.Height-confirmedBlock.Height+1, 10)
 
-		block.ConfirmedTimes = &confirmedTimeStr
 		block.Confirmations = &confirmedTimeStr
 
-		block.ConfirmedHash = &confirmedBlock.Hash
 		block.FirstSnapshotHash = &confirmedBlock.Hash
 
 		block.Timestamp = confirmedBlock.Timestamp.Unix()
@@ -280,21 +225,17 @@ func ledgerToRpcBlock(chain chain.Chain, lAb *ledger.AccountBlock) (*AccountBloc
 	rpcBlock := &AccountBlock{
 		BlockType:    lAb.BlockType,
 		Hash:         lAb.Hash,
-		PrevHash:     lAb.PrevHash,
 		PreviousHash: lAb.PrevHash,
 
-		AccountAddress: lAb.AccountAddress,
-		Address:        lAb.AccountAddress,
+		Address: lAb.AccountAddress,
 
 		PublicKey:     lAb.PublicKey,
-		FromBlockHash: lAb.FromBlockHash,
 		SendBlockHash: lAb.FromBlockHash,
 
 		TokenId: lAb.TokenId,
 
 		Data:      lAb.Data,
 		Signature: lAb.Signature,
-		LogHash:   lAb.LogHash,
 		VmLogHash: lAb.LogHash,
 
 		Producer: lAb.Producer(),
@@ -305,27 +246,15 @@ func ledgerToRpcBlock(chain chain.Chain, lAb *ledger.AccountBlock) (*AccountBloc
 	// Quota & QuotaUsed
 	totalQuota := strconv.FormatUint(lAb.Quota, 10)
 	rpcBlock.Quota = &totalQuota
-	rpcBlock.QuotaByStake = rpcBlock.Quota
-
-	quotaUsed := strconv.FormatUint(lAb.QuotaUsed, 10)
-	rpcBlock.QuotaUsed = &quotaUsed
-	rpcBlock.TotalQuota = rpcBlock.QuotaUsed
-
-	utUsed := Float64ToString(float64(lAb.QuotaUsed)/float64(quota.QuotaPerUt), 4)
-	rpcBlock.UtUsed = &utUsed
 
 	// FromAddress & ToAddress
-	var amount, fee string
+	var amount string
 	if lAb.IsSendBlock() {
 		rpcBlock.FromAddress = lAb.AccountAddress
 		rpcBlock.ToAddress = lAb.ToAddress
 		if lAb.Amount != nil {
 			amount = lAb.Amount.String()
 			rpcBlock.Amount = &amount
-		}
-		if lAb.Fee != nil {
-			fee = lAb.Fee.String()
-			rpcBlock.Fee = &fee
 		}
 	} else {
 		sendBlock, err := chain.GetAccountBlockByHash(lAb.FromBlockHash)
@@ -336,24 +265,13 @@ func ledgerToRpcBlock(chain chain.Chain, lAb *ledger.AccountBlock) (*AccountBloc
 			rpcBlock.FromAddress = sendBlock.AccountAddress
 			rpcBlock.ToAddress = sendBlock.ToAddress
 
-			rpcBlock.FromBlockHash = sendBlock.Hash
+			rpcBlock.SendBlockHash = sendBlock.Hash
 			rpcBlock.TokenId = sendBlock.TokenId
 			if sendBlock.Amount != nil {
 				amount = sendBlock.Amount.String()
 				rpcBlock.Amount = &amount
 			}
-			if sendBlock.Fee != nil {
-				fee = sendBlock.Fee.String()
-				rpcBlock.Fee = &fee
-			}
 		}
-	}
-
-	// Difficulty & Nonce
-	rpcBlock.Nonce = lAb.Nonce
-	if lAb.Difficulty != nil {
-		difficulty := lAb.Difficulty.String()
-		rpcBlock.Difficulty = &difficulty
 	}
 
 	if err := rpcBlock.addExtraInfo(chain); err != nil {
@@ -370,7 +288,6 @@ func ledgerToRpcBlock(chain chain.Chain, lAb *ledger.AccountBlock) (*AccountBloc
 			}
 			subBlockList[k] = subRpcTx
 		}
-		rpcBlock.SendBlockList = subBlockList
 		rpcBlock.TriggeredSendBlockList = subBlockList
 	}
 
@@ -451,35 +368,6 @@ func RawTokenInfoToRpc(tinfo *types.TokenInfo, tti types.TokenTypeId) *RpcTokenI
 	return rt
 }
 
-func ToRpcAccountInfo(chain chain.Chain, info *ledger.AccountInfo) *RpcAccountInfo {
-	if info == nil {
-		return nil
-	}
-	var r RpcAccountInfo
-	r.AccountAddress = info.AccountAddress
-	r.TotalNumber = strconv.FormatUint(info.TotalNumber, 10)
-	r.TokenBalanceInfoMap = make(map[types.TokenTypeId]*RpcTokenBalanceInfo)
-
-	for tti, v := range info.TokenBalanceInfoMap {
-		if v != nil {
-			tinfo, _ := chain.GetTokenInfoById(tti)
-			if tinfo == nil {
-				continue
-			}
-			b := &RpcTokenBalanceInfo{
-				TokenInfo:   RawTokenInfoToRpc(tinfo, tti),
-				TotalAmount: v.TotalAmount.String(),
-			}
-			if v.Number > 0 {
-				number := strconv.FormatUint(v.Number, 10)
-				b.Number = &number
-			}
-			r.TokenBalanceInfoMap[tti] = b
-		}
-	}
-	return &r
-}
-
 func ToAccountInfo(chain chain.Chain, info *ledger.AccountInfo) *AccountInfo {
 	if info == nil {
 		return nil
@@ -518,11 +406,9 @@ type NormalRequestRawTxParam struct {
 	Height    string     `json:"height"`
 	Hash      types.Hash `json:"hash"`
 
-	PrevHash     types.Hash `json:"prevHash"`
 	PreviousHash types.Hash `json:"previousHash"`
 
-	AccountAddress types.Address `json:"accountAddress"`
-	Address        types.Address `json:"address"`
+	Address types.Address `json:"address"`
 
 	PublicKey []byte `json:"publicKey"`
 
@@ -532,23 +418,20 @@ type NormalRequestRawTxParam struct {
 
 	Data []byte `json:"data"`
 
-	Difficulty *string `json:"difficulty"`
-	Nonce      []byte  `json:"nonce"`
-
 	Signature []byte `json:"signature"`
 }
 
 func (param NormalRequestRawTxParam) LedgerAccountBlock() (*ledger.AccountBlock, error) {
-	if types.IsContractAddr(param.AccountAddress) {
+	if types.IsContractAddr(param.Address) {
 		return nil, errors.New("can't send tx for the contract")
 	}
 
 	lAb := &ledger.AccountBlock{
 		BlockType: param.BlockType,
 		Hash:      param.Hash,
-		PrevHash:  param.PrevHash,
+		PrevHash:  param.PreviousHash,
 
-		AccountAddress: param.AccountAddress,
+		AccountAddress: param.Address,
 		PublicKey:      param.PublicKey,
 		ToAddress:      param.ToAddress,
 		TokenId:        param.TokenId,
@@ -577,17 +460,5 @@ func (param NormalRequestRawTxParam) LedgerAccountBlock() (*ledger.AccountBlock,
 		return nil, ErrStrToBigInt
 	}
 
-	if param.Nonce != nil {
-		if param.Difficulty == nil {
-			return nil, errors.New("lack of difficulty field")
-		} else {
-			difficultyStr, ok := new(big.Int).SetString(*param.Difficulty, 10)
-			if !ok {
-				return nil, ErrStrToBigInt
-			}
-			lAb.Difficulty = difficultyStr
-			lAb.Nonce = param.Nonce
-		}
-	}
 	return lAb, nil
 }

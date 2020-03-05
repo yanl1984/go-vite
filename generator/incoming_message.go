@@ -2,13 +2,13 @@ package generator
 
 import (
 	"errors"
+	"math/big"
+
 	"github.com/vitelabs/go-vite/common/helper"
 	"github.com/vitelabs/go-vite/common/math"
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/ledger"
-	"github.com/vitelabs/go-vite/pow"
 	"github.com/vitelabs/go-vite/vm_db"
-	"math/big"
 )
 
 // IncomingMessageToBlock returns a complete block by a IncomingMessage.
@@ -18,7 +18,6 @@ func IncomingMessageToBlock(vmDb vm_db.VmDb, im *IncomingMessage) (*ledger.Accou
 		AccountAddress: im.AccountAddress,
 		// after vm
 		Quota:         0,
-		QuotaUsed:     0,
 		SendBlockList: nil,
 		LogHash:       nil,
 		Hash:          types.Hash{},
@@ -26,7 +25,7 @@ func IncomingMessageToBlock(vmDb vm_db.VmDb, im *IncomingMessage) (*ledger.Accou
 		PublicKey:     nil,
 	}
 	switch im.BlockType {
-	case ledger.BlockTypeSendCreate, ledger.BlockTypeSendRefund, ledger.BlockTypeSendReward, ledger.BlockTypeSendCall:
+	case ledger.BlockTypeSendCreate, ledger.BlockTypeSendRefund, ledger.BlockTypeSendCall:
 		block.Data = im.Data
 
 		block.FromBlockHash = types.Hash{}
@@ -52,15 +51,6 @@ func IncomingMessageToBlock(vmDb vm_db.VmDb, im *IncomingMessage) (*ledger.Accou
 				block.Amount = im.Amount
 			}
 			block.TokenId = *im.TokenId
-		}
-
-		if im.Fee == nil {
-			block.Fee = big.NewInt(0)
-		} else {
-			if im.Fee.Sign() < 0 || im.Fee.BitLen() > math.MaxBigIntLen {
-				return nil, errors.New("pack send failed, fee out of bounds")
-			}
-			block.Fee = im.Fee
 		}
 		// PrevHash, Height
 		prevBlock, err := vmDb.PrevAccountBlock()
@@ -89,9 +79,6 @@ func IncomingMessageToBlock(vmDb vm_db.VmDb, im *IncomingMessage) (*ledger.Accou
 		if im.TokenId != nil && *im.TokenId != types.ZERO_TOKENID {
 			return nil, errors.New("pack recvBlock failed, cause tokenId is invaild")
 		}
-		if im.Fee != nil && im.Fee.Cmp(helper.Big0) != 0 {
-			return nil, errors.New("pack recvBlock failed, fee is invalid")
-		}
 
 		// PrevHash, Height
 		prevBlock, err := vmDb.PrevAccountBlock()
@@ -111,15 +98,6 @@ func IncomingMessageToBlock(vmDb vm_db.VmDb, im *IncomingMessage) (*ledger.Accou
 		//ledger.BlockTypeReceiveError:
 		return nil, errors.New("generator can't solve this block type " + string(im.BlockType))
 	}
-	// Difficulty,Nonce
-	if im.Difficulty != nil {
-		nonce, err := pow.GetPowNonce(im.Difficulty, types.DataHash(append(block.AccountAddress.Bytes(), block.PrevHash.Bytes()...)))
-		if err != nil {
-			return nil, err
-		}
-		block.Nonce = nonce[:]
-		block.Difficulty = im.Difficulty
-	}
 	return block, nil
 }
 
@@ -133,7 +111,6 @@ type IncomingMessage struct {
 
 	TokenId *types.TokenTypeId
 	Amount  *big.Int
-	Fee     *big.Int
 	Data    []byte
 
 	Difficulty *big.Int

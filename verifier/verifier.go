@@ -2,6 +2,7 @@ package verifier
 
 import (
 	"fmt"
+
 	"github.com/vitelabs/go-vite/chain"
 	"github.com/vitelabs/go-vite/common/db/xleveldb/errors"
 	"github.com/vitelabs/go-vite/consensus"
@@ -20,7 +21,6 @@ type Verifier interface {
 	VerifyRPCAccountBlock(block *ledger.AccountBlock, snapshot *ledger.SnapshotBlock) (*vm_db.VmAccountBlock, error)
 	VerifyPoolAccountBlock(block *ledger.AccountBlock, snapshot *ledger.SnapshotBlock) (*AccBlockPendingTask, *vm_db.VmAccountBlock, error)
 
-	VerifyAccountBlockNonce(block *ledger.AccountBlock) error
 	VerifyAccountBlockHash(block *ledger.AccountBlock) error
 	VerifyAccountBlockSignature(block *ledger.AccountBlock) error
 	VerifyAccountBlockProducerLegality(block *ledger.AccountBlock) error
@@ -114,7 +114,7 @@ func (v *verifier) VerifyPoolAccountBlock(block *ledger.AccountBlock, snapshot *
 func (v *verifier) VerifyRPCAccountBlock(block *ledger.AccountBlock, snapshot *ledger.SnapshotBlock) (*vm_db.VmAccountBlock, error) {
 	log := v.log.New("method", "VerifyRPCAccountBlock")
 
-	detail := fmt.Sprintf("sbHash:%v %v; addr:%v, height:%v, hash:%v, pow:(%v,%v)", snapshot.Hash, snapshot.Height, block.AccountAddress, block.Height, block.Hash, block.Difficulty, block.Nonce)
+	detail := fmt.Sprintf("sbHash:%v %v; addr:%v, height:%v, hash:%v", snapshot.Hash, snapshot.Height, block.AccountAddress, block.Height, block.Hash)
 	if block.IsReceiveBlock() {
 		detail += fmt.Sprintf(",fromH:%v", block.FromBlockHash)
 	}
@@ -153,10 +153,6 @@ func (v *verifier) VerifyAccountBlockSignature(block *ledger.AccountBlock) error
 		return nil
 	}
 	return v.Av.verifySignature(block)
-}
-
-func (v *verifier) VerifyAccountBlockNonce(block *ledger.AccountBlock) error {
-	return v.Av.verifyNonce(block)
 }
 
 func (v *verifier) VerifyAccountBlockProducerLegality(block *ledger.AccountBlock) error {

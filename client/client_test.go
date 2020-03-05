@@ -31,7 +31,7 @@ func PreTest() error {
 	})
 	w.Start()
 
-	w2, err := w.RecoverEntropyStoreFromMnemonic("extend excess vibrant crop split vehicle order veteran then fog panel appear frozen deer logic path yard tenant bag nuclear witness annual silent fold", "123456")
+	w2, err := w.RecoverEntropyStoreFromMnemonic("warfare woman sustain earth alarm actress street solution dirt exact embark cover ripple luxury unhappy enable hood orphan unique what motor plug level bike", "123456")
 	if err != nil {
 		fmt.Errorf("wallet error, %+v", err)
 		return err
@@ -45,6 +45,43 @@ func PreTest() error {
 
 	Wallet2 = w2
 	return nil
+}
+
+func TestWallet2(t *testing.T) {
+	w := wallet.New(&wallet.Config{
+		DataDir:        WalletDir,
+		MaxSearchIndex: 100000,
+	})
+	w.Start()
+
+	mnemonic, _, err := w.NewMnemonicAndEntropyStore("123456")
+	if err != nil {
+		panic(err)
+	}
+	t.Log(mnemonic)
+}
+
+func TestWallet3(t *testing.T) {
+	w := wallet.New(&wallet.Config{
+		DataDir:        WalletDir,
+		MaxSearchIndex: 100000,
+	})
+	w.Start()
+
+	em, err := w.RecoverEntropyStoreFromMnemonic("warfare woman sustain earth alarm actress street solution dirt exact embark cover ripple luxury unhappy enable hood orphan unique what motor plug level bike", "123456")
+	if err != nil {
+		panic(err)
+	}
+	em.Unlock("123456")
+	_, key, err := em.DeriveForIndexPath(0)
+	if err != nil {
+		panic(err)
+	}
+	address, err := key.Address()
+	if err != nil {
+		panic(err)
+	}
+	t.Log(address)
 }
 
 func TestWallet(t *testing.T) {
@@ -95,12 +132,12 @@ func TestClient_SubmitRequestTx(t *testing.T) {
 		t.Error(e)
 		return
 	}
-	self, err := types.HexToAddress("vite_165a295e214421ef1276e79990533953e901291d29b2d4851f")
+	self, err := types.HexToAddress("vite_ab24ef68b84e642c0ddca06beec81c9acb1977bbd7da27a87a")
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	to, err := types.HexToAddress("vite_2ca3c5f1f18b38f865eb47196027ae0c50d0c21e67774abdda")
+	to, err := types.HexToAddress("vite_021b3bae0d06bb7619c146da2580b4f5bc5ec8421f49fa9c56")
 	if err != nil {
 		t.Error(err)
 		return
@@ -146,23 +183,83 @@ func TestClient_CreateContract(t *testing.T) {
 		t.Error(e)
 		return
 	}
-	self, err := types.HexToAddress("vite_165a295e214421ef1276e79990533953e901291d29b2d4851f")
+	self, err := types.HexToAddress("vite_021b3bae0d06bb7619c146da2580b4f5bc5ec8421f49fa9c56")
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	definition := ``
-	code := ``
+	definition := `[{"constant":false,"inputs":[{"name":"data","type":"bytes32"},{"name":"t","type":"int8"}],"name":"Store","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"data","type":"bytes32"}],"name":"getData","outputs":[{"name":"","type":"int8"}],"payable":false,"stateMutability":"view","type":"offchain"},{"constant":true,"inputs":[{"name":"t","type":"int8"}],"name":"getCnt","outputs":[{"name":"","type":"int32"}],"payable":false,"stateMutability":"view","type":"offchain"},{"inputs":[],"payable":false,"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"name":"fromhash","type":"bytes32"},{"indexed":true,"name":"data","type":"bytes32"},{"indexed":false,"name":"t","type":"int8"}],"name":"_store","type":"event"}]`
+	code := `608060405234801561001057600080fd5b5033600260006101000a81548174ffffffffffffffffffffffffffffffffffffffffff021916908374ffffffffffffffffffffffffffffffffffffffffff1602179055506101d8806100636000396000f3fe608060405260043610610041576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff1680630c67323614610046575b600080fd5b34801561005257600080fd5b5061008c6004803603604081101561006957600080fd5b8101908080359060200190929190803560000b906020019092919050505061008e565b005b60008160000b1315156100a057600080fd5b600080600084815260200190815260200160002160009054906101000a900460000b60000b1415156100d157600080fd5b60018060008360000b60000b815260200190815260200160002160009054906101000a900460030b01600160008360000b60000b815260200190815260200160002160006101000a81548163ffffffff021916908360030b63ffffffff1602179055508060008084815260200190815260200160002160006101000a81548160ff021916908360000b60ff160217905550817f740083ee4ad1d06c2bb11dceca13ff405c05929637a1efe89e2af61a88988f1a4983604051808381526020018260000b60000b81526020019250505060405180910390a2505056fea165627a7a723058209610fc9c352f9a73ff07a9f30e561cf6efabfdb5d4780d5e66e4debb420171630029`
 	block, err := client.BuildRequestCreateContractBlock(RequestCreateContractParams{
 		SelfAddr: self,
 		abiStr:   definition,
 		metaParams: api.CreateContractDataParam{
 			Gid:         types.DELEGATE_GID,
-			ConfirmTime: 12,
-			SeedCount:   12,
+			ConfirmTime: 0,
+			SeedCount:   0,
 			QuotaRatio:  10,
 			HexCode:     code,
 		},
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = client.SignData(Wallet2, block)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = rpc.SendRawTx(block)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Log("submit request tx success.", block.Hash, block.Height)
+}
+
+func TestClient_CallContract(t *testing.T) {
+	if err := PreTest(); err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+	rpc, err := NewRpcClient(RawUrl)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	client, e := NewClient(rpc)
+	if e != nil {
+		t.Error(e)
+		return
+	}
+	self, err := types.HexToAddress("vite_165a295e214421ef1276e79990533953e901291d29b2d4851f")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	contract, err := types.HexToAddress("vite_350dde5a5405c89d5b78f07a9f7c8a6284b4e0a874580223e6")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	abi := `[{"constant":false,"inputs":[{"name":"data","type":"bytes32"},{"name":"t","type":"int8"}],"name":"Store","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"data","type":"bytes32"}],"name":"getData","outputs":[{"name":"","type":"int8"}],"payable":false,"stateMutability":"view","type":"offchain"},{"constant":true,"inputs":[{"name":"t","type":"int8"}],"name":"getCnt","outputs":[{"name":"","type":"int32"}],"payable":false,"stateMutability":"view","type":"offchain"},{"inputs":[],"payable":false,"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"name":"fromhash","type":"bytes32"},{"indexed":true,"name":"data","type":"bytes32"},{"indexed":false,"name":"t","type":"int8"}],"name":"_store","type":"event"}]`
+
+	abiCli, err := GetAbiCli(rpc, abi, contract)
+	data, err := abiCli.BuildCallMethodData("Store", types.HexToHashPanic("7465e0b455e06de36e8c440e15df14b667ad4289684a95f8672c71b6cfa8d0da"), int8(1))
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	block, err := client.BuildNormalRequestBlock(RequestTxParams{
+		ToAddr:   contract,
+		SelfAddr: self,
+		Amount:   big.NewInt(0),
+		TokenId:  ledger.ViteTokenId,
+		Data:     data,
 	}, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -244,7 +341,7 @@ func TestClient_QueryOnroad(t *testing.T) {
 
 	if len(blocks) > 0 {
 		for _, v := range blocks {
-			t.Log(v.Height, v.AccountAddress, v.ToAddress, *v.Amount, v.Hash)
+			t.Log(v.Height, v.Address, v.ToAddress, *v.Amount, v.Hash)
 		}
 	}
 }
@@ -305,4 +402,9 @@ func TestClient_GetBalance(t *testing.T) {
 	}
 	t.Log("balance", balance.String())
 	t.Log("onroad", onroad.String())
+}
+
+func TestName(t *testing.T) {
+	hash, _ := types.HexToHash("")
+	t.Log(hash)
 }

@@ -3,11 +3,12 @@ package chain
 import (
 	"errors"
 	"fmt"
+	"math/big"
+
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/interfaces"
 	"github.com/vitelabs/go-vite/ledger"
 	"github.com/vitelabs/go-vite/vm/util"
-	"math/big"
 )
 
 func (c *chain) GetBalance(addr types.Address, tokenId types.TokenTypeId) (*big.Int, error) {
@@ -122,14 +123,7 @@ func (c *chain) GetVmLogList(logListHash *types.Hash) (ledger.VmLogList, error) 
 }
 
 func (c *chain) GetQuotaUnused(address types.Address) (uint64, error) {
-	_, quotaInfo, err := c.GetStakeQuota(address)
-	if err != nil {
-		cErr := errors.New(fmt.Sprintf("c.GetStakeQuota failed, address is %s. Error: %s", address, err))
-		c.log.Error(cErr.Error(), "method", "GetQuotaUnused")
-		return 0, cErr
-	}
-
-	return quotaInfo.Current(), nil
+	return c.GetCurrentStakeQuota(address)
 }
 
 func (c *chain) GetGlobalQuota() types.QuotaInfo {

@@ -39,9 +39,7 @@ func (maker FullNodeMaker) MakeNode(ctx *cli.Context) (*node.Node, error) {
 }
 
 func (maker FullNodeMaker) MakeNodeConfig(ctx *cli.Context) (*node.Config, error) {
-
 	cfg := node.DefaultNodeConfig
-	log.Info(fmt.Sprintf("DefaultNodeconfig: %v", cfg))
 
 	// 1: Load config file.
 	err := loadNodeConfigFromFile(ctx, &cfg)

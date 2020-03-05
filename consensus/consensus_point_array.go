@@ -149,15 +149,6 @@ func (arr *linkedArray) getByIndexWithProofFromKernel(index uint64, proofHash ty
 			return nil, err
 		}
 	}
-	if !result.IsEmpty() && arr.extraDataFn != nil {
-		voteContent, err := arr.extraDataFn(arr.prefix, index, proofHash)
-		if err != nil {
-			return nil, err
-		}
-		if voteContent != nil {
-			result.Votes = voteContent
-		}
-	}
 	return result, nil
 }
 

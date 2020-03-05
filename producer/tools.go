@@ -1,8 +1,9 @@
 package producer
 
 import (
-	"github.com/vitelabs/go-vite/common/fork"
 	"time"
+
+	"github.com/vitelabs/go-vite/common/fork"
 
 	"github.com/pkg/errors"
 	"github.com/vitelabs/go-vite/chain"
@@ -51,10 +52,7 @@ func (self *tools) generateSnapshot(e *consensus.Event, coinbase *AddressContext
 		block.Seed = 0
 	}
 
-	// add version
-	if fork.IsLeafFork(block.Height) {
-		block.Version = fork.GetLastForkPoint().Version
-	}
+	block.Version = fork.GetLastForkPointVersion()
 
 	block.Hash = block.ComputeHash()
 	manager, err := self.wt.GetEntropyStoreManager(coinbase.EntryPath)

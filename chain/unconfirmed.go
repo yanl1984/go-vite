@@ -2,6 +2,7 @@ package chain
 
 import (
 	"fmt"
+
 	"github.com/pkg/errors"
 	"github.com/vitelabs/go-vite/common/fork"
 	"github.com/vitelabs/go-vite/common/types"
@@ -144,28 +145,6 @@ func (c *chain) filterUnconfirmedBlocks(snapshotBlock *ledger.SnapshotBlock, che
 }
 
 func (c *chain) checkQuota(quotaUnusedCache map[types.Address]uint64, quotaUsedCache map[types.Address]uint64, block *ledger.AccountBlock, sbHeight uint64) (bool, error) {
-	// get quota total
-	quotaUnused, ok := quotaUnusedCache[block.AccountAddress]
-	if !ok {
-
-		amount, err := c.GetStakeBeneficialAmount(block.AccountAddress)
-		if err != nil {
-			return false, err
-		}
-
-		quotaUnused, err = quota.GetSnapshotCurrentQuota(c, block.AccountAddress, amount, sbHeight)
-		if err != nil {
-			return false, err
-		}
-		quotaUnusedCache[block.AccountAddress] = quotaUnused
-
-	}
-
-	quotaUsedCache[block.AccountAddress] += block.Quota
-
-	if quotaUsedCache[block.AccountAddress] > quotaUnused {
-		return false, nil
-	}
 
 	return true, nil
 }

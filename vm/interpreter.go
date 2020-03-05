@@ -2,10 +2,10 @@ package vm
 
 import (
 	"encoding/hex"
-	"github.com/vitelabs/go-vite/common/fork"
+	"sync/atomic"
+
 	"github.com/vitelabs/go-vite/common/helper"
 	"github.com/vitelabs/go-vite/vm/util"
-	"sync/atomic"
 )
 
 type interpreter struct {
@@ -13,31 +13,15 @@ type interpreter struct {
 }
 
 var (
-	simpleInterpreter         = &interpreter{simpleInstructionSet}
-	offchainSimpleInterpreter = &interpreter{offchainSimpleInstructionSet}
-	randInterpreter           = &interpreter{randInstructionSet}
-	offchainRandInterpreter   = &interpreter{offchainRandInstructionSet}
-	earthInterpreter          = &interpreter{earthInstructionSet}
-	offchainEarthInterpreter  = &interpreter{offchainEarthInstructionSet}
+	earthInterpreter         = &interpreter{earthInstructionSet}
+	offchainEarthInterpreter = &interpreter{offchainEarthInstructionSet}
 )
 
 func newInterpreter(blockHeight uint64, offChain bool) *interpreter {
-	if fork.IsEarthFork(blockHeight) {
-		if offChain {
-			return offchainEarthInterpreter
-		}
-		return earthInterpreter
-	}
-	if fork.IsSeedFork(blockHeight) {
-		if offChain {
-			return offchainRandInterpreter
-		}
-		return randInterpreter
-	}
 	if offChain {
-		return offchainSimpleInterpreter
+		return offchainEarthInterpreter
 	}
-	return simpleInterpreter
+	return earthInterpreter
 }
 
 func (i *interpreter) runLoop(vm *VM, c *contract) (ret []byte, err error) {

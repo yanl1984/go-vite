@@ -3,14 +3,15 @@ package chain
 import (
 	"bytes"
 	"fmt"
-	"github.com/vitelabs/go-vite/chain/utils"
-	"github.com/vitelabs/go-vite/common/types"
-	"github.com/vitelabs/go-vite/interfaces"
-	"github.com/vitelabs/go-vite/ledger"
 	"math/rand"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/vitelabs/go-vite/chain/utils"
+	"github.com/vitelabs/go-vite/common/types"
+	"github.com/vitelabs/go-vite/interfaces"
+	"github.com/vitelabs/go-vite/ledger"
 )
 
 func TestChain_builtInContract(t *testing.T) {
@@ -94,42 +95,6 @@ func testBuiltInContractNoTesting(chainInstance *chain, accounts map[types.Addre
 
 	NewStorageDatabase(nil, chainInstance, accounts, snapshotBlockList)
 
-}
-
-func TestVoteList(t *testing.T) {
-
-	chainInstance, err := NewChainInstance("/Users/liyanda/test_ledger/ledger4/devdata", false)
-	if err != nil {
-		panic(err)
-	}
-
-	block := chainInstance.GetLatestSnapshotBlock()
-	if err != nil {
-		panic(err)
-	}
-
-	voteMap, err := chainInstance.GetVoteList(block.Hash, types.SNAPSHOT_GID)
-	if err != nil {
-		panic(err)
-	}
-
-	for _, voteInfo := range voteMap {
-		addr := voteInfo.VoteAddr
-		latest, e := chainInstance.GetLatestAccountBlock(addr)
-		if e != nil {
-			panic(e)
-		}
-		blocks, e := chainInstance.GetAccountBlocks(latest.Hash, 300)
-		if e != nil {
-			panic(e)
-		}
-		for i := 0; i < len(blocks); i++ {
-			if blocks[i].ToAddress.String() == "vite_00000000000000000000000000000000000000042d7ef71894" {
-				fmt.Printf("%s: %+v\n", blocks[i].AccountAddress, blocks[i].Data)
-				break
-			}
-		}
-	}
 }
 
 func GetRegisterList(t *testing.T, chainInstance *chain) {

@@ -3,11 +3,12 @@ package vm
 import (
 	"bytes"
 	"encoding/hex"
-	"github.com/vitelabs/go-vite/interfaces"
 	"math/big"
 	"sort"
 	"testing"
 	"time"
+
+	"github.com/vitelabs/go-vite/interfaces"
 
 	"github.com/vitelabs/go-vite/common/helper"
 	"github.com/vitelabs/go-vite/common/types"
@@ -310,16 +311,6 @@ func (db *testDatabase) GetCompleteBlockByHash(blockHash types.Hash) (*ledger.Ac
 	return nil, nil
 }
 
-func (db *testDatabase) GetStakeBeneficialAmount(addr *types.Address) (*big.Int, error) {
-	data := db.storageMap[types.AddressQuota][ToKey(abi.GetStakeBeneficialKey(*addr))]
-	if len(data) > 0 {
-		amount := new(abi.VariableStakeBeneficial)
-		abi.ABIQuota.UnpackVariable(amount, abi.VariableNameStakeBeneficial, data)
-		return amount.Amount, nil
-	}
-	return big.NewInt(0), nil
-}
-
 func (db *testDatabase) DebugGetStorage() (map[string][]byte, error) {
 	return db.storageMap[db.addr], nil
 }
@@ -480,9 +471,6 @@ func TestPrepareDb(t *testing.T) {
 		t.Fatalf("invalid consensus group info")
 	}
 	db.addr = addr1
-	if stakeAmount, _ := db.GetStakeBeneficialAmount(&addr1); stakeAmount == nil || stakeAmount.Sign() < 0 {
-		t.Fatalf("invalid stake amount")
-	}
 	db.addr = types.AddressGovernance
 	registrationList, _ := abi.GetRegistrationList(db, types.SNAPSHOT_GID, addr1)
 	if len(registrationList) != 2 {

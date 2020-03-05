@@ -44,41 +44,7 @@ func makeForkPointsConfig(genesisConfig *config.Genesis) *config.ForkPoints {
 		}
 		return genesisConfig.ForkPoints
 	} else {
-		return &config.ForkPoints{
-			SeedFork: &config.ForkPoint{
-				Height:  3488471,
-				Version: 1,
-			},
-
-			DexFork: &config.ForkPoint{
-				Height:  5442723,
-				Version: 2,
-			},
-
-			DexFeeFork: &config.ForkPoint{
-				Height:  8013367,
-				Version: 3,
-			},
-
-			StemFork: &config.ForkPoint{
-				Height:  8403110,
-				Version: 4,
-			},
-			LeafFork: &config.ForkPoint{
-				Height:  9413600,
-				Version: 5,
-			},
-
-			EarthFork: &config.ForkPoint{
-				Height:  16634530,
-				Version: 6,
-			},
-
-			DexMiningFork: &config.ForkPoint{
-				Height:  17142720,
-				Version: 7,
-			},
-		}
+		return &config.ForkPoints{}
 	}
 }
 

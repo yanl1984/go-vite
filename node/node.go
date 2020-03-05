@@ -10,14 +10,11 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/vitelabs/go-vite/cmd/utils/flock"
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/config"
 	"github.com/vitelabs/go-vite/log15"
-	"github.com/vitelabs/go-vite/metrics"
-	"github.com/vitelabs/go-vite/metrics/influxdb"
 	"github.com/vitelabs/go-vite/monitor"
 	"github.com/vitelabs/go-vite/pow"
 	"github.com/vitelabs/go-vite/pow/remote"
@@ -44,10 +41,6 @@ type Node struct {
 	//vite
 	viteConfig *config.Config
 	viteServer *vite.Vite
-
-	// metrics
-	metricsConfig *metrics.Config
-	ifxReporter   *influxdb.Reporter
 
 	// List of APIs currently provided by the node
 	rpcAPIs          []rpc.API
@@ -76,14 +69,13 @@ type Node struct {
 
 func New(conf *Config) (*Node, error) {
 	return &Node{
-		config:        conf,
-		walletConfig:  conf.makeWalletConfig(),
-		viteConfig:    conf.makeViteConfig(),
-		metricsConfig: conf.makeMetricsConfig(),
-		ipcEndpoint:   conf.IPCEndpoint(),
-		httpEndpoint:  conf.HTTPEndpoint(),
-		wsEndpoint:    conf.WSEndpoint(),
-		stop:          make(chan struct{}),
+		config:       conf,
+		walletConfig: conf.makeWalletConfig(),
+		viteConfig:   conf.makeViteConfig(),
+		ipcEndpoint:  conf.IPCEndpoint(),
+		httpEndpoint: conf.HTTPEndpoint(),
+		wsEndpoint:   conf.WSEndpoint(),
+		stop:         make(chan struct{}),
 	}, nil
 }
 
@@ -143,9 +135,6 @@ func (node *Node) Start() error {
 	node.lock.Lock()
 	defer node.lock.Unlock()
 
-	// metrics start
-	node.startMetrics()
-
 	//p2p\vite start
 	log.Info(fmt.Sprintf("Begin Start Vite... "))
 	if err := node.startVite(); err != nil {
@@ -181,10 +170,6 @@ func (node *Node) Stop() error {
 	if err := node.stopVite(); err != nil {
 		log.Error(fmt.Sprintf("Node stopVite error: %v", err))
 	}
-
-	// metrics influxdb reporter
-	log.Info(fmt.Sprintf("Begin Stop Metrics... "))
-	node.stopMetrics()
 
 	//rpc
 	log.Info(fmt.Sprintf("Begin Stop RPD... "))
@@ -262,46 +247,6 @@ func (node *Node) startWallet() (err error) {
 
 	return nil
 }
-func (node *Node) startMetrics() {
-	// init metrics args
-	metricsCfg := node.metricsConfig
-	if metricsCfg == nil {
-		return
-	}
-	if metricsCfg.IsInfluxDBEnable == false || metricsCfg.InfluxDBInfo == nil {
-		log.Info("influxdb export disable or influxdbinfo of reporter is not complete")
-		metricsCfg.IsInfluxDBEnable = false
-	}
-
-	metrics.InitMetrics(metricsCfg.IsEnable, metricsCfg.IsInfluxDBEnable)
-
-	if metrics.MetricsEnabled {
-		log.Info("start metrics collection")
-		go metrics.CollectProcessMetrics(3 * time.Second)
-
-		if metrics.InfluxDBExportEnable {
-			influxDBInfo := metricsCfg.InfluxDBInfo
-
-			rp, err := influxdb.NewReporter(metrics.DefaultRegistry, 10*time.Second,
-				influxDBInfo.Endpoint, influxDBInfo.Database, influxDBInfo.Username, influxDBInfo.Password,
-				"monitor", map[string]string{"host": influxDBInfo.HostTag})
-			if err != nil || rp == nil {
-				log.Error(fmt.Sprintf("new influxdb reporter err: %v", err))
-				return
-			}
-			node.ifxReporter = rp
-			log.Info("start influxdb export")
-			node.ifxReporter.Start()
-		}
-	}
-}
-
-func (node *Node) stopMetrics() {
-	if node.ifxReporter != nil {
-		log.Info("stop influxdb export")
-		node.ifxReporter.Stop()
-	}
-}
 
 func (node *Node) startVite() error {
 	return node.viteServer.Start()
@@ -313,7 +258,7 @@ func (node *Node) startRPC() error {
 	rpcapi.Init(node.config.DataDir, node.config.LogLevel, node.config.TestTokenHexPrivKey, node.config.TestTokenTti, uint(node.config.NetID), node.config.TxDexEnable)
 
 	// Start the various API endpoints, terminating all in case of errors
-	if err := node.startInProcess(node.GetInProcessApis()); err != nil {
+	if err := node.startInProcess(rpcapi.GetPublicApis(node.viteServer)); err != nil {
 		return err
 	}
 
@@ -325,7 +270,7 @@ func (node *Node) startRPC() error {
 
 	// Start rpc
 	if node.config.IPCEnabled {
-		if err := node.startIPC(node.GetIpcApis()); err != nil {
+		if err := node.startIPC(rpcapi.GetPublicApis(node.viteServer)); err != nil {
 			node.stopInProcess()
 			return err
 		}

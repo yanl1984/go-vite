@@ -32,15 +32,11 @@ const (
 )
 
 var (
-	AddressQuota, _      = BytesToAddress([]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, ContractAddrByte})
 	AddressGovernance, _ = BytesToAddress([]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, ContractAddrByte})
-	AddressAsset, _      = BytesToAddress([]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, ContractAddrByte})
-	AddressDexFund, _    = BytesToAddress([]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, ContractAddrByte})
-	AddressDexTrade, _   = BytesToAddress([]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, ContractAddrByte})
 
-	BuiltinContracts                = []Address{AddressQuota, AddressGovernance, AddressAsset, AddressDexFund, AddressDexTrade}
-	BuiltinContractsWithoutQuota    = []Address{AddressQuota, AddressGovernance, AddressAsset, AddressDexTrade}
-	BuiltinContractsWithSendConfirm = []Address{AddressQuota, AddressGovernance, AddressAsset}
+	BuiltinContracts                = []Address{AddressGovernance}
+	BuiltinContractsWithoutQuota    = []Address{AddressGovernance}
+	BuiltinContractsWithSendConfirm = []Address{AddressGovernance}
 )
 
 func IsContractAddr(addr Address) bool {

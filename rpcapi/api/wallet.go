@@ -12,7 +12,6 @@ import (
 	"github.com/vitelabs/go-vite/ledger"
 	"github.com/vitelabs/go-vite/pool"
 	"github.com/vitelabs/go-vite/vite"
-	"github.com/vitelabs/go-vite/vm/contracts/dex"
 	"github.com/vitelabs/go-vite/wallet"
 	"github.com/vitelabs/go-vite/wallet/entropystore"
 )
@@ -274,9 +273,6 @@ func (m WalletApi) CreateTxWithPassphrase(params CreateTransferTxParms) (*types.
 	if !checkTxToAddressAvailable(params.ToAddr) {
 		return nil, errors.New("ToAddress is invalid")
 	}
-	if params.ToAddr == types.AddressDexFund && !dex.VerifyNewOrderPriceForRpc(params.Data) {
-		return nil, dex.InvalidOrderPriceErr
-	}
 	amount, ok := new(big.Int).SetString(params.Amount, 10)
 	if !ok {
 		return nil, ErrStrToBigInt
@@ -298,7 +294,6 @@ func (m WalletApi) CreateTxWithPassphrase(params CreateTransferTxParms) (*types.
 		ToAddress:      &params.ToAddr,
 		TokenId:        &params.TokenTypeId,
 		Amount:         amount,
-		Fee:            nil,
 		Difficulty:     difficulty,
 		Data:           params.Data,
 	}

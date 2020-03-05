@@ -19,12 +19,13 @@ package rpc
 import (
 	"context"
 	"fmt"
-	"github.com/vitelabs/go-vite/rpcapi/api"
 	"reflect"
 	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
+
+	"github.com/vitelabs/go-vite/rpcapi/api"
 
 	mapset "github.com/deckarep/golang-set"
 	log "github.com/vitelabs/go-vite/log15"
@@ -315,7 +316,7 @@ func (s *Server) handle(ctx context.Context, codec ServerCodec, req *serverReque
 
 	defer func() {
 		if err := recover(); err != nil {
-			log.Error(fmt.Sprintf("%v\n", err))
+			log.Error(fmt.Sprintf("%+v\n", err))
 			result = codec.CreateErrorResponse(req.id, &executePanicError{})
 			f = nil
 		}

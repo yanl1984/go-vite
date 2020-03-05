@@ -3,16 +3,14 @@ package generator
 import (
 	"errors"
 	"fmt"
-	"github.com/vitelabs/go-vite/common/fork"
+
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/consensus/core"
 	"github.com/vitelabs/go-vite/ledger"
 	"github.com/vitelabs/go-vite/log15"
-	"github.com/vitelabs/go-vite/pow"
 	"github.com/vitelabs/go-vite/vm"
 	"github.com/vitelabs/go-vite/vm/util"
 	"github.com/vitelabs/go-vite/vm_db"
-	"math/big"
 )
 
 // Consensus is for Vm to read the SBP information
@@ -102,8 +100,8 @@ func (gen *Generator) GenerateWithMessage(message *IncomingMessage, producer *ty
 
 // GenerateWithOnRoad implements the method to generate a transaction with VM execution results
 // from a sendBlock(onroad block).
-func (gen *Generator) GenerateWithOnRoad(sendBlock *ledger.AccountBlock, producer *types.Address, signFunc SignFunc, difficulty *big.Int) (*GenResult, error) {
-	block, err := gen.packReceiveBlockWithSend(sendBlock, difficulty)
+func (gen *Generator) GenerateWithOnRoad(sendBlock *ledger.AccountBlock, producer *types.Address, signFunc SignFunc) (*GenResult, error) {
+	block, err := gen.packReceiveBlockWithSend(sendBlock)
 	if err != nil {
 		return nil, err
 	}
@@ -141,19 +139,17 @@ func (gen *Generator) generateBlock(block *ledger.AccountBlock, fromBlock *ledge
 		if err != nil {
 			return nil, fmt.Errorf("GetSnapshotBlockByContractMeta failed", "err", err)
 		}
-		if fork.IsSeedFork(latestSb.Height) {
-			limitSeedSb, err := gen.chain.GetSeedConfirmedSnapshotBlock(block.AccountAddress, fromBlock.Hash)
-			if err != nil {
-				return nil, fmt.Errorf("GetSeedConfirmedSnapshotBlock failed", "err", err)
+		limitSeedSb, err := gen.chain.GetSeedConfirmedSnapshotBlock(block.AccountAddress, fromBlock.Hash)
+		if err != nil {
+			return nil, fmt.Errorf("GetSeedConfirmedSnapshotBlock failed", "err", err)
+		}
+		if limitSb == nil {
+			if limitSeedSb != nil {
+				limitSb = limitSeedSb
 			}
-			if limitSb == nil {
-				if limitSeedSb != nil {
-					limitSb = limitSeedSb
-				}
-			} else {
-				if limitSeedSb != nil && limitSb.Height < limitSeedSb.Height {
-					limitSb = limitSeedSb
-				}
+		} else {
+			if limitSeedSb != nil && limitSb.Height < limitSeedSb.Height {
+				limitSb = limitSeedSb
 			}
 		}
 		if limitSb != nil {
@@ -198,7 +194,7 @@ func (gen *Generator) generateBlock(block *ledger.AccountBlock, fromBlock *ledge
 	}, nil
 }
 
-func (gen *Generator) packReceiveBlockWithSend(sendBlock *ledger.AccountBlock, difficulty *big.Int) (*ledger.AccountBlock, error) {
+func (gen *Generator) packReceiveBlockWithSend(sendBlock *ledger.AccountBlock) (*ledger.AccountBlock, error) {
 	recvBlock := &ledger.AccountBlock{
 		BlockType:      ledger.BlockTypeReceive,
 		AccountAddress: sendBlock.ToAddress,
@@ -233,15 +229,6 @@ func (gen *Generator) packReceiveBlockWithSend(sendBlock *ledger.AccountBlock, d
 	}
 	recvBlock.PrevHash = prevHash
 	recvBlock.Height = preHeight + 1
-
-	if difficulty != nil {
-		nonce, err := pow.GetPowNonce(difficulty, types.DataHash(append(sendBlock.ToAddress.Bytes(), prevHash.Bytes()...)))
-		if err != nil {
-			return nil, err
-		}
-		recvBlock.Nonce = nonce
-		recvBlock.Difficulty = difficulty
-	}
 
 	return recvBlock, nil
 }

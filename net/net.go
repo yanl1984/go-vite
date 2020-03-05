@@ -493,7 +493,7 @@ func New(cfg *config.Net, chain Chain, verifier Verifier, consensus Consensus, i
 		addr = types.PubkeyToAddress(n.config.MineKey.PubByte())
 	}
 
-	n.finder, err = newFinder(addr, n.peers, cfg.MinPeers, cfg.StaticNodes, n.db, n, consensus)
+	n.finder, err = newFinder(addr, n.peers, cfg.MinPeers, cfg.StaticNodes, n.db, n, chain, consensus)
 	if err != nil {
 		return nil, err
 	}

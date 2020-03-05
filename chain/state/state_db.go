@@ -3,9 +3,13 @@ package chain_state
 import (
 	"bytes"
 	"encoding/binary"
+	"sync/atomic"
+
 	"github.com/patrickmn/go-cache"
 	"github.com/vitelabs/go-vite/config"
-	"sync/atomic"
+
+	"math/big"
+	"path"
 
 	"github.com/vitelabs/go-vite/chain/db"
 	"github.com/vitelabs/go-vite/chain/utils"
@@ -15,8 +19,6 @@ import (
 	"github.com/vitelabs/go-vite/interfaces"
 	"github.com/vitelabs/go-vite/ledger"
 	"github.com/vitelabs/go-vite/log15"
-	"math/big"
-	"path"
 )
 
 const (
@@ -366,7 +368,7 @@ func (sDB *StateDB) GetStatus() []interfaces.DBStatus {
 }
 
 func (sDB *StateDB) shouldCacheContractData(addr types.Address) bool {
-	return addr == types.AddressQuota || addr == types.AddressGovernance || addr == types.AddressAsset
+	return addr == types.AddressGovernance
 }
 
 func (sDB *StateDB) getSnapshotBalanceList(balanceMap map[types.Address]*big.Int, snapshotBlockHash types.Hash, addrList []types.Address, tokenId types.TokenTypeId) error {

@@ -54,3 +54,13 @@ func DealWithErr(v interface{}) {
 		panic(v)
 	}
 }
+
+func AssertNull(v interface{}) {
+	if v != nil {
+		panic(v)
+	}
+}
+
+func Serialize(args...interface{})[]interface{}  {
+	return args
+}

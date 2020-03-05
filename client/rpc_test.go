@@ -14,7 +14,11 @@ import (
 
 //var RawUrl = "http://127.0.0.1:48133"
 
-var RawUrl = "http://118.25.182.202:48132"
+//var RawUrl = "http://118.25.182.202:48132"
+
+//var RawUrl = "http://127.0.0.1:48101"
+
+var RawUrl = "http://132.232.40.146:48101"
 
 //var RawUrl = "http://134.175.105.236:48132"
 

@@ -90,48 +90,6 @@ func GetApi(vite *vite.Vite, apiModule string) rpc.API {
 			Service:   api.NewVoteApi(vite),
 			Public:    true,
 		}
-	case "mintage":
-		return rpc.API{
-			Namespace: "mintage",
-			Version:   "1.0",
-			Service:   api.NewAssetApi(vite),
-			Public:    true,
-		}
-	case "pledge":
-		return rpc.API{
-			Namespace: "pledge",
-			Version:   "1.0",
-			Service:   api.NewQuotaApi(vite),
-			Public:    true,
-		}
-	case "dexfund":
-		return rpc.API{
-			Namespace: "dexfund",
-			Version:   "1.0",
-			Service:   api.NewDexFundApi(vite),
-			Public:    true,
-		}
-	case "dextrade":
-		return rpc.API{
-			Namespace: "dextrade",
-			Version:   "1.0",
-			Service:   api.NewDexTradeApi(vite),
-			Public:    true,
-		}
-	case "dex":
-		return rpc.API{
-			Namespace: "dex",
-			Version:   "1.0",
-			Service:   api.NewDexApi(vite),
-			Public:    true,
-		}
-	case "private_dex":
-		return rpc.API{
-			Namespace: "dex",
-			Version:   "1.0",
-			Service:   api.NewDexPrivateApi(vite),
-			Public:    false,
-		}
 	case "consensusGroup":
 		return rpc.API{
 			Namespace: "consensusGroup",
@@ -168,13 +126,6 @@ func GetApi(vite *vite.Vite, apiModule string) rpc.API {
 			Service:   api.NewDashboardApi(vite),
 			Public:    true,
 		}
-	case "vmdebug":
-		return rpc.API{
-			Namespace: "vmdebug",
-			Version:   "1.0",
-			Service:   api.NewVmDebugApi(vite),
-			Public:    true,
-		}
 	case "subscribe":
 		return rpc.API{
 			Namespace: "subscribe",
@@ -194,13 +145,6 @@ func GetApi(vite *vite.Vite, apiModule string) rpc.API {
 			Namespace: "util",
 			Version:   "1.0",
 			Service:   api.NewUtilApi(vite),
-			Public:    true,
-		}
-	case "data":
-		return rpc.API{
-			Namespace: "data",
-			Version:   "1.0",
-			Service:   api.NewDataApi(vite),
 			Public:    true,
 		}
 	case "ledgerdebug":
@@ -224,5 +168,5 @@ func GetApis(vite *vite.Vite, apiModule ...string) []rpc.API {
 }
 
 func GetPublicApis(vite *vite.Vite) []rpc.API {
-	return GetApis(vite, "ledger", "net", "contract", "util", "health")
+	return GetApis(vite, "ledger", "net", "contract", "health")
 }

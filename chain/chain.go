@@ -2,6 +2,7 @@ package chain
 
 import (
 	"fmt"
+
 	"github.com/olebedev/emitter"
 	"github.com/vitelabs/go-vite/common/fork"
 
@@ -87,11 +88,6 @@ func NewChain(dir string, chainCfg *config.Chain, genesisCfg *config.Genesis) *c
 	if chainCfg == nil {
 		chainCfg = defaultConfig()
 	}
-
-	if !fork.IsInitForkPoint() {
-		fork.SetForkPoints(genesisCfg.ForkPoints)
-	}
-
 	c := &chain{
 		genesisCfg: genesisCfg,
 		dataDir:    dir,
@@ -101,19 +97,6 @@ func NewChain(dir string, chainCfg *config.Chain, genesisCfg *config.Genesis) *c
 
 		emitter:  emitter.New(10),
 		chainCfg: chainCfg,
-	}
-
-	// set leaf fork point
-	forkActiveCheckPoint := fork.GetLeafForkPoint()
-	if forkActiveCheckPoint == nil {
-		panic("LeafFork is not existed")
-	}
-
-	c.forkActiveCheckPoint = *forkActiveCheckPoint
-
-	// set active fork
-	if !fork.IsInitActiveChecker() {
-		fork.SetActiveChecker(c)
 	}
 
 	c.em = newEventManager(c)
@@ -156,11 +139,6 @@ func (c *chain) Init() error {
 
 	// init cache
 	if err := c.initCache(); err != nil {
-		return err
-	}
-
-	// init fork active
-	if err := c.initActiveFork(); err != nil {
 		return err
 	}
 

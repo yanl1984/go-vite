@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/vitelabs/go-vite/vm/contracts/dex"
 	"math/big"
 	"math/rand"
 	"time"
@@ -56,9 +55,6 @@ func (t Tx) SendRawTx(block *AccountBlock) error {
 	if err := checkSnapshotValid(latestSb); err != nil {
 		return err
 	}
-	if lb.ToAddress == types.AddressDexFund && !dex.VerifyNewOrderPriceForRpc(lb.Data) {
-		return dex.InvalidOrderPriceErr
-	}
 
 	result, err := t.vite.Verifier().VerifyRPCAccountBlock(lb, latestSb)
 	if err != nil {
@@ -88,9 +84,6 @@ func (t Tx) SendTxWithPrivateKey(param SendTxWithPrivateKeyParam) (*AccountBlock
 
 	if param.ToAddr != nil && !checkTxToAddressAvailable(*param.ToAddr) {
 		return nil, errors.New("ToAddress is invalid")
-	}
-	if param.ToAddr != nil && *param.ToAddr == types.AddressDexFund && !dex.VerifyNewOrderPriceForRpc(param.Data) {
-		return nil, dex.InvalidOrderPriceErr
 	}
 	if param.PrivateKey == nil {
 		return nil, errors.New("privateKey is nil")
@@ -126,7 +119,6 @@ func (t Tx) SendTxWithPrivateKey(param SendTxWithPrivateKeyParam) (*AccountBlock
 		ToAddress:      param.ToAddr,
 		TokenId:        &param.TokenTypeId,
 		Amount:         amount,
-		Fee:            nil,
 		Data:           param.Data,
 		Difficulty:     d,
 	}
@@ -200,10 +192,6 @@ type CalcPoWDifficultyResult struct {
 }
 
 // Deprecated: use ledger_getPoWDifficulty instead
-func (t Tx) CalcPoWDifficulty(param CalcPoWDifficultyParam) (result *CalcPoWDifficultyResult, err error) {
-	return calcPoWDifficulty(t.vite.Chain(), param)
-}
-
 type CalcQuotaRequiredParam struct {
 	SelfAddr  types.Address  `json:"selfAddr"`
 	BlockType byte           `json:"blockType"`
@@ -217,7 +205,7 @@ type CalcQuotaRequiredResult struct {
 
 // Deprecated: use ledger_getRequiredQuota instead
 func (t Tx) CalcQuotaRequired(param CalcQuotaRequiredParam) (*CalcQuotaRequiredResult, error) {
-	return calcQuotaRequired(t.vite.Chain(), param)
+	panic("todo")
 }
 
 func (tx Tx) autoSend() {
@@ -434,7 +422,7 @@ func (tx Tx) autoSend() {
 					log.Error(fmt.Sprintf("send block err:%v\n", err))
 					return
 				} else {
-					log.Info(fmt.Sprintf("send block:%s,%s,%s\n", block.AccountAddress, block.Height, block.Hash))
+					log.Info(fmt.Sprintf("send block:%s,%s,%s\n", block.Address, block.Height, block.Hash))
 				}
 			}
 
@@ -460,7 +448,7 @@ func (tx Tx) autoSend() {
 					log.Error(fmt.Sprintf("send block err:%v\n", err))
 					return
 				} else {
-					log.Info(fmt.Sprintf("send block:%s,%s,%s\n", block.AccountAddress, block.Height, block.Hash))
+					log.Info(fmt.Sprintf("send block:%s,%s,%s\n", block.Address, block.Height, block.Hash))
 				}
 			}
 		}

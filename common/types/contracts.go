@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/binary"
 	"math/big"
 )
 
@@ -42,6 +43,18 @@ type Registration struct {
 	RewardTime            int64
 	RevokeTime            int64
 	HisAddrList           []Address
+}
+
+type VotingSbp struct {
+	SbpName     string
+	StartHeight uint64
+	EndHeight   uint64
+}
+
+func (v VotingSbp) ID() []byte {
+	var buf = make([]byte, 8)
+	binary.BigEndian.PutUint64(buf, v.StartHeight)
+	return append(DataHash([]byte(v.SbpName)).Bytes(), buf...)
 }
 
 func (r *Registration) IsActive() bool {

@@ -3,7 +3,6 @@ package onroad
 import (
 	"container/heap"
 	"fmt"
-	"github.com/vitelabs/go-vite/common/fork"
 	"sort"
 	"strconv"
 	"sync"
@@ -402,14 +401,11 @@ func (w *ContractWorker) GetStakeQuota(addr types.Address) uint64 {
 	if types.IsBuiltinContractAddrInUseWithoutQuota(addr) {
 		return math.MaxUint64
 	}
-	_, quota, err := w.manager.Chain().GetStakeQuota(addr)
+	quota, err := w.manager.Chain().GetCurrentStakeQuota(addr)
 	if err != nil {
 		w.log.Error("GetStakeQuota err", "error", err)
 	}
-	if quota == nil {
-		return 0
-	}
-	return quota.Current()
+	return quota
 }
 
 // GetStakeQuotas returns the available quota the contract can use at current in batch.
@@ -424,27 +420,21 @@ func (w *ContractWorker) GetStakeQuotas(beneficialList []types.Address) map[type
 				commonContractAddressList = append(commonContractAddressList, addr)
 			}
 		}
-		commonQuotas, err := w.manager.Chain().GetStakeQuotas(commonContractAddressList)
+		commonQuotas, err := w.manager.Chain().GetCurrentStakeQuotas(commonContractAddressList)
 		if err != nil {
 			w.log.Error("GetStakeQuotas err", "error", err)
 		} else {
 			for k, v := range commonQuotas {
-				if v == nil {
-					continue
-				}
-				quotas[k] = v.Current()
+				quotas[k] = v
 			}
 		}
 	} else {
-		quotasMap, qRrr := w.manager.Chain().GetStakeQuotas(beneficialList)
+		quotasMap, qRrr := w.manager.Chain().GetCurrentStakeQuotas(beneficialList)
 		if qRrr != nil {
 			w.log.Error("GetStakeQuotas err", "error", qRrr)
 		} else {
 			for k, v := range quotasMap {
-				if v == nil {
-					continue
-				}
-				quotas[k] = v.Current()
+				quotas[k] = v
 			}
 		}
 	}
@@ -470,7 +460,7 @@ func (w *ContractWorker) verifyConfirmedTimes(contractAddr *types.Address, fromH
 		return errors.New("sendBlock confirmedTimes is not ready")
 	}
 
-	if fork.IsSeedFork(sbHeight) && meta.SeedConfirmedTimes > 0 {
+	if meta.SeedConfirmedTimes > 0 {
 		isSeedCountOk, err := w.manager.Chain().IsSeedConfirmedNTimes(*fromHash, uint64(meta.SeedConfirmedTimes))
 		if err != nil {
 			return err

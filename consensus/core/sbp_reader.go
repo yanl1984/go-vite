@@ -23,18 +23,15 @@ func (x *BigInt) MarshalJSON() ([]byte, error) {
 }
 
 type SbpStats struct {
-	Index            uint64  `json:"index"`
-	BlockNum         uint64  `json:"blockNum"`
-	ExceptedBlockNum uint64  `json:"exceptedBlockNum"`
-	VoteCnt          *BigInt `json:"voteCnt"`
-	Name             string  `json:"name"`
+	Index            uint64 `json:"index"`
+	BlockNum         uint64 `json:"blockNum"`
+	ExceptedBlockNum uint64 `json:"exceptedBlockNum"`
+	Name             string `json:"name"`
 }
 
 type DayStats struct {
 	Index uint64               `json:"index"`
 	Stats map[string]*SbpStats `json:"stats"`
-
-	VoteSum *BigInt `json:"voteSum"`
 	// block total in one day
 	BlockTotal uint64 `json:"blockTotal"`
 }

@@ -1,10 +1,11 @@
 package vm_db
 
 import (
+	"math/big"
+
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/interfaces"
 	"github.com/vitelabs/go-vite/ledger"
-	"math/big"
 )
 
 type VmAccountBlock struct {
@@ -44,8 +45,6 @@ type Chain interface {
 	GetUnconfirmedBlocks(addr types.Address) []*ledger.AccountBlock
 
 	GetGenesisSnapshotBlock() *ledger.SnapshotBlock
-
-	GetStakeBeneficialAmount(addr types.Address) (*big.Int, error)
 
 	GetStorageIterator(address types.Address, prefix []byte) (interfaces.StorageIterator, error)
 
@@ -140,9 +139,6 @@ type VmDb interface {
 	GetUnsavedContractMeta() map[types.Address]*ledger.ContractMeta
 
 	GetUnsavedContractCode() []byte
-
-	// ====== built-in contract ======
-	GetStakeBeneficialAmount(addr *types.Address) (*big.Int, error)
 
 	// ====== debug ======
 	DebugGetStorage() (map[string][]byte, error)

@@ -42,7 +42,6 @@ type ResponseTxParams struct {
 }
 
 type Client interface {
-	DexClient
 	BuildNormalRequestBlock(params RequestTxParams, prev *ledger.HashHeight) (block *api.AccountBlock, err error)
 	BuildRequestCreateContractBlock(params RequestCreateContractParams, prev *ledger.HashHeight) (block *api.AccountBlock, err error)
 	BuildResponseBlock(params ResponseTxParams, prev *ledger.HashHeight) (block *api.AccountBlock, err error)
@@ -74,20 +73,16 @@ func (c *client) BuildNormalRequestBlock(params RequestTxParams, prev *ledger.Ha
 	block = &api.AccountBlock{
 		BlockType:          ledger.BlockTypeSendCall,
 		Hash:               types.Hash{},
-		PrevHash:           prev.Hash,
-		AccountAddress:     params.SelfAddr,
+		PreviousHash:       prev.Hash,
+		Address:            params.SelfAddr,
 		PublicKey:          nil,
 		ToAddress:          params.ToAddr,
 		TokenId:            params.TokenId,
 		Data:               params.Data,
-		Nonce:              nil,
 		Signature:          nil,
 		Height:             strconv.FormatUint(prev.Height+1, 10),
 		Amount:             &amount,
-		Difficulty:         nil,
 		TokenInfo:          nil,
-		ConfirmedTimes:     nil,
-		ConfirmedHash:      nil,
 		ReceiveBlockHeight: nil,
 		ReceiveBlockHash:   nil,
 		Timestamp:          0,
@@ -127,23 +122,18 @@ func (c *client) BuildRequestCreateContractBlock(params RequestCreateContractPar
 		one := big.NewInt(1e18)
 		params.fee = one.Mul(one, big.NewInt(10))
 	}
-	fee := params.fee.String()
+	//fee := params.fee.String()
 	block = &api.AccountBlock{
 		BlockType:          ledger.BlockTypeSendCreate,
 		Hash:               types.Hash{},
-		PrevHash:           prev.Hash,
-		AccountAddress:     params.SelfAddr,
+		PreviousHash:       prev.Hash,
+		Address:            params.SelfAddr,
 		PublicKey:          nil,
 		ToAddress:          contractAddr,
 		Data:               data,
-		Nonce:              nil,
 		Signature:          nil,
-		Fee:                &fee,
 		Height:             strconv.FormatUint(prev.Height+1, 10),
-		Difficulty:         nil,
 		TokenInfo:          nil,
-		ConfirmedTimes:     nil,
-		ConfirmedHash:      nil,
 		ReceiveBlockHeight: nil,
 		ReceiveBlockHash:   nil,
 		Timestamp:          0,
@@ -168,19 +158,14 @@ func (c *client) BuildResponseBlock(params ResponseTxParams, prev *ledger.HashHe
 	block = &api.AccountBlock{
 		BlockType:          ledger.BlockTypeReceive,
 		Hash:               types.Hash{},
-		PrevHash:           prev.Hash,
-		AccountAddress:     params.SelfAddr,
+		PreviousHash:       prev.Hash,
+		Address:            params.SelfAddr,
 		PublicKey:          nil,
-		FromBlockHash:      params.RequestHash,
+		SendBlockHash:      params.RequestHash,
 		Data:               nil,
-		Nonce:              nil,
 		Signature:          nil,
 		Height:             strconv.FormatUint(prev.Height+1, 10),
-		Fee:                nil,
-		Difficulty:         nil,
 		TokenInfo:          nil,
-		ConfirmedTimes:     nil,
-		ConfirmedHash:      nil,
 		ReceiveBlockHeight: nil,
 		ReceiveBlockHash:   nil,
 	}
@@ -258,7 +243,7 @@ func (c *client) SignData(wallet *entropystore.Manager, block *api.AccountBlock)
 		return errorEmptyHash
 	}
 
-	addr := block.AccountAddress
+	addr := block.Address
 	signedData, pubkey, err := wallet.SignData(addr, block.Hash.Bytes())
 	if err != nil {
 		return err

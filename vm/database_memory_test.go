@@ -2,11 +2,12 @@ package vm
 
 import (
 	"encoding/hex"
+	"math/big"
+
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/crypto"
 	"github.com/vitelabs/go-vite/interfaces"
 	"github.com/vitelabs/go-vite/ledger"
-	"math/big"
 )
 
 var (
@@ -227,9 +228,6 @@ func (db *memoryDatabase) GetContractMetaInSnapshot(contractAddress types.Addres
 	return &ledger.ContractMeta{Gid: types.DELEGATE_GID, SendConfirmedTimes: 0, QuotaRatio: 10}, nil
 }
 
-func (db *memoryDatabase) GetStakeBeneficialAmount(addr *types.Address) (*big.Int, error) {
-	return big.NewInt(0), nil
-}
 func (db *memoryDatabase) GetConfirmedTimes(blockHash types.Hash) (uint64, error) {
 	return 0, nil
 }

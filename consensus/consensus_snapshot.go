@@ -2,8 +2,6 @@ package consensus
 
 import (
 	"fmt"
-	"math/big"
-	"sort"
 	"time"
 
 	"github.com/pkg/errors"
@@ -188,14 +186,7 @@ func (snapshot *snapshotCs) DayStats(startIndex uint64, endIndex uint64) ([]*cor
 		if p == nil || p.IsEmpty() {
 			continue
 		}
-		if p.Votes == nil {
-			continue
-		}
-		stats := &core.DayStats{Stats: make(map[string]*core.SbpStats), Index: i, VoteSum: &core.BigInt{Int: p.Votes.Total}}
-
-		for k, v := range p.Votes.Details {
-			stats.Stats[k] = &core.SbpStats{Index: i, VoteCnt: &core.BigInt{Int: v}, Name: k}
-		}
+		stats := &core.DayStats{Stats: make(map[string]*core.SbpStats), Index: i}
 
 		for k, v := range p.Sbps {
 			name := registerMap[k]
@@ -203,6 +194,12 @@ func (snapshot *snapshotCs) DayStats(startIndex uint64, endIndex uint64) ([]*cor
 				// just vote
 				sbp.BlockNum += uint64(v.FactualNum)
 				sbp.ExceptedBlockNum += uint64(v.ExpectedNum)
+			} else {
+				sbp = &core.SbpStats{Index: i, Name: name}
+				// just vote
+				sbp.BlockNum += uint64(v.FactualNum)
+				sbp.ExceptedBlockNum += uint64(v.ExpectedNum)
+				stats.Stats[name] = sbp
 			}
 			// block sum
 			stats.BlockTotal += uint64(v.FactualNum)
@@ -213,24 +210,7 @@ func (snapshot *snapshotCs) DayStats(startIndex uint64, endIndex uint64) ([]*cor
 }
 
 func (snapshot *snapshotCs) dayVoteStat(b byte, index uint64, proofHash types.Hash) (*cdb.VoteContent, error) {
-	votes, err := core.CalVotes(snapshot.ConsensusGroupInfo, proofHash, snapshot.rw.rw)
-	if err != nil {
-		return nil, err
-	}
-	sort.Sort(core.ByBalance(votes))
-
-	total := big.NewInt(0)
-
-	details := make(map[string]*big.Int)
-	for k, v := range votes {
-		if k >= int(snapshot.RandRank) {
-			break
-		}
-		details[v.Name] = v.Balance
-		total.Add(total, v.Balance)
-	}
-	result := &cdb.VoteContent{Details: details, Total: total}
-	return result, nil
+	panic("dayVoteStat error")
 }
 
 func newSnapshotCs(rw *chainRw, log log15.Logger) *snapshotCs {
@@ -399,15 +379,7 @@ func (snapshot *snapshotCs) genSnapshotProofTimeIndx(idx uint64) (time.Time, uin
 }
 
 func (snapshot *snapshotCs) voteDetailsBeforeTime(t time.Time) ([]*VoteDetails, *ledger.HashHeight, error) {
-	block, e := snapshot.rw.GetSnapshotBeforeTime(t)
-	if e != nil {
-		snapshot.log.Error("geSnapshotBeferTime fail.", "err", e)
-		return nil, nil, e
-	}
-
-	headH := ledger.HashHeight{Height: block.Height, Hash: block.Hash}
-	details, err := snapshot.rw.CalVoteDetails(snapshot.Gid, &snapshot.GroupInfo, headH)
-	return details, &headH, err
+	panic("voteDetailsBeforeTime error")
 }
 
 func (snapshot *snapshotCs) VerifySnapshotProducer(header *ledger.SnapshotBlock) (bool, error) {

@@ -33,6 +33,7 @@ type accountBockReader interface {
 
 type ledgerReader interface {
 	GetLedgerReaderByHeight(startHeight uint64, endHeight uint64) (cr interfaces.LedgerReader, err error)
+	GetRegisterList(snapshotHash types.Hash, gid types.Gid) ([]*types.Registration, error)
 }
 
 type chainReader interface {

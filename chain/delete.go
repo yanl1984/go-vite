@@ -3,6 +3,7 @@ package chain
 import (
 	"errors"
 	"fmt"
+
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/ledger"
 )
@@ -198,9 +199,6 @@ func (c *chain) deleteSnapshotBlocksToHeight(toHeight uint64) (chunks []*ledger.
 		cErr := errors.New(fmt.Sprintf("c.stateDB.RollbackSnapshotBlocks failed, error is %s", err.Error()))
 		c.log.Crit(cErr.Error(), "method", "deleteSnapshotBlocksToHeight")
 	}
-
-	// delete active fork point
-	c.deleteActiveForkPoint(snapshotChunks)
 
 	if err := c.em.TriggerDeleteSbs(deleteSbsEvent, realChunksToDelete); err != nil {
 		cErr := errors.New(fmt.Sprintf("c.em.Trigger(deleteSbsEvent) failed, error is %s", err.Error()))

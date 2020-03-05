@@ -56,6 +56,7 @@ type finder struct {
 	peers     *peerSet
 	connect   Connector
 	consensus Consensus
+	chain     Chain
 
 	dialing map[peerId]struct{}
 
@@ -93,7 +94,7 @@ func (f *finder) UnSub(sub discovery.Subscriber) {
 	sub.UnSub(f.subId)
 }
 
-func newFinder(self types.Address, peers *peerSet, minPeers int, staticNodes []string, db *database.DB, connect Connector, consensus Consensus) (f *finder, err error) {
+func newFinder(self types.Address, peers *peerSet, minPeers int, staticNodes []string, db *database.DB, connect Connector, chain Chain, consensus Consensus) (f *finder, err error) {
 	f = &finder{
 		self:      self,
 		targets:   make(map[types.Address]*vnode.Node),
@@ -101,6 +102,8 @@ func newFinder(self types.Address, peers *peerSet, minPeers int, staticNodes []s
 		minPeers:  minPeers,
 		connect:   connect,
 		consensus: consensus,
+		chain:     chain,
+
 		dialing:   make(map[peerId]struct{}),
 		sbps:      make(map[types.Address]int64),
 		observers: make(map[int]func(_selfIsSBP bool)),
@@ -153,13 +156,14 @@ func (f *finder) start() {
 	f.term = make(chan struct{})
 
 	// should invoked after consensus.Init()
-	details, _, err := f.consensus.API().ReadVoteMap(time.Now())
+	latest := f.chain.GetLatestSnapshotBlock()
+	list, err := f.chain.GetRegisterList(latest.Hash, types.SNAPSHOT_GID)
 	if err == nil {
 		now := time.Now().Unix()
 		f.rw.Lock()
-		for _, d := range details {
-			f.sbps[d.CurrentAddr] = now
-			if d.CurrentAddr == f.self {
+		for _, d := range list {
+			f.sbps[d.BlockProducingAddress] = now
+			if d.BlockProducingAddress == f.self {
 				f._selfIsSBP = true
 			}
 		}

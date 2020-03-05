@@ -3,14 +3,15 @@ package vm
 import (
 	"bytes"
 	"encoding/hex"
+	"math/big"
+	"sort"
+	"time"
+
 	"github.com/vitelabs/go-vite/common/db/xleveldb/errors"
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/crypto"
 	"github.com/vitelabs/go-vite/interfaces"
 	"github.com/vitelabs/go-vite/ledger"
-	"math/big"
-	"sort"
-	"time"
 )
 
 type mockDB struct {
@@ -411,13 +412,6 @@ func (db *mockDB) GetUnsavedContractMeta() map[types.Address]*ledger.ContractMet
 }
 func (db *mockDB) GetUnsavedContractCode() []byte {
 	return nil
-}
-func (db *mockDB) GetStakeBeneficialAmount(addr *types.Address) (*big.Int, error) {
-	if *addr != *db.currentAddr {
-		return nil, errors.New("current account address not match")
-	} else {
-		return db.pledgeBeneficialAmount, nil
-	}
 }
 func (db *mockDB) DebugGetStorage() (map[string][]byte, error) {
 	return nil, nil

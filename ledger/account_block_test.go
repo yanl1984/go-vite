@@ -3,11 +3,12 @@ package ledger
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
+	"testing"
+
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/crypto"
 	"github.com/vitelabs/go-vite/crypto/ed25519"
-	"math/big"
-	"testing"
 )
 
 type SSS struct {
@@ -66,13 +67,9 @@ func createBlock() *AccountBlock {
 		Data: []byte{'c', 'b', 'c', 'd', 'e', 'c', 'b', 'c', 'd', 'e', 'c', 'b', 'c', 'd', 'e', 'c', 'b', 'c', 'd', 'e', 'c', 'b', 'c', 'd', 'e', 'c', 'b', 'c', 'd', 'e',
 			'c', 'b', 'c', 'd', 'e', 'c', 'b', 'c', 'd', 'e', 'c', 'b', 'c', 'd', 'e', 'c', 'b', 'c', 'd', 'e', 'c', 'b', 'c', 'd', 'e', 'c', 'b', 'c', 'd', 'e'},
 
-		Quota:   1,
-		Fee:     big.NewInt(10),
-		LogHash: &logHash,
-
-		Difficulty: big.NewInt(10),
-		Nonce:      []byte("test nonce test nonce"),
-		Signature:  signature,
+		Quota:     1,
+		LogHash:   &logHash,
+		Signature: signature,
 	}
 }
 

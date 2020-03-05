@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"strconv"
 
+	"sync"
+
 	"github.com/vitelabs/go-vite/ledger"
 	"github.com/vitelabs/go-vite/vm_db"
-	"sync"
 )
 
 func (c *chain) InsertAccountBlock(vmAccountBlock *vm_db.VmAccountBlock) error {
@@ -144,9 +145,6 @@ func (c *chain) insertSnapshotBlock(snapshotBlock *ledger.SnapshotBlock) error {
 	}()
 
 	wg.Wait()
-
-	// try add fork active point
-	c.addActiveForkPoint(snapshotBlock)
 
 	c.em.TriggerInsertSbs(InsertSbsEvent, chunks)
 	return nil

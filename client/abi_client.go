@@ -9,32 +9,32 @@ import (
 )
 
 type AbiClient interface {
-	CallOffChain(methodName string, params ...interface{}) ([]interface{}, error)
+	CallOffChain(offchainCode string, methodName string, params ...interface{}) ([]interface{}, error)
+	BuildCallMethodData(methodName string, params ...interface{}) ([]byte, error)
 }
 
 type abiCli struct {
 	cli          RpcClient
 	contractAbi  *abi.ABIContract
-	offchainCode string
 	contractAddr types.Address
 }
 
-func GetAbiCli(cli RpcClient, abiCode string, offchainCode string, addr types.Address) (AbiClient, error) {
+func GetAbiCli(cli RpcClient, abiCode string, addr types.Address) (AbiClient, error) {
 	contractAbi, err := abi.JSONToABIContract(strings.NewReader(abiCode))
 	if err != nil {
 		return nil, err
 	}
-	return &abiCli{cli: cli, contractAbi: &contractAbi, contractAddr: addr, offchainCode: offchainCode}, nil
+	return &abiCli{cli: cli, contractAbi: &contractAbi, contractAddr: addr}, nil
 }
 
-func (cli abiCli) CallOffChain(methodName string, params ...interface{}) ([]interface{}, error) {
+func (cli abiCli) CallOffChain(offchainCode string, methodName string, params ...interface{}) ([]interface{}, error) {
 	data, err := cli.contractAbi.PackOffChain(methodName, params...)
 	if err != nil {
 		return nil, err
 	}
 	rpcParam := api.CallOffChainMethodParam{
 		SelfAddr:     cli.contractAddr,
-		OffChainCode: cli.offchainCode,
+		OffChainCode: offchainCode,
 		Data:         data,
 	}
 	outputs, err := cli.cli.CallOffChainMethod(rpcParam)
@@ -43,4 +43,9 @@ func (cli abiCli) CallOffChain(methodName string, params ...interface{}) ([]inte
 	}
 	result, err := cli.contractAbi.DirectUnpackOffchainOutput(methodName, outputs)
 	return result, err
+}
+
+func (cli abiCli) BuildCallMethodData(methodName string, params ...interface{}) ([]byte, error) {
+	data, err := cli.contractAbi.PackMethod(methodName, params...)
+	return data, err
 }

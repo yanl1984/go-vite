@@ -1,9 +1,7 @@
 package util
 
 import (
-	"github.com/vitelabs/go-vite/common/fork"
 	"github.com/vitelabs/go-vite/common/helper"
-	"github.com/vitelabs/go-vite/ledger"
 )
 
 const (
@@ -91,7 +89,7 @@ func RequestQuotaCost(data []byte, quotaTable *QuotaTable) (uint64, error) {
 }
 
 // CalcQuotaUsed calculate stake quota and total quota used by a block
-func CalcQuotaUsed(useQuota bool, quotaTotal, quotaAddition, quotaLeft uint64, err error) (qStakeUsed uint64, qUsed uint64) {
+func CalcQuotaUsed(useQuota bool, quotaTotal, quotaLeft uint64, err error) (qStakeUsed uint64, qUsed uint64) {
 	if !useQuota {
 		return 0, 0
 	}
@@ -99,15 +97,7 @@ func CalcQuotaUsed(useQuota bool, quotaTotal, quotaAddition, quotaLeft uint64, e
 		return 0, 0
 	}
 	qUsed = quotaTotal - quotaLeft
-	if qUsed < quotaAddition {
-		return 0, qUsed
-	}
-	return qUsed - quotaAddition, qUsed
-}
-
-// IsPoW check whether a block calculated pow
-func IsPoW(block *ledger.AccountBlock) bool {
-	return len(block.Nonce) > 0
+	return qUsed, qUsed
 }
 
 // QuotaTable is used to query quota used by op code and transactions
@@ -192,167 +182,18 @@ type QuotaTable struct {
 	CreateTxRequestQuota  uint64
 	CreateTxResponseQuota uint64
 
-	RegisterQuota                             uint64
-	UpdateBlockProducingAddressQuota          uint64
-	UpdateRewardWithdrawAddressQuota          uint64
-	RevokeQuota                               uint64
-	WithdrawRewardQuota                       uint64
-	VoteQuota                                 uint64
-	CancelVoteQuota                           uint64
-	StakeQuota                                uint64
-	CancelStakeQuota                          uint64
-	DelegateStakeQuota                        uint64
-	CancelDelegateStakeQuota                  uint64
-	IssueQuota                                uint64
-	ReIssueQuota                              uint64
-	BurnQuota                                 uint64
-	TransferOwnershipQuota                    uint64
-	DisableReIssueQuota                       uint64
-	GetTokenInfoQuota                         uint64
-	DexFundDepositQuota                       uint64
-	DexFundWithdrawQuota                      uint64
-	DexFundOpenNewMarketQuota                 uint64
-	DexFundPlaceOrderQuota                    uint64
-	DexFundSettleOrdersQuota                  uint64
-	DexFundTriggerPeriodJobQuota              uint64
-	DexFundStakeForMiningQuota                uint64
-	DexFundStakeForVipQuota                   uint64
-	DexFundStakeForSuperVIPQuota              uint64
-	DexFundDelegateStakeCallbackQuota         uint64
-	DexFundCancelDelegateStakeCallbackQuota   uint64
-	DexFundGetTokenInfoCallbackQuota          uint64
-	DexFundAdminConfigQuota                   uint64
-	DexFundTradeAdminConfigQuota              uint64
-	DexFundMarketAdminConfigQuota             uint64
-	DexFundTransferTokenOwnershipQuota        uint64
-	DexFundNotifyTimeQuota                    uint64
-	DexFundCreateNewInviterQuota              uint64
-	DexFundBindInviteCodeQuota                uint64
-	DexFundEndorseVxQuota                     uint64
-	DexFundSettleMakerMinedVxQuota            uint64
-	DexFundConfigMarketAgentsQuota            uint64
-	DexFunPlaceAgentOrderQuota                uint64
-	DexFunLockVxForDividendQuota              uint64
-	DexFunSwitchConfigQuota                   uint64
-	DexFundStakeForPrincipalSuperVIPQuota     uint64
-	DexFundCancelStakeByIdQuota               uint64
-	DexFundDelegateStakeCallbackV2Quota       uint64
-	DexFundDelegateCancelStakeCallbackV2Quota uint64
+	RegisterQuota                    uint64
+	UpdateBlockProducingAddressQuota uint64
+	RevokeQuota                      uint64
 }
 
 // QuotaTableByHeight returns different quota table by hard fork version
 func QuotaTableByHeight(sbHeight uint64) *QuotaTable {
-	if fork.IsEarthFork(sbHeight) {
-		return &earthQuotaTable
-	} else if fork.IsStemFork(sbHeight) {
-		return &dexAgentQuotaTable
-	} else if fork.IsDexFork(sbHeight) {
-		return &viteQuotaTable
-	}
-	return &initQuotaTable
+	return &viteQuotaTable
 }
 
 var (
-	initQuotaTable = QuotaTable{
-		AddQuota:                         3,
-		MulQuota:                         5,
-		SubQuota:                         3,
-		DivQuota:                         5,
-		SDivQuota:                        5,
-		ModQuota:                         5,
-		SModQuota:                        5,
-		AddModQuota:                      8,
-		MulModQuota:                      8,
-		ExpQuota:                         10,
-		ExpByteQuota:                     50,
-		SignExtendQuota:                  5,
-		LtQuota:                          3,
-		GtQuota:                          3,
-		SltQuota:                         3,
-		SgtQuota:                         3,
-		EqQuota:                          3,
-		IsZeroQuota:                      3,
-		AndQuota:                         3,
-		OrQuota:                          3,
-		XorQuota:                         3,
-		NotQuota:                         3,
-		ByteQuota:                        3,
-		ShlQuota:                         3,
-		ShrQuota:                         3,
-		SarQuota:                         3,
-		Blake2bQuota:                     30,
-		Blake2bWordQuota:                 6,
-		AddressQuota:                     2,
-		BalanceQuota:                     400,
-		CallerQuota:                      2,
-		CallValueQuota:                   2,
-		CallDataLoadQuota:                3,
-		CallDataSizeQuota:                2,
-		CallDataCopyQuota:                3,
-		MemCopyWordQuota:                 3,
-		CodeSizeQuota:                    2,
-		CodeCopyQuota:                    3,
-		ReturnDataSizeQuota:              2,
-		ReturnDataCopyQuota:              3,
-		TimestampQuota:                   2,
-		HeightQuota:                      2,
-		TokenIDQuota:                     2,
-		AccountHeightQuota:               2,
-		PreviousHashQuota:                2,
-		FromBlockHashQuota:               2,
-		SeedQuota:                        2,
-		RandomQuota:                      2,
-		PopQuota:                         2,
-		MloadQuota:                       3,
-		MstoreQuota:                      3,
-		Mstore8Quota:                     3,
-		SloadQuota:                       200,
-		SstoreResetQuota:                 5000,
-		SstoreInitQuota:                  20000,
-		SstoreCleanQuota:                 100,
-		SstoreNoopQuota:                  200,
-		SstoreMemQuota:                   200,
-		JumpQuota:                        8,
-		JumpiQuota:                       10,
-		PcQuota:                          2,
-		MsizeQuota:                       2,
-		JumpdestQuota:                    1,
-		PushQuota:                        3,
-		DupQuota:                         3,
-		SwapQuota:                        3,
-		LogQuota:                         375,
-		LogTopicQuota:                    375,
-		LogDataQuota:                     8,
-		CallMinusQuota:                   10000,
-		MemQuotaDivision:                 512,
-		SnapshotQuota:                    200,
-		CodeQuota:                        200,
-		MemQuota:                         3,
-		TxQuota:                          21000,
-		TxDataQuota:                      68,
-		CreateTxRequestQuota:             21000,
-		CreateTxResponseQuota:            53000,
-		RegisterQuota:                    62200,
-		UpdateBlockProducingAddressQuota: 62200,
-		RevokeQuota:                      83200,
-		WithdrawRewardQuota:              68200,
-		VoteQuota:                        62000,
-		CancelVoteQuota:                  62000,
-		StakeQuota:                       82000,
-		CancelStakeQuota:                 73000,
-		DelegateStakeQuota:               82000,
-		CancelDelegateStakeQuota:         73000,
-		IssueQuota:                       104525,
-		ReIssueQuota:                     69325,
-		BurnQuota:                        48837,
-		TransferOwnershipQuota:           58981,
-		DisableReIssueQuota:              63125,
-		GetTokenInfoQuota:                63200,
-	}
-
-	viteQuotaTable     = newViteQuotaTable()
-	dexAgentQuotaTable = newDexAgentQuotaTable()
-	earthQuotaTable    = newEarthQuotaTable()
+	viteQuotaTable = newViteQuotaTable()
 )
 
 func newViteQuotaTable() QuotaTable {
@@ -437,61 +278,8 @@ func newViteQuotaTable() QuotaTable {
 		CreateTxRequestQuota:  31000,
 		CreateTxResponseQuota: 31000,
 
-		RegisterQuota:                           168000,
-		UpdateBlockProducingAddressQuota:        168000,
-		RevokeQuota:                             126000,
-		WithdrawRewardQuota:                     147000,
-		VoteQuota:                               84000,
-		CancelVoteQuota:                         52500,
-		StakeQuota:                              105000,
-		CancelStakeQuota:                        105000,
-		DelegateStakeQuota:                      115500,
-		CancelDelegateStakeQuota:                115500,
-		IssueQuota:                              189000,
-		ReIssueQuota:                            126000,
-		BurnQuota:                               115500,
-		TransferOwnershipQuota:                  136500,
-		DisableReIssueQuota:                     115500,
-		GetTokenInfoQuota:                       31500,
-		DexFundDepositQuota:                     10500,
-		DexFundWithdrawQuota:                    10500,
-		DexFundOpenNewMarketQuota:               31500,
-		DexFundPlaceOrderQuota:                  25200,
-		DexFundSettleOrdersQuota:                21000,
-		DexFundTriggerPeriodJobQuota:            8400,
-		DexFundStakeForMiningQuota:              31500,
-		DexFundStakeForVipQuota:                 31500,
-		DexFundDelegateStakeCallbackQuota:       12600,
-		DexFundCancelDelegateStakeCallbackQuota: 16800,
-		DexFundGetTokenInfoCallbackQuota:        10500,
-		DexFundAdminConfigQuota:                 16800,
-		DexFundTradeAdminConfigQuota:            10500,
-		DexFundMarketAdminConfigQuota:           10500,
-		DexFundTransferTokenOwnershipQuota:      8400,
-		DexFundNotifyTimeQuota:                  10500,
-		DexFundCreateNewInviterQuota:            18900,
-		DexFundBindInviteCodeQuota:              8400,
-		DexFundEndorseVxQuota:                   6300,
-		DexFundSettleMakerMinedVxQuota:          25200,
+		RegisterQuota:                    168000,
+		UpdateBlockProducingAddressQuota: 168000,
+		RevokeQuota:                      126000,
 	}
-}
-
-func newDexAgentQuotaTable() QuotaTable {
-	gt := newViteQuotaTable()
-	gt.DexFundStakeForSuperVIPQuota = 33600
-	gt.DexFundConfigMarketAgentsQuota = 8400
-	gt.DexFunPlaceAgentOrderQuota = 25200
-	return gt
-}
-
-func newEarthQuotaTable() QuotaTable {
-	gt := newDexAgentQuotaTable()
-	gt.UpdateRewardWithdrawAddressQuota = 168000
-	gt.DexFunLockVxForDividendQuota = 31500
-	gt.DexFunSwitchConfigQuota = 31500
-	gt.DexFundStakeForPrincipalSuperVIPQuota = 10500
-	gt.DexFundCancelStakeByIdQuota = 10500
-	gt.DexFundDelegateStakeCallbackV2Quota = 31500
-	gt.DexFundDelegateCancelStakeCallbackV2Quota = 33000
-	return gt
 }

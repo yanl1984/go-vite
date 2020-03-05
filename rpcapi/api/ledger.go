@@ -167,26 +167,6 @@ func (l *LedgerApi) GetBlocksByHeight(addr types.Address, height interface{}, co
 	}
 	return l.ledgerBlocksToRpcBlocks(accountBlocks)
 }
-
-// old api
-func (l *LedgerApi) GetBlockByHeight(addr types.Address, height interface{}) (*AccountBlock, error) {
-	return l.GetAccountBlockByHeight(addr, height)
-}
-
-// old api
-func (l *LedgerApi) GetBlocksByAccAddr(addr types.Address, index int, count int) ([]*AccountBlock, error) {
-	return l.GetAccountBlocksByAddress(addr, index, count)
-}
-
-// old api
-func (l *LedgerApi) GetAccountByAccAddr(addr types.Address) (*RpcAccountInfo, error) {
-	info, err := l.getAccountInfoByAddress(addr)
-	if err != nil {
-		return nil, err
-	}
-	return ToRpcAccountInfo(l.chain, info), nil
-}
-
 func (l *LedgerApi) GetSnapshotBlockByHash(hash types.Hash) (*SnapshotBlock, error) {
 	block, err := l.chain.GetSnapshotBlockByHash(hash)
 	if err != nil {

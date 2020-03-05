@@ -3,23 +3,19 @@ package consensus
 import (
 	"fmt"
 	"math/big"
-	"sort"
 	"sync"
 	"time"
-
-	"github.com/vitelabs/go-vite/consensus/cdb"
-
-	"github.com/vitelabs/go-vite/pool/lock"
-
-	"github.com/vitelabs/go-vite/chain"
 
 	"github.com/hashicorp/golang-lru"
 	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/vitelabs/go-vite/chain"
 	"github.com/vitelabs/go-vite/common/types"
+	"github.com/vitelabs/go-vite/consensus/cdb"
 	"github.com/vitelabs/go-vite/consensus/core"
 	"github.com/vitelabs/go-vite/ledger"
 	"github.com/vitelabs/go-vite/log15"
+	"github.com/vitelabs/go-vite/pool/lock"
 )
 
 // Chain refer to chain.Chain
@@ -36,7 +32,6 @@ type Chain interface {
 	GetConsensusGroupList(snapshotHash types.Hash) ([]*types.ConsensusGroupInfo, error)                                                 // Get all consensus group
 	GetRegisterList(snapshotHash types.Hash, gid types.Gid) ([]*types.Registration, error)                                              // Get register for consensus group
 	GetAllRegisterList(snapshotHash types.Hash, gid types.Gid) ([]*types.Registration, error)                                           // Get register for consensus group
-	GetVoteList(snapshotHash types.Hash, gid types.Gid) ([]*types.VoteInfo, error)                                                      // Get the candidate's vote
 	GetConfirmedBalanceList(addrList []types.Address, tokenID types.TokenTypeId, sbHash types.Hash) (map[types.Address]*big.Int, error) // Get balance for addressList
 	GetSnapshotHeaderBeforeTime(timestamp *time.Time) (*ledger.SnapshotBlock, error)
 
@@ -200,47 +195,20 @@ func (cRw *chainRw) GetSeedsBeforeHashH(hash types.Hash) uint64 {
 }
 
 func (cRw *chainRw) CalVotes(info *core.GroupInfo, hashH ledger.HashHeight) ([]*core.Vote, error) {
-	return core.CalVotes(info.ConsensusGroupInfo, hashH.Hash, cRw.rw)
-}
-
-func (cRw *chainRw) CalVoteDetails(gid types.Gid, info *core.GroupInfo, block ledger.HashHeight) ([]*VoteDetails, error) {
-	// query register info
-	registerList, _ := cRw.rw.GetRegisterList(block.Hash, gid)
-	// query vote info
-	votes, _ := cRw.rw.GetVoteList(block.Hash, gid)
-
-	var registers []*VoteDetails
-
-	// cal candidate
-	for _, v := range registerList {
-		registers = append(registers, cRw.genVoteDetails(block.Hash, v, votes, info.CountingTokenId))
+	list, err := cRw.rw.GetRegisterList(hashH.Hash, info.Gid)
+	if err != nil {
+		return nil, err
 	}
-	sort.Sort(ByBalance(registers))
-	return registers, nil
-}
-
-func (cRw *chainRw) genVoteDetails(snapshotHash types.Hash, registration *types.Registration, infos []*types.VoteInfo, id types.TokenTypeId) *VoteDetails {
-	var addrs []types.Address
-	for _, v := range infos {
-		if v.SbpName == registration.Name {
-			addrs = append(addrs, v.VoteAddr)
-		}
+	var result []*core.Vote
+	for _, v := range list {
+		result = append(result, &core.Vote{
+			Name:    v.Name,
+			Addr:    v.BlockProducingAddress,
+			Balance: big.NewInt(0),
+			Type:    []core.VoteType{core.NORMAL},
+		})
 	}
-	balanceMap, _ := cRw.rw.GetConfirmedBalanceList(addrs, id, snapshotHash)
-	balanceTotal := big.NewInt(0)
-	for _, v := range balanceMap {
-		balanceTotal.Add(balanceTotal, v)
-	}
-	return &VoteDetails{
-		Vote: core.Vote{
-			Name:    registration.Name,
-			Addr:    registration.BlockProducingAddress,
-			Balance: balanceTotal,
-		},
-		CurrentAddr:  registration.BlockProducingAddress,
-		RegisterList: registration.HisAddrList,
-		Addr:         balanceMap,
-	}
+	return result, nil
 }
 
 func (cRw *chainRw) GetMemberInfo(gid types.Gid) (*core.GroupInfo, error) {
