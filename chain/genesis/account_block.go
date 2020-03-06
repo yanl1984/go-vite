@@ -41,16 +41,16 @@ func newGenesisGovernanceContractBlocks(cfg *config.Genesis, list []*vm_db.VmAcc
 		}
 		vmdb := vm_db.NewGenesisVmDB(&contractAddr)
 		governance, err := abi.NewGovernance(vmdb)
-		util.AssertNull(err)
+		util.AssertNil(err)
 
 		//governance.InitGroupInfo(cfg.)
 		for gidStr, groupInfo := range cfg.GovernanceInfo.ConsensusGroupInfoMap {
 			gid, err := types.HexToGid(gidStr)
-			util.AssertNull(err)
+			util.AssertNil(err)
 
 
 			err = governance.InitGroupInfo(gid, groupInfo)
-			util.AssertNull(err)
+			util.AssertNil(err)
 		}
 
 		for _, groupRegistrationInfoMap := range cfg.GovernanceInfo.RegistrationInfoMap {
@@ -59,7 +59,7 @@ func newGenesisGovernanceContractBlocks(cfg *config.Genesis, list []*vm_db.VmAcc
 					registrationInfo.HistoryAddressList = []types.Address{*registrationInfo.BlockProducingAddress}
 				}
 				err := governance.InitRegistration(name, registrationInfo)
-				util.AssertNull(err)
+				util.AssertNil(err)
 			}
 		}
 

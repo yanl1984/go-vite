@@ -1,6 +1,9 @@
 package util
 
-import "errors"
+import (
+	"encoding/json"
+	"errors"
+)
 
 var (
 	ErrInvalidMethodParam        = errors.New("invalid method param")
@@ -55,10 +58,15 @@ func DealWithErr(v interface{}) {
 	}
 }
 
-func AssertNull(v interface{}) {
+func AssertNil(v interface{}) {
 	if v != nil {
 		panic(v)
 	}
+}
+
+func JsonString(v interface{}) string {
+	byt, _ := json.Marshal(v)
+	return string(byt)
 }
 
 func Serialize(args...interface{})[]interface{}  {

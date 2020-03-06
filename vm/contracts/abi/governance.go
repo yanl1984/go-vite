@@ -61,7 +61,7 @@ func NewGovernance(db vm_db.VmDb) (*Governance, error) {
 // 检查是否是一个sbp
 func (g Governance) CheckPermission(sbpName string) error {
 	info, err := g.selector.selectBySbpName(sbpName)
-	util.AssertNull(err)
+	util.AssertNil(err)
 	if info == nil {
 		return util.ErrInvalidMethodParam
 	}
@@ -73,7 +73,7 @@ func (g Governance) CheckPermission(sbpName string) error {
 
 func (g Governance) CheckSbpExistForOwner(sbpName string, ownerAddress types.Address) error {
 	info, err := g.selector.selectBySbpName(sbpName)
-	util.AssertNull(err)
+	util.AssertNil(err)
 	if info == nil {
 		return util.ErrInvalidMethodParam
 	}
@@ -96,29 +96,24 @@ func (g Governance) CheckSbpExistForRegister(sbpName string, producerAddress typ
 	}
 
 	oldName, err := g.selector.selectByProducingAddress(producerAddress)
-	util.AssertNull(err)
+	util.AssertNil(err)
 	if oldName != nil && *oldName != sbpName {
 		return nil, util.ErrInvalidMethodParam
 	}
 
 	info, err := g.selector.selectBySbpName(sbpName)
-	util.AssertNull(err)
+	util.AssertNil(err)
 	// 从来都没有注册过
-	if info == nil && oldName == nil {
-		return nil, nil
+	if info != nil {
+		// 已经注册过了，并正在工作
+		if info.Status == 1 || info.Status == 2 {
+			return nil, util.ErrInvalidMethodParam
+		}
+		// 规定时间内重复注册
+		if curHeight != uint64(0) && curHeight <= info.VoteExpiredHeight {
+			return nil, util.ErrInvalidMethodParam
+		}
 	}
-	if info == nil {
-		return nil, util.ErrInvalidMethodParam
-	}
-	// 已经注册过了，并正在工作
-	if info.Status == 1 || info.Status == 2 {
-		return nil, util.ErrInvalidMethodParam
-	}
-	// 规定时间内重复注册
-	if curHeight != uint64(0) && curHeight <= info.VoteExpiredHeight {
-		return nil, util.ErrInvalidMethodParam
-	}
-
 	{ // 当前工作节点数检查
 		working, err := g.selector.CountWorking()
 		if err != nil {
@@ -135,12 +130,15 @@ func (g Governance) CheckSbpExistForRegister(sbpName string, producerAddress typ
 			return nil, util.ErrInvalidMethodParam
 		}
 	}
+	if info == nil && oldName == nil {
+		return nil, nil
+	}
 	return info, nil
 }
 
 func (g Governance) CheckSbpExistForVoting(sbpName string, voteType uint8, curHeight uint64, proposerSbpName string) (*SbpInfo, error) {
 	info, err := g.selector.selectBySbpName(sbpName)
-	util.AssertNull(err)
+	util.AssertNil(err)
 	// 从来都没有注册过
 	if info == nil {
 		return nil, util.ErrInvalidMethodParam
@@ -198,7 +196,7 @@ func (g Governance) CheckSbpExistForVoting(sbpName string, voteType uint8, curHe
 
 func (g Governance) CheckSbpExistForRevoke(sbpName string) (*SbpInfo, error) {
 	info, err := g.selector.selectBySbpName(sbpName)
-	util.AssertNull(err)
+	util.AssertNil(err)
 	// 从来都没有注册过
 	if info == nil {
 		return nil, util.ErrInvalidMethodParam
@@ -212,7 +210,7 @@ func (g Governance) CheckSbpExistForRevoke(sbpName string) (*SbpInfo, error) {
 
 func (g Governance) CheckSbpExistForUpdateProducingAddress(sbpName string, producingAddress types.Address) (*SbpInfo, error) {
 	info, err := g.selector.selectBySbpName(sbpName)
-	util.AssertNull(err)
+	util.AssertNil(err)
 	if info == nil || info.Status != 1 {
 		return nil, util.ErrInvalidMethodParam
 	}
@@ -220,7 +218,7 @@ func (g Governance) CheckSbpExistForUpdateProducingAddress(sbpName string, produ
 		return nil, util.ErrInvalidMethodParam
 	}
 	address, err := g.selector.selectByProducingAddress(producingAddress)
-	util.AssertNull(err)
+	util.AssertNil(err)
 	if address != nil {
 		return nil, util.ErrInvalidMethodParam
 	}
@@ -266,7 +264,7 @@ func (g *Governance) updateSbpInfoForVoting(sbpName string, voteType uint8, appr
 		info.DisApproval = append(info.DisApproval, proposerSbpName)
 	}
 	workingCnt, err := g.selector.CountWorking()
-	util.AssertNull(err)
+	util.AssertNil(err)
 	if len(info.Approval)*3 > workingCnt*2 {
 		if voteType == 0 {
 			// 投票进入
@@ -304,46 +302,60 @@ func (g *Governance) updateSbpInfoForProducingAddress(sbpName string, producingA
 */
 func (g *Governance) Register(sbpName string, producingAddress types.Address, ownerAddress types.Address, proposerSbpName string, curHeight uint64) error {
 	err := g.CheckPermission(proposerSbpName)
-	util.AssertNull(err)
+	if err != nil {
+		return err
+	}
 
 	sbpInfo, err := g.CheckSbpExistForRegister(sbpName, producingAddress, curHeight)
-	util.AssertNull(err)
+	if err != nil {
+		return err
+	}
 
 	if sbpInfo == nil {
 		// 添加
 		err := g.addSbpInfo(sbpName, producingAddress, ownerAddress, curHeight)
-		util.AssertNull(err)
+		util.AssertNil(err)
 	} else {
 		// 更新
 		err := g.updateSbpInfoForRegister(sbpName, producingAddress, ownerAddress, sbpInfo, curHeight)
-		util.AssertNull(err)
+		util.AssertNil(err)
 	}
 	return nil
 }
 
 func (g *Governance) Voting(sbpName string, voteType uint8, approval bool, proposerSbpName string, curHeight uint64) error {
 	err := g.CheckPermission(proposerSbpName)
-	util.AssertNull(err)
+	if err != nil {
+		return err
+	}
 
 	info, err := g.CheckSbpExistForVoting(sbpName, voteType, curHeight, proposerSbpName)
-	util.AssertNull(info)
+	if err != nil {
+		return err
+	}
 
 	return g.updateSbpInfoForVoting(sbpName, voteType, approval, proposerSbpName, curHeight, info)
 }
 
 func (g *Governance) Revoke(sbpName string, proposerSbpName string, curHeight uint64) error {
 	err := g.CheckPermission(proposerSbpName)
-	util.AssertNull(err)
+	if err != nil {
+		return err
+	}
 
 	info, err := g.CheckSbpExistForRevoke(sbpName)
-	util.AssertNull(err)
+	if err != nil {
+		return err
+	}
 
 	return g.updateSbpInfoForRevoke(sbpName, proposerSbpName, curHeight, info)
 }
 
 func (g *Governance) UpdateProducingAddress(producingAddress types.Address, proposerSbpName string) error {
 	info, err := g.CheckSbpExistForUpdateProducingAddress(proposerSbpName, producingAddress)
-	util.AssertNull(err)
+	if err != nil {
+		return err
+	}
 
 	return g.updateSbpInfoForProducingAddress(proposerSbpName, producingAddress, info)
 }
@@ -468,12 +480,7 @@ func (g GovernanceSelector) SelectRegistration(sbpName string) (*types.Registrat
 	return info.Registration(), nil
 }
 
-func (g GovernanceSelector) CountWorking() (int, error) {
-	list, err := g.SelectRegistrationList(true)
-	return len(list), err
-}
-
-func (g GovernanceSelector) SelectRegistrationList(workingFilter bool) ([]*types.Registration, error) {
+func (g GovernanceSelector) selectSbpList(workingFilter bool) ([]*SbpInfo, error) {
 	var iterator interfaces.StorageIterator
 	var err error
 
@@ -483,7 +490,7 @@ func (g GovernanceSelector) SelectRegistrationList(workingFilter bool) ([]*types
 	}
 	defer iterator.Release()
 
-	registerList := make([]*types.Registration, 0)
+	result := make([]*SbpInfo, 0)
 	for {
 		if !iterator.Next() {
 			if iterator.Error() != nil {
@@ -506,13 +513,30 @@ func (g GovernanceSelector) SelectRegistrationList(workingFilter bool) ([]*types
 
 		if workingFilter {
 			if sbpInfo.Status == 1 {
-				registerList = append(registerList, sbpInfo.Registration())
+				result = append(result, sbpInfo)
 			}
 		} else {
-			registerList = append(registerList, sbpInfo.Registration())
+			result = append(result, sbpInfo)
 		}
 	}
-	return registerList, nil
+	return result, nil
+}
+
+func (g GovernanceSelector) CountWorking() (int, error) {
+	list, err := g.SelectRegistrationList(true)
+	return len(list), err
+}
+
+func (g GovernanceSelector) SelectRegistrationList(workingFilter bool) ([]*types.Registration, error) {
+	list, err := g.selectSbpList(workingFilter)
+	if err != nil {
+		return nil, err
+	}
+	var result []*types.Registration
+	for _, info := range list {
+		result = append(result, info.Registration())
+	}
+	return result, nil
 }
 
 func (g GovernanceSelector) SelectGroupInfo(gid types.Gid) (*types.ConsensusGroupInfo, error) {
@@ -556,4 +580,10 @@ func (g GovernanceSelector) SelectGroupList() ([]*types.ConsensusGroupInfo, erro
 		result = append(result, info)
 	}
 	return result, nil
+}
+
+func (g GovernanceSelector) SelectState() ([]*SbpInfo, []*types.ConsensusGroupInfo, error) {
+	registrationList, _ := g.SelectGroupList()
+	sbpList, _ := g.selectSbpList(false)
+	return sbpList, registrationList, nil
 }

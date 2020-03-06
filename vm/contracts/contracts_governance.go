@@ -44,15 +44,16 @@ func (p *MethodRegister) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error
 		return util.ErrInvalidMethodParam
 	}
 	param, err := p.unpackParam(block.Data)
-	util.AssertNull(err)
+	util.AssertNil(err)
 
-	governance, err := abi.NewGovernance(db)
-	util.AssertNull(err)
+	//governance, err := abi.NewGovernance(db)
+	//util.AssertNil(err)
+	//
+	//err = governance.CheckSbpExistForOwner(param.ProposerSbpName, block.AccountAddress)
+	//util.AssertNil(err)
+	//
+	//_, err = governance.CheckSbpExistForRegister(param.SbpName, param.BlockProducingAddress, 0)
 
-	err = governance.CheckSbpExistForOwner(param.ProposerSbpName, block.AccountAddress)
-	util.AssertNull(err)
-
-	_, err = governance.CheckSbpExistForRegister(param.SbpName, param.BlockProducingAddress, 0)
 	block.Data, _ = p.packParam(param)
 	return err
 }
@@ -64,13 +65,17 @@ func (p *MethodRegister) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, se
 	snapshotBlock := vm.GlobalStatus().SnapshotBlock()
 
 	governance, err := abi.NewGovernance(db)
-	util.AssertNull(err)
+	util.AssertNil(err)
 
-	err = governance.CheckSbpExistForOwner(param.ProposerSbpName, block.AccountAddress)
-	util.AssertNull(err)
+	err = governance.CheckSbpExistForOwner(param.ProposerSbpName, sendBlock.AccountAddress)
+	if err != nil {
+		return nil, err
+	}
 
 	err = governance.Register(param.SbpName, param.BlockProducingAddress, param.OwnerAddress, param.ProposerSbpName, snapshotBlock.Height)
-	util.AssertNull(err)
+	if err != nil {
+		return nil, err
+	}
 	return nil, nil
 }
 
@@ -109,14 +114,14 @@ func (p *MethodVote) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
 		return util.ErrInvalidMethodParam
 	}
 	param, err := p.unpackParam(block.Data)
-	util.AssertNull(err)
-
-	governance, err := abi.NewGovernance(db)
-	util.AssertNull(err)
-	err = governance.CheckSbpExistForOwner(param.ProposerSbpName, block.AccountAddress)
-	util.AssertNull(err)
-
-	_, err = governance.CheckSbpExistForVoting(param.SbpName, param.VoteType, 0, param.ProposerSbpName)
+	util.AssertNil(err)
+	//
+	//governance, err := abi.NewGovernance(db)
+	//util.AssertNil(err)
+	//err = governance.CheckSbpExistForOwner(param.ProposerSbpName, block.AccountAddress)
+	//util.AssertNil(err)
+	//
+	//_, err = governance.CheckSbpExistForVoting(param.SbpName, param.VoteType, 0, param.ProposerSbpName)
 	block.Data, _ = p.packParam(param)
 	return err
 }
@@ -128,12 +133,16 @@ func (p *MethodVote) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, sendBl
 	snapshotBlock := vm.GlobalStatus().SnapshotBlock()
 
 	governance, err := abi.NewGovernance(db)
-	util.AssertNull(err)
-	err = governance.CheckSbpExistForOwner(param.ProposerSbpName, block.AccountAddress)
-	util.AssertNull(err)
+	util.AssertNil(err)
+	err = governance.CheckSbpExistForOwner(param.ProposerSbpName, sendBlock.AccountAddress)
+	if err != nil {
+		return nil, err
+	}
 
 	err = governance.Voting(param.SbpName, param.VoteType, param.Approval, param.ProposerSbpName, snapshotBlock.Height)
-	util.AssertNull(err)
+	if err != nil {
+		return nil, err
+	}
 	return nil, nil
 }
 
@@ -172,15 +181,15 @@ func (p *MethodRevoke) DoSend(db vm_db.VmDb, block *ledger.AccountBlock) error {
 		return util.ErrInvalidMethodParam
 	}
 	param, err := p.unpackParam(block.Data)
-	util.AssertNull(err)
-
-	governance, err := abi.NewGovernance(db)
-	util.AssertNull(err)
-
-	err = governance.CheckSbpExistForOwner(param.ProposerSbpName, block.AccountAddress)
-	util.AssertNull(err)
-
-	_, err = governance.CheckSbpExistForRevoke(param.SbpName)
+	util.AssertNil(err)
+	//
+	//governance, err := abi.NewGovernance(db)
+	//util.AssertNil(err)
+	//
+	//err = governance.CheckSbpExistForOwner(param.ProposerSbpName, block.AccountAddress)
+	//util.AssertNil(err)
+	//
+	//_, err = governance.CheckSbpExistForRevoke(param.SbpName)
 	block.Data, _ = p.packParam(param)
 	return err
 }
@@ -192,13 +201,17 @@ func (p *MethodRevoke) DoReceive(db vm_db.VmDb, block *ledger.AccountBlock, send
 
 	vm.GlobalStatus().SnapshotBlock()
 	governance, err := abi.NewGovernance(db)
-	util.AssertNull(err)
+	util.AssertNil(err)
 
-	err = governance.CheckSbpExistForOwner(param.ProposerSbpName, block.AccountAddress)
-	util.AssertNull(err)
+	err = governance.CheckSbpExistForOwner(param.ProposerSbpName, sendBlock.AccountAddress)
+	if err != nil {
+		return nil, err
+	}
 
 	err = governance.Revoke(param.SbpName, param.ProposerSbpName, snapshotBlock.Height)
-	util.AssertNull(err)
+	if err != nil {
+		return nil, err
+	}
 	return nil, nil
 }
 
@@ -237,17 +250,17 @@ func (p *MethodUpdateBlockProducingAddress) DoSend(db vm_db.VmDb, block *ledger.
 		return util.ErrInvalidMethodParam
 	}
 	param, err := p.unpackParam(block.Data)
-	util.AssertNull(err)
-
-	governance, err := abi.NewGovernance(db)
-	util.AssertNull(err)
-
-	// check owner
-	err = governance.CheckSbpExistForOwner(param.SbpName, block.AccountAddress)
-	util.AssertNull(err)
-	// check producingAddress repeat
-	_, err = governance.CheckSbpExistForUpdateProducingAddress(param.SbpName, param.BlockProducingAddress)
-	util.AssertNull(err)
+	util.AssertNil(err)
+	//
+	//governance, err := abi.NewGovernance(db)
+	//util.AssertNil(err)
+	//
+	//// check owner
+	//err = governance.CheckSbpExistForOwner(param.SbpName, block.AccountAddress)
+	//util.AssertNil(err)
+	//// check producingAddress repeat
+	//_, err = governance.CheckSbpExistForUpdateProducingAddress(param.SbpName, param.BlockProducingAddress)
+	//util.AssertNil(err)
 
 	block.Data, _ = p.packParam(param)
 	return err
@@ -257,12 +270,16 @@ func (p *MethodUpdateBlockProducingAddress) DoReceive(db vm_db.VmDb, block *ledg
 	param, err := p.unpackParam(sendBlock.Data)
 
 	governance, err := abi.NewGovernance(db)
-	util.AssertNull(err)
+	util.AssertNil(err)
 
-	err = governance.CheckSbpExistForOwner(param.SbpName, block.AccountAddress)
-	util.AssertNull(err)
+	err = governance.CheckSbpExistForOwner(param.SbpName, sendBlock.AccountAddress)
+	if err != nil {
+		return nil, err
+	}
 
 	err = governance.UpdateProducingAddress(param.BlockProducingAddress, param.SbpName)
-	util.AssertNull(err)
+	if err != nil {
+		return nil, err
+	}
 	return nil, nil
 }

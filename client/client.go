@@ -1,6 +1,7 @@
 package client
 
 import (
+	"github.com/vitelabs/go-vite/crypto/ed25519"
 	"math/big"
 	"strconv"
 	"strings"
@@ -49,6 +50,7 @@ type Client interface {
 	GetBalanceAll(addr types.Address) (*api.RpcAccountInfo, *api.RpcAccountInfo, error)
 	SignData(wallet *entropystore.Manager, block *api.AccountBlock) error
 	SignDataWithPriKey(key *derivation.Key, block *api.AccountBlock) error
+	SignDataWithPriKey2(key ed25519.PrivateKey, block *api.AccountBlock) error
 }
 
 func NewClient(rpc RpcClient) (Client, error) {
@@ -271,5 +273,24 @@ func (c *client) SignDataWithPriKey(key *derivation.Key, block *api.AccountBlock
 
 	block.Signature = signData
 	block.PublicKey = pub
+	return nil
+}
+
+
+func (c *client) SignDataWithPriKey2(key ed25519.PrivateKey, block *api.AccountBlock) error {
+	if key == nil {
+		return errorNilKey
+	}
+	if block == nil {
+		return errorNilBlock
+	}
+	if (block.Hash == types.Hash{}) {
+		return errorEmptyHash
+	}
+
+
+	signData := ed25519.Sign(key, block.Hash.Bytes())
+	block.Signature = signData
+	block.PublicKey = key.PubByte()
 	return nil
 }

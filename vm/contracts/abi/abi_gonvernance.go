@@ -15,7 +15,7 @@ const (
 		{"type":"function","name":"Register","inputs":[{"name":"sbpName","type":"string"},{"name":"blockProducingAddress","type":"address"},{"name":"ownerAddress","type":"address"},{"name":"proposerSbpName","type":"string"}]},
 		{"type":"function","name":"Vote","inputs":[{"name":"sbpName","type":"string"},{"name":"voteType","type":"uint8"},{"name":"approval","type":"bool"},{"name":"proposerSbpName","type":"string"}]},
 		{"type":"function","name":"Revoke","inputs":[{"name":"sbpName","type":"string"},{"name":"proposerSbpName","type":"string"}]},
-		{"type":"function","name":"UpdateSBPBlockProducingAddress", "inputs":[{"name":"sbpName","type":"string"},{"name":"blockProducingAddress","type":"address"}]},
+		{"type":"function","name":"UpdateSBPBlockProducingAddress", "inputs":[{"name":"sbpName","type":"string"},{"name":"blockProducingAddress","type":"address"}]}
 	]`
 
 	MethodNameRegister                    = "Register"
@@ -26,12 +26,18 @@ const (
 
 var (
 	// ABIGovernance is abi definition of governance contract
-	ABIGovernance, _ = abi.JSONToABIContract(strings.NewReader(jsonGovernance))
+	ABIGovernance, err = abi.JSONToABIContract(strings.NewReader(jsonGovernance))
 
 	groupInfoKey        = key{prefix: []byte{0}, prefixSize: 1, size: 1 + types.GidSize}
 	sbpInfoKey          = key{prefix: []byte{1}, prefixSize: 1, size: 30}
 	producingAddressKey = key{prefix: []byte{2}, prefixSize: 1, size: 1 + types.AddressSize}
 )
+
+func init() {
+	if err != nil {
+		panic(err)
+	}
+}
 
 type key struct {
 	prefix     []byte

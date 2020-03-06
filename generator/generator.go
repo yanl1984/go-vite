@@ -3,6 +3,7 @@ package generator
 import (
 	"errors"
 	"fmt"
+	"runtime/debug"
 
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/consensus/core"
@@ -120,6 +121,7 @@ func (gen *Generator) generateBlock(block *ledger.AccountBlock, fromBlock *ledge
 			if fromBlock != nil {
 				errDetail += fmt.Sprintf("fromBlock(addr:%v hash:%v)", fromBlock.AccountAddress, fromBlock.Hash)
 			}
+			debug.PrintStack()
 			gen.log.Error(fmt.Sprintf("generator_vm panic error %v", err), "detail", errDetail)
 			result = &GenResult{}
 			resultErr = ErrVmRunPanic
