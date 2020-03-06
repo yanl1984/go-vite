@@ -10,11 +10,8 @@ import (
 type Genesis struct {
 	GenesisAccountAddress *types.Address
 	ForkPoints            *ForkPoints
-	ConsensusGroupInfo    *GovernanceContractInfo // Deprecated
 	GovernanceInfo        *GovernanceContractInfo
-	MintageInfo           *AssetContractInfo // Deprecated
 	AssetInfo             *AssetContractInfo
-	PledgeInfo            *QuotaContractInfo // Deprecated
 	QuotaInfo             *QuotaContractInfo
 	AccountBalanceMap     map[string]map[string]*big.Int // address - tokenId - balanceAmount
 }
@@ -24,42 +21,6 @@ func (g *Genesis) UnmarshalJSON(data []byte) error {
 	aux := &struct{ *Alias }{Alias: (*Alias)(g)}
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
-	}
-	if g.ConsensusGroupInfo != nil {
-		g.GovernanceInfo = g.ConsensusGroupInfo
-		for _, m := range g.GovernanceInfo.RegistrationInfoMap {
-			for _, v := range m {
-				v.BlockProducingAddress = v.NodeAddr
-				v.StakeAddress = v.PledgeAddr
-				v.ExpirationHeight = v.WithdrawHeight
-				v.RevokeTime = v.CancelTime
-				v.HistoryAddressList = v.HisAddrList
-			}
-		}
-		for _, v := range g.GovernanceInfo.ConsensusGroupInfoMap {
-			v.StakeAmount = v.PledgeAmount
-			v.ExpirationHeight = v.WithdrawHeight
-			v.RegisterConditionParam.StakeAmount = v.RegisterConditionParam.PledgeAmount
-			v.RegisterConditionParam.StakeHeight = v.RegisterConditionParam.PledgeHeight
-			v.RegisterConditionParam.StakeToken = v.RegisterConditionParam.PledgeToken
-		}
-	}
-	if g.MintageInfo != nil {
-		g.AssetInfo = g.MintageInfo
-		for _, v := range g.AssetInfo.TokenInfoMap {
-			v.IsOwnerBurnOnly = v.OwnerBurnOnly
-		}
-	}
-	if g.PledgeInfo != nil {
-		g.QuotaInfo = g.PledgeInfo
-		g.QuotaInfo.StakeInfoMap = g.QuotaInfo.PledgeInfoMap
-		g.QuotaInfo.StakeBeneficialMap = g.QuotaInfo.PledgeBeneficialMap
-		for _, list := range g.QuotaInfo.StakeInfoMap {
-			for _, v := range list {
-				v.ExpirationHeight = v.WithdrawHeight
-				v.Beneficiary = v.BeneficialAddr
-			}
-		}
 	}
 	return nil
 }
@@ -101,9 +62,6 @@ type AssetContractInfo struct {
 }
 
 type QuotaContractInfo struct {
-	PledgeInfoMap       map[string][]*StakeInfo // Deprecated
-	StakeInfoMap        map[string][]*StakeInfo
-	PledgeBeneficialMap map[string]*big.Int // Deprecated
 	StakeBeneficialMap  map[string]*big.Int
 }
 
@@ -117,37 +75,19 @@ type ConsensusGroupInfo struct {
 	CheckLevel             uint8
 	CountingTokenId        types.TokenTypeId
 	RegisterConditionId    uint8
-	RegisterConditionParam RegisterConditionParam
-	VoteConditionId        uint8
-	VoteConditionParam     VoteConditionParam
 	Owner                  types.Address
-	PledgeAmount           *big.Int // Deprecated
 	StakeAmount            *big.Int
-	WithdrawHeight         uint64 // Deprecated
 	ExpirationHeight       uint64
-}
-type RegisterConditionParam struct {
-	PledgeAmount *big.Int // Deprecated
-	StakeAmount  *big.Int
-	PledgeToken  types.TokenTypeId // Deprecated
-	StakeToken   types.TokenTypeId
-	PledgeHeight uint64 // Deprecated
-	StakeHeight  uint64
 }
 type VoteConditionParam struct {
 }
 type RegistrationInfo struct {
-	NodeAddr              *types.Address // Deprecated
 	BlockProducingAddress *types.Address
-	PledgeAddr            *types.Address // Deprecated
 	StakeAddress          *types.Address
 	Amount                *big.Int
-	WithdrawHeight        uint64 // Deprecated
 	ExpirationHeight      uint64
 	RewardTime            int64
-	CancelTime            int64 // Deprecated
 	RevokeTime            int64
-	HisAddrList           []types.Address // Deprecated
 	HistoryAddressList    []types.Address
 }
 type TokenInfo struct {
@@ -157,14 +97,6 @@ type TokenInfo struct {
 	Decimals        uint8
 	Owner           types.Address
 	MaxSupply       *big.Int
-	OwnerBurnOnly   bool // Deprecated
 	IsOwnerBurnOnly bool
 	IsReIssuable    bool
-}
-type StakeInfo struct {
-	Amount           *big.Int
-	WithdrawHeight   uint64 // Deprecated
-	ExpirationHeight uint64
-	BeneficialAddr   *types.Address // Deprecated
-	Beneficiary      *types.Address
 }

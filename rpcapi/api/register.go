@@ -40,10 +40,6 @@ func (r *RegisterApi) GetCancelRegisterData(gid types.Gid, name string) ([]byte,
 	return abi.ABIGovernance.PackMethod(abi.MethodNameRevoke, gid, name)
 }
 
-// Private
-func (r *RegisterApi) GetRewardData(gid types.Gid, name string, beneficialAddr types.Address) ([]byte, error) {
-	return abi.ABIGovernance.PackMethod(abi.MethodNameWithdrawReward, gid, name, beneficialAddr)
-}
 
 // Private
 func (r *RegisterApi) GetUpdateRegistrationData(gid types.Gid, name string, nodeAddr types.Address) ([]byte, error) {

@@ -16,9 +16,6 @@ type ConsensusGroupInfo struct {
 	CheckLevel             uint8       // consensus check param, 0-check address and sequence, 1-check address only
 	CountingTokenId        TokenTypeId // Token id for selecting miner through vote
 	RegisterConditionId    uint8
-	RegisterConditionParam []byte
-	VoteConditionId        uint8
-	VoteConditionParam     []byte
 	Owner                  Address
 	StakeAmount            *big.Int
 	ExpirationHeight       uint64
@@ -42,6 +39,7 @@ type Registration struct {
 	ExpirationHeight      uint64
 	RewardTime            int64
 	RevokeTime            int64
+	Status                uint8
 	HisAddrList           []Address
 }
 

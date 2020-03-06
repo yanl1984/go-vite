@@ -279,6 +279,7 @@ func (cs *consensus) eventProducer(e *producerSubscribeEvent, result *electionRe
 	for _, v := range result.Plans {
 		r = append(r, v.Member)
 	}
+	cs.mLog.Info("event producer", "index", result.Index, "gid", e.gid, "address", r)
 	e.fn(ProducersEvent{Addrs: r, Index: result.Index, Gid: e.gid})
 }
 

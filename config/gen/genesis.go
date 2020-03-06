@@ -22,10 +22,11 @@ func MakeGenesisConfig(genesisFile string) *config.Genesis {
 
 		genesisConfig = new(config.Genesis)
 		if err := json.NewDecoder(file).Decode(genesisConfig); err != nil {
-			log.Crit(fmt.Sprintf("invalid genesis file: %v", err), "method", "readGenesis")
+			panic(fmt.Sprintf("invalid genesis file: %v", err))
 		}
 		if !config.IsCompleteGenesisConfig(genesisConfig) {
-			log.Crit(fmt.Sprintf("invalid genesis file, genesis account info is not complete"), "method", "readGenesis")
+			msg := fmt.Sprintf("invalid genesis file, genesis account info is not complete, genesis:%v", genesisConfig)
+			panic(msg)
 		}
 	} else {
 		genesisConfig = makeGenesisAccountConfig()

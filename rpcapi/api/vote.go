@@ -32,11 +32,6 @@ func (v *VoteApi) GetVoteData(gid types.Gid, name string) ([]byte, error) {
 	return abi.ABIGovernance.PackMethod(abi.MethodNameVote, gid, name)
 }
 
-// Private
-func (v *VoteApi) GetCancelVoteData(gid types.Gid) ([]byte, error) {
-	return abi.ABIGovernance.PackMethod(abi.MethodNameCancelVote, gid)
-}
-
 var (
 	NodeStatusActive   uint8 = 1
 	NodeStatusInActive uint8 = 2

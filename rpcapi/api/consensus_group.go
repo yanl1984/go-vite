@@ -5,7 +5,6 @@ import (
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/log15"
 	"github.com/vitelabs/go-vite/vite"
-	"github.com/vitelabs/go-vite/vm/contracts"
 	"github.com/vitelabs/go-vite/vm/contracts/abi"
 )
 
@@ -66,19 +65,11 @@ func newConsensusGroup(source *types.ConsensusGroupInfo, sbHeight uint64) *Conse
 		Repeat:              source.Repeat,
 		CheckLevel:          source.CheckLevel,
 		CountingTokenId:     source.CountingTokenId,
-		RegisterConditionId: source.RegisterConditionId,
-		VoteConditionId:     source.VoteConditionId,
 		Owner:               source.Owner,
 		WithdrawHeight:      Uint64ToString(source.ExpirationHeight),
 	}
 	if source.StakeAmount != nil {
 		target.PledgeAmount = *bigIntToString(source.StakeAmount)
-	}
-	if param, err := abi.GetRegisterStakeParamOfConsensusGroup(source.RegisterConditionParam); err == nil {
-		target.RegisterConditionParam = &RegisterConditionParam{
-			PledgeToken:  param.StakeToken,
-			PledgeHeight: Uint64ToString(param.StakeHeight)}
-		target.RegisterConditionParam.PledgeAmount = *bigIntToString(contracts.SbpStakeAmountMainnet)
 	}
 	return target
 }

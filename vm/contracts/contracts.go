@@ -55,6 +55,7 @@ func newSimpleContracts() map[types.Address]*builtinContract {
 				cabi.MethodNameRegister:                    &MethodRegister{cabi.MethodNameRegister},
 				cabi.MethodNameRevoke:                      &MethodRevoke{cabi.MethodNameRevoke},
 				cabi.MethodNameUpdateBlockProducingAddress: &MethodUpdateBlockProducingAddress{cabi.MethodNameUpdateBlockProducingAddress},
+				cabi.MethodNameVote:                        &MethodVote{cabi.MethodNameVote},
 			},
 			cabi.ABIGovernance,
 		},
