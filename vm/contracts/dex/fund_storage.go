@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/golang/protobuf/proto"
-	"github.com/pkg/errors"
 	"github.com/vitelabs/go-vite/common/helper"
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/interfaces"
@@ -698,7 +697,7 @@ func GetAccountByToken(fund *Fund, token types.TokenTypeId) (account *dexproto.A
 
 func GetAccounts(fund *Fund, tokenId *types.TokenTypeId) ([]*Account, error) {
 	if fund == nil || len(fund.Accounts) == 0 {
-		return nil, errors.New("fund user doesn't exist.")
+		return nil, FundUserNotExist
 	}
 	var accounts = make([]*Account, 0)
 	if tokenId != nil {

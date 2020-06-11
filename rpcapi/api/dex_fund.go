@@ -37,7 +37,9 @@ func (f DexFundApi) GetAccountFundInfo(addr types.Address, tokenId *types.TokenT
 	}
 	fund, _ := dex.GetFund(db, addr)
 	accounts, err := dex.GetAccounts(fund, tokenId)
-	if err != nil {
+	if err == dex.FundUserNotExist {
+		return nil, nil
+	} else if err != nil {
 		return nil, err
 	}
 

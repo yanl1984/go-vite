@@ -7,6 +7,8 @@ import (
 var (
 	InvalidInputParamErr = errors.New("invalid input param")
 
+	FundUserNotExist = errors.New("fund user doesn't exist.")
+
 	InvalidOrderIdErr       = errors.New("invalid order id")
 	InvalidOrderHashErr     = errors.New("invalid order hash")
 	InvalidOrderTypeErr     = errors.New("invalid order type")
