@@ -7,11 +7,9 @@ import (
 	"testing"
 
 	"github.com/go-errors/errors"
-
 	"github.com/magiconair/properties/assert"
-
 	"github.com/syndtr/goleveldb/leveldb"
-
+	"github.com/vitelabs/go-vite/common/helper"
 	"github.com/vitelabs/go-vite/common/types"
 )
 
@@ -34,53 +32,20 @@ func clearConsensusDB(db *ConsensusDB) {
 }
 
 func TestConsensusDB_read(t *testing.T) {
-	var addr1 []types.Address
-	var addr2 []types.Address
-	{
-		d, err := leveldb.OpenFile("/Users/jie/tmp/consensus/", nil)
-		if err != nil {
-			panic(err)
-		}
-
-		db := NewConsensusDB(d)
-		addrList, err := db.GetElectionResultByHash(types.HexToHashPanic("3d548609e11aac640b26c99aa80cd62fa9b87fbbaef4b301e1cf2a4491497e1b"))
-		if err != nil {
-			panic(err)
-		}
-		for k, v := range addrList {
-			fmt.Println(k, v)
-		}
-		addr1 = append(addr1, addrList...)
-	}
-	{
-		d, err := leveldb.OpenFile("/Users/jie/tmp/0911/consensus_vm", nil)
-		if err != nil {
-			panic(err)
-		}
-
-		db := NewConsensusDB(d)
-		addrList, err := db.GetElectionResultByHash(types.HexToHashPanic("3d548609e11aac640b26c99aa80cd62fa9b87fbbaef4b301e1cf2a4491497e1b"))
-		if err != nil {
-			panic(err)
-		}
-		for k, v := range addrList {
-			fmt.Println(k, v)
-		}
-		addr2 = append(addr2, addrList...)
+	d, err := leveldb.OpenFile("/Users/jie/Library/GVite/maindata/ledger/consensus", nil)
+	if err != nil {
+		panic(err)
 	}
 
-	for k, v := range addr1 {
-		fmt.Println(k, v, addr2[k], v.String() == addr2[k].String())
+	db := NewConsensusDB(d)
+	point, err := db.GetPointByHeight(IndexPointHour, 1)
+	if err != nil {
+		panic(err)
 	}
-	//point, err := db.GetPointByHeight(IndexPointDay, 95)
-	//if err != nil {
-	//	panic(err)
-	//}
-	//fmt.Println(point.Hash, point.PrevHash)
-	//for k, v := range point.Votes.Details {
-	//	fmt.Println(k, v)
-	//}
-
+	fmt.Println(point.Hash, point.PrevHash)
+	for k, v := range point.Votes.Details {
+		fmt.Println(k, v)
+	}
 }
 
 func TestNewConsensusDB(t *testing.T) {
@@ -153,4 +118,37 @@ func TestPasrse(t *testing.T) {
 	var rst AddrArr
 	rerrr, _ := rst.SetBytes(result)
 	fmt.Printf("%+v\n", rerrr)
+}
+
+func TestConsensusDB_compare(t *testing.T) {
+	d, err := leveldb.OpenFile("/Users/jie/Library/GVite/maindata/ledger/consensus", nil)
+	if err != nil {
+		panic(err)
+	}
+	d2, err2 := leveldb.OpenFile("/Users/jie/Library/GVite/maindata/ledger_normal/consensus", nil)
+	if err2 != nil {
+		panic(err2)
+	}
+
+	db := NewConsensusDB(d)
+	db2 := NewConsensusDB(d2)
+	for i := uint64(1); i < 24; i++ {
+
+		point, err := db.GetPointByHeight(IndexPointHour, i)
+		point2, err2 := db2.GetPointByHeight(IndexPointHour, i)
+		if point == nil || point2 == nil {
+			continue
+		}
+		helper.AssertNil(err)
+		helper.AssertNil(err2)
+		fmt.Println(point.Hash, point.PrevHash)
+		fmt.Println(point2.Hash, point2.PrevHash)
+		for addr, v := range point.Sbps {
+			fmt.Println(i, addr, v.ExpectedNum, v.FactualNum, point2.Sbps[addr].ExpectedNum == v.ExpectedNum, point2.Sbps[addr].FactualNum == v.FactualNum)
+		}
+		//for k, v := range point.Votes.Details {
+		//	fmt.Println(i, k, v, point2.Votes.Details[k], v.String() == point2.Votes.Details[k].String())
+		//}
+
+	}
 }

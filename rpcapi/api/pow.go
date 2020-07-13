@@ -3,21 +3,41 @@ package api
 import (
 	"encoding/binary"
 	"errors"
+	"math/big"
+
+	"github.com/vitelabs/go-vite/common/hexutil"
+
 	"github.com/vitelabs/go-vite/common/types"
 	"github.com/vitelabs/go-vite/pow"
 	"github.com/vitelabs/go-vite/pow/remote"
 	"github.com/vitelabs/go-vite/vite"
 	"github.com/vitelabs/go-vite/vm/quota"
-	"math/big"
 )
 
 type Pow struct {
-	vite *vite.Vite
+	vite   *vite.Vite
+	pubKey []byte
 }
 
 func NewPow(vite *vite.Vite) *Pow {
+	var pubKey []byte
+	pub := vite.Config().SecretPub
+	if pub != nil {
+		p, err := hexutil.Decode(*pub)
+		if err != nil {
+			panic(err)
+		}
+		pubKey = p
+	} else {
+		p, err := hexutil.Decode("0xf4b37ea2a04d012835820fc480e0b87150f76112c87fce51412815bc90476d4e")
+		if err != nil {
+			panic(err)
+		}
+		pubKey = p
+	}
 	return &Pow{
-		vite: vite,
+		vite:   vite,
+		pubKey: pubKey,
 	}
 }
 
