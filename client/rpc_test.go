@@ -6,15 +6,15 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/vitelabs/go-vite/consensus/core"
-
 	"github.com/vitelabs/go-vite/common/types"
+	"github.com/vitelabs/go-vite/consensus/core"
 	"github.com/vitelabs/go-vite/ledger"
 )
 
 //var RawUrl = "http://127.0.0.1:48133"
 
-var RawUrl = "http://118.25.182.202:48132"
+//var RawUrl = "http://118.25.182.202:48132"
+var RawUrl = "http://139.199.74.104:48132"
 
 //var RawUrl = "http://134.175.105.236:48132"
 
@@ -412,4 +412,25 @@ func TestSbpHash(t *testing.T) {
 		}
 		fmt.Println(v, block.Producer)
 	}
+}
+
+func TestSbpddd(t *testing.T) {
+	hash1 := types.HexToHashPanic("108f714be8fa1662eed21891d74694eae839408d9e28e19670be52dd177818a5")
+	hash2 := types.HexToHashPanic("da5eb52fe8e39ca52698c47e7c6384b7a6c08177d44fc828f8dc562bf3157ad2")
+
+	rpc, err := NewRpcClient(RawUrl)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	block, err := rpc.GetBlockByHash(hash1)
+	if err != nil {
+		panic(err)
+	}
+	block2, err := rpc.GetBlockByHash(hash2)
+	if err != nil {
+		panic(err)
+	}
+	t.Log(block.Data)
+	t.Log(block2.Data)
 }
