@@ -170,7 +170,6 @@ const (
 	TradeAdminConfigMineThreshold  = 8
 	TradeAdminStartNormalMine      = 16
 	TradeAdminBurnExtraVx          = 32
-	TradeAdminConfigStableMarket   = 64
 )
 
 const (
@@ -178,6 +177,9 @@ const (
 	MarketOwnerConfigTakerRate = 2
 	MarketOwnerConfigMakerRate = 4
 	MarketOwnerStopMarket      = 8
+)
+const (
+	CommonAdminConfigStableMarket = 1
 )
 
 const (
@@ -318,7 +320,6 @@ type ParamTradeAdminConfig struct {
 	MinTradeThreshold           *big.Int          // 4 tradeThreshold
 	TokenTypeForMiningThreshold uint8             // 8 miningThreshold
 	MinMiningThreshold          *big.Int          // 8 miningThreshold
-	StableMarket                bool              // 64 stableMarket
 }
 
 type ParamMarketAdminConfig struct {
@@ -371,6 +372,16 @@ type ParamCancelOrderByHash struct {
 	Principal  types.Address
 	TradeToken types.TokenTypeId
 	QuoteToken types.TokenTypeId
+}
+
+type ParamCommonAdminConfig struct {
+	OperationCode uint8             // 1 stableMarket
+	TradeToken    types.TokenTypeId // 1 stableMarket
+	QuoteToken    types.TokenTypeId // 1 stableMarket
+	Enable        bool              // 1 stableMarket
+	Value         int32
+	Amount        *big.Int
+	Address       types.Address
 }
 
 type Fund struct {
