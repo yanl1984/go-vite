@@ -3,8 +3,9 @@ package abi
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/vitelabs/go-vite/common/types"
 	"io"
+
+	"github.com/vitelabs/go-vite/common/types"
 )
 
 // The ABIContract holds information about a contract's context and available
@@ -177,12 +178,7 @@ func (abi *ABIContract) MethodById(sigdata []byte) (*Method, error) {
 
 // UnmarshalJSON implements json.Unmarshaler interface
 func (abi *ABIContract) UnmarshalJSON(data []byte) error {
-	var fields []struct {
-		Type    string
-		Name    string
-		Inputs  []Argument
-		Outputs []Argument
-	}
+	var fields []abiField
 
 	if err := json.Unmarshal(data, &fields); err != nil {
 		return err
@@ -196,31 +192,22 @@ func (abi *ABIContract) UnmarshalJSON(data []byte) error {
 	for _, field := range fields {
 		switch field.Type {
 		case "constructor":
-			abi.Constructor = newMethod("", field.Inputs, nil)
+			abi.Constructor = field.constructor()
 			// empty defaults to function according to the abi spec
 		case "function", "":
-			abi.Methods[field.Name] = newMethod(field.Name, field.Inputs, nil)
+			abi.Methods[field.Name] = field.function()
 		case "callback":
-			name := getCallBackName(field.Name)
-			abi.Callbacks[name] = newMethod(name, field.Inputs, nil)
+			callback := field.callback()
+			abi.Callbacks[callback.Name] = callback
 		case "offchain":
-			abi.OffChains[field.Name] = newMethod(field.Name, field.Inputs, field.Outputs)
+			abi.OffChains[field.Name] = field.offChain()
 		case "event":
-			indexed, nonIndexed := getEventInputs(field.Inputs)
-			abi.Events[field.Name] = Event{
-				Name:             field.Name,
-				Inputs:           field.Inputs,
-				IndexedInputs:    indexed,
-				NonIndexedInputs: nonIndexed,
-			}
+			abi.Events[field.Name] = field.event()
 		case "variable":
 			if len(field.Inputs) == 0 {
 				return errInvalidEmptyVariableInput
 			}
-			abi.Variables[field.Name] = Variable{
-				Name:   field.Name,
-				Inputs: field.Inputs,
-			}
+			abi.Variables[field.Name] = field.variable()
 		}
 	}
 	return nil

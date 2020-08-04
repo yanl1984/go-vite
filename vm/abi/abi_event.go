@@ -3,10 +3,11 @@ package abi
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/vitelabs/go-vite/common/helper"
-	"github.com/vitelabs/go-vite/common/types"
 	"reflect"
 	"strings"
+
+	"github.com/vitelabs/go-vite/common/helper"
+	"github.com/vitelabs/go-vite/common/types"
 )
 
 // Event is an event potentially triggered by the VM's LOG mechanism. The Event
@@ -107,19 +108,15 @@ func (e Event) DirectUnPack(topics []types.Hash, data []byte) ([]interface{}, er
 }
 
 func (e *Event) UnmarshalJSON(data []byte) error {
-	var fields struct {
-		Type    string
-		Name    string
-		Inputs  []Argument
-		Outputs []Argument
-	}
-	if err := json.Unmarshal(data, &fields); err != nil {
+	var field abiField
+	if err := json.Unmarshal(data, &field); err != nil {
 		return err
 	}
-	indexed, nonIndexed := getEventInputs(fields.Inputs)
-	e.Name = fields.Name
-	e.Inputs = fields.Inputs
-	e.IndexedInputs = indexed
-	e.NonIndexedInputs = nonIndexed
+	event := field.event()
+
+	e.Name = event.Name
+	e.Inputs = event.Inputs
+	e.IndexedInputs = event.IndexedInputs
+	e.NonIndexedInputs = event.NonIndexedInputs
 	return nil
 }
