@@ -1,13 +1,13 @@
 
 
-# 简介
+# 简介 Introduction
 
-先介绍每个目录的用途：
+先介绍每个目录的用途：Let's go through the purpose of each directory:
 
-- .github 用来存放与github相关的配置，目前github action的配置存放在其中
-- bin 一些在开发和部署阶段可能会用到的脚本
-- client 实现了远程调用gvite节点的go版本客户端
-- cmd 命令行脚本，gvite的入口就是这里cmd/gvite/main.go
+- .github 用来存放与github相关的配置，目前github action的配置存放在其中 | .github keeps github-related configurations. Configs for github action live there
+- bin 一些在开发和部署阶段可能会用到的脚本 | bin keeps scripts used for development and deployment
+- client 实现了远程调用gvite节点的go版本客户端 | client implements the go-version client for remote calls for gvite nodes
+- cmd 命令行脚本，gvite的入口就是这里cmd/gvite/main.go | cmd is a command-line script. The entry to gvite is cmd/gvite/main.go
 - common 一些公用的方法组建以及常量的定义
 - conf 存放配置文件，conf/node_config.json是主网默认的
 - contracts-vite 存放vite相关的智能合约，contracts-vite/contracts/ViteToken.sol就是部署在eth网络上的VITE ERC20 Token的源码
