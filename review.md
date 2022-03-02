@@ -1,35 +1,35 @@
 
 
-# 简介
+# 简介 Introduction
 
-先介绍每个目录的用途：
+先介绍每个目录的用途：Let's go through the purpose of each directory:
 
-- .github 用来存放与github相关的配置，目前github action的配置存放在其中
-- bin 一些在开发和部署阶段可能会用到的脚本
-- client 实现了远程调用gvite节点的go版本客户端
-- cmd 命令行脚本，gvite的入口就是这里cmd/gvite/main.go
-- common 一些公用的方法组建以及常量的定义
-- conf 存放配置文件，conf/node_config.json是主网默认的
-- contracts-vite 存放vite相关的智能合约，contracts-vite/contracts/ViteToken.sol就是部署在eth网络上的VITE ERC20 Token的源码
-- crypto 加密算法和hash算法的实现 ed25519和blake2b-512是vite链上的主要算法
-- docker 存放dockerfile，配合docker编译时使用
-- docs go-vite相关的wiki存放，链接文档 https://docs.vite.org/go-vite/
-- interfaces 一些模块的接口定义放到这里，解决golang循环依赖问题
-- ledger 包含账本相关的实现
-- log15 go-vite中采用的日志框架，由于当初改了不少东西，就copy过来了，原项目地址：https://github.com/inconshreveable/log15
-- monitor 压力测试时，为了方便数据统计写的工具包
-- net 网络层实现，包含了节点发现，节点互通，账本广播和拉取
-- node 一个ledger的上层包装，主要做一些组合的功能
-- pow 本地实现的pow计算和远程调用pow-client进行计算pow
-- producer 触发snapshot block和contract block生产的入口
-- rpc 对于websocket/http/ipc三种远程调用方式的底层实现
-- rpcapi 内部各个模块对外暴露的rpc接口
-- smart-contract 类似contracts-vite
-- tools 类似collection，一些集合的实现
-- version 存放每次编译的版本号，make脚本会修改version/buildversion的内容
-- vm 虚拟机的实现和内置合约的实现，里面大量的虚拟机执行逻辑
-- vm_db 虚拟机在执行的时候需要的存储接口，是虚拟机访问chain的封装
-- wallet 钱包的实现，私钥助记词管理，以及签名和验证签名
+- .github 用来存放与github相关的配置，目前github action的配置存放在其中 | .github keeps github-related configurations. Configs for github action live there
+- bin 一些在开发和部署阶段可能会用到的脚本 | bin keeps scripts used for development and deployment
+- client 实现了远程调用gvite节点的go版本客户端 | client implements the go-version client for remote calls for gvite nodes
+- cmd 命令行脚本，gvite的入口就是这里cmd/gvite/main.go | cmd is a command-line script. The entry to gvite is cmd/gvite/main.go
+- common 一些公用的方法组建以及常量的定义 | Definition of some commonly used functions and constants
+- conf 存放配置文件，conf/node_config.json是主网默认的 | conf keeps configuration files, conf/node_convig.json is the default for the Mainnet
+- contracts-vite 存放vite相关的智能合约，contracts-vite/contracts/ViteToken.sol就是部署在eth网络上的VITE ERC20 Token的源码 | contracts-vite keeps vite-related smart contracts, contracts-vite/contracts/ViteToken.sol are VITE ERC20 token contracts deployed on the Ethereum network
+- crypto 加密算法和hash算法的实现 ed25519和blake2b-512是vite链上的主要算法 | crypto - implementation of cryptographical algorithms and hash algorithms. ed25519 and blake2b-512 are the main algos used by the vite chain
+- docker 存放dockerfile，配合docker编译时使用 | docker - keeps dockerfile, used for compiling docker
+- docs go-vite相关的wiki存放，链接文档 https://docs.vite.org/go-vite/ | docs - wiki documents related to go-vite, the link is https://docs.vite.org/go-vite/
+- interfaces 一些模块的接口定义放到这里，解决golang循环依赖问题 | definitions of some module interfaces live here. They solve the cyclical dependence problem with golang
+- ledger 包含账本相关的实现 | ledger - ledger-related implementation
+- log15 go-vite中采用的日志框架，由于当初改了不少东西，就copy过来了，原项目地址：https://github.com/inconshreveable/log15 | log15: logging framework for go-vite. Lots of things were previously changed, so got copied over from: https://github.com/inconshreveable/log15
+- monitor 压力测试时，为了方便数据统计写的工具包 | monitor: toolkit for data aggregation in stress tests
+- net 网络层实现，包含了节点发现，节点互通，账本广播和拉取 | net: implementation of the networking layer, including node discovery, inter-node communication, ledger propagation and retrieval
+- node 一个ledger的上层包装，主要做一些组合的功能 | node: a top level package for ledger, mainly used for composability
+- pow 本地实现的pow计算和远程调用pow-client进行计算pow | pow: locally implemented pow calculation and remotely called pow-client for pow calculation
+- producer 触发snapshot block和contract block生产的入口 | producer: interface for activating snapshot block and production of contract block
+- rpc 对于websocket/http/ipc三种远程调用方式的底层实现 | rpc: implementation of three remote invocation methods: websocket/http/ipc
+- rpcapi 内部各个模块对外暴露的rpc接口 | rpcapi: externally exposing each module via rpc interface
+- smart-contract 类似contracts-vite | smart-contract: like contracts-vite
+- tools 类似collection，一些集合的实现 | tools: like collection, implementation of collections
+- version 存放每次编译的版本号，make脚本会修改version/buildversion的内容 | version: saves version for each compilation, the make script will modify version/buildversion
+- vm 虚拟机的实现和内置合约的实现，里面大量的虚拟机执行逻辑 | vm: implementation of the virtual machine and built-in smart contracts. Many VM-execution logic inside
+- vm_db 虚拟机在执行的时候需要的存储接口，是虚拟机访问chain的封装 | vm_db: the interface for storage during VM execution. It's a wrap-around for when the VM visits chain
+- wallet 钱包的实现，私钥助记词管理，以及签名和验证签名 | wallet: wallet implementation - private key/mnemonics/signing/signature verification
 
 
 然后是gvite的实现整体框架：
